@@ -3,85 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Smart Scanner</title>
+    <title>AI Mini Scanner - Paste Support</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #121212; color: #e0e0e0; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 90%; max-width: 320px; border: 1px solid #333; }
-        .upload-area { border: 2px dashed #444; padding: 20px; border-radius: 10px; cursor: pointer; transition: 0.3s; margin-bottom: 15px; }
-        .upload-area:hover { border-color: #4CAF50; background: #252525; }
-        #output { background: #000; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 1.1em; color: #40ff40; border: 1px solid #222; min-height: 40px; display: flex; align-items: center; justify-content: center; }
-        .loader { font-size: 12px; color: #888; margin-top: 10px; }
-        input[type="file"] { display: none; }
+        body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 300px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+        .paste-zone { border: 2px dashed #444; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #888; transition: 0.3s; }
+        .paste-zone.active { border-color: #00ff00; background: #122212; color: #fff; }
+        #output { background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 15px; color: #00ff00; border: 1px solid #222; min-height: 25px; cursor: pointer; }
+        .status { font-size: 11px; margin-top: 8px; color: #666; }
+        .hint { font-size: 10px; color: #444; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h3>الماسح الذكي 🤖</h3>
-    <label class="upload-area" id="dropZone">
-        اضغط هنا أو اسحب الصورة<br><small>(JPG, PNG)</small>
-        <input type="file" id="imageInput" accept="image/*">
-    </label>
+<div class="app-container">
+    <div class="paste-zone" id="dropZone">
+        اضغط هنا ثم الصق الصورة <br> (Ctrl + V)
+    </div>
     
-    <div id="loader" class="loader">جاهز للعمل...</div>
-    <div id="output">البيانات ستظهر هنا</div>
+    <div id="output" onclick="copyToClipboard()">0-0 // 00:00 // 0.00 // 0000</div>
+    <div id="status" class="status">جاهز..</div>
+    <div class="hint">اضغط على النتيجة لنسخها يدوياً</div>
 </div>
 
 <script>
-    const imageInput = document.getElementById('imageInput');
     const outputDiv = document.getElementById('output');
-    const loader = document.getElementById('loader');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
 
-    imageInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        loader.innerText = "جاري القراءة بذكاء... 🧠";
-        outputDiv.innerText = "...";
-
-        // تشغيل محرك الـ AI
-        Tesseract.recognize(file, 'eng+ara')
-            .then(({ data: { text } }) => {
-                const cleanedText = text.replace(/\n/g, ' ');
-                extractSmartData(cleanedText);
-            })
-            .catch(err => {
-                loader.innerText = "فشل في معالجة الصورة";
-            });
+    // دعم لصق الصورة من الحافظة
+    document.addEventListener('paste', async (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                processImage(blob);
+                break;
+            }
+        }
     });
 
-    function extractSmartData(text) {
-        // منطق ذكي للبحث عن الأرقام والتواريخ مهما تغير الترتيب
+    async function processImage(file) {
+        statusDiv.innerText = "جاري التحليل بالـ AI... ⏳";
+        dropZone.classList.add('active');
         
-        // 1. البحث عن التاريخ (يأخذ آخر تاريخ يظهر في الرسالة)
-        const dateMatch = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || text.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+        try {
+            // استخدام Tesseract لقراءة الصورة (دعم إنجليزي وعربي لصور البنوك السعودية)
+            const { data: { text } } = await Tesseract.recognize(file, 'eng+ara');
+            parseData(text);
+        } catch (err) {
+            statusDiv.innerText = "فشل الاستخراج، جرب مرة أخرى";
+            console.error(err);
+        } finally {
+            dropZone.classList.remove('active');
+        }
+    }
+
+    function parseData(text) {
+        // تنظيف النص
+        const cleanText = text.replace(/\s+/g, ' ');
+
+        // 1. استخراج رقم البطاقة (آخر 4 أرقام تظهر عادةً بجانب * أو بطاقة)
+        const cards = cleanText.match(/\d{4}/g);
+        const card = cards ? cards[cards.length - 1] : "0000";
+
+        // 2. استخراج المبلغ (رقم عشري)
+        const amounts = cleanText.match(/\d+\.\d{2}/);
+        const amount = amounts ? amounts[0] : "0.00";
+
+        // 3. استخراج الوقت (HH:MM)
+        const times = cleanText.match(/\d{2}:\d{2}/);
+        const time = times ? times[0] : "00:00";
+
+        // 4. استخراج التاريخ (البحث عن نمط YYYY-MM-DD أو DD-MM-YYYY)
+        const dateMatch = cleanText.match(/(\d{4})-(\d{2})-(\d{2})/) || cleanText.match(/(\d{2})-(\d{2})-(\d{4})/);
         let dateStr = "0-0";
         if (dateMatch) {
-            // استخراج الشهر واليوم بذكاء
-            dateStr = dateMatch[1].length === 4 ? `${parseInt(dateMatch[2])}-${parseInt(dateMatch[3])}` : `${parseInt(dateMatch[2])}-${parseInt(dateMatch[1])}`;
+            // تحويله لصيغة شهر-يوم
+            if (dateMatch[1].length === 4) { // YYYY-MM-DD
+                dateStr = `${parseInt(dateMatch[2])}-${parseInt(dateMatch[3])}`;
+            } else { // DD-MM-YYYY
+                dateStr = `${parseInt(dateMatch[2])}-${parseInt(dateMatch[1])}`;
+            }
         }
 
-        // 2. البحث عن الوقت
-        const timeMatch = text.match(/(\d{1,2}:\d{2}(?::\d{2})?)/);
-        const timeStr = timeMatch ? timeMatch[0].substring(0, 5) : "00:00";
-
-        // 3. البحث عن المبلغ (يبحث عن رقم عشري بجانبه كلمة SAR أو مبلغ)
-        const amountMatch = text.match(/(\d+\.\d{2})/) || text.match(/(\d+\.\d{1,2})/);
-        const amountStr = amountMatch ? amountMatch[0] : "0.00";
-
-        // 4. البحث عن رقم البطاقة (يبحث عن 4 أرقام مسبوقة بـ * أو كلمة Card/بطاقة)
-        const cardMatch = text.match(/(\d{4})(?!\d)/g);
-        const cardStr = cardMatch ? cardMatch[cardMatch.length - 1] : "0000";
-
-        // التنسيق النهائي المطلوب
-        const result = `${dateStr} // ${timeStr} // ${amountStr} // ${cardStr}`;
+        const finalResult = `${dateStr} // ${time} // ${amount} // ${card}`;
+        outputDiv.innerText = finalResult;
+        statusDiv.innerText = "تم الاستخراج والنسخ! ✅";
         
-        outputDiv.innerText = result;
-        loader.innerText = "تم النسخ تلقائياً! ✅";
-        
-        // نسخ للذاكرة فوراً
-        navigator.clipboard.writeText(result);
+        // نسخ تلقائي للحافظة
+        navigator.clipboard.writeText(finalResult);
+    }
+
+    function copyToClipboard() {
+        navigator.clipboard.writeText(outputDiv.innerText);
+        statusDiv.innerText = "تم النسخ يدويًا! 👍";
     }
 </script>
 
