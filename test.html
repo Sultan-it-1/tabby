@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Scanner - DD-MM Format</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 330px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+        .paste-zone { border: 2px dashed #444; padding: 15px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; color: #888; }
+        .paste-zone.active { border-color: #00ff00; background: #122212; }
+        #output { background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 15px; color: #00ff00; border: 1px solid #222; margin-bottom: 12px; cursor: pointer; direction: ltr; }
+        .chips-container { display: flex; justify-content: space-between; gap: 5px; direction: ltr; }
+        .chip { flex: 1; background: #333; padding: 10px 2px; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #444; color: #eee; }
+        .chip:hover { background: #444; border-color: #00ff00; }
+        .status { font-size: 11px; margin-top: 10px; color: #00ff00; height: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="paste-zone" id="dropZone">اضغط هنا ثم الصق (Ctrl+V)</div>
+    <div id="output" onclick="copyFull()">البيانات ستظهر هنا</div>
+    <div class="chips-container">
+        <div class="chip" id="chip-card" onclick="copyMe(this)">-</div>
+        <div class="chip" id="chip-amount" onclick="copyMe(this)">-</div>
+        <div class="chip" id="chip-time" onclick="copyMe(this)">-</div>
+        <div class="chip" id="chip-date" onclick="copyMe(this)">-</div>
+    </div>
+    <div id="status" class="status">جاهز.. التنسيق: يوم-شهر (DD-MM)</div>
+</div>
+
+<script>
+    const outputDiv = document.getElementById('output');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+
+    document.addEventListener('paste', async (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                processImage(items[i].getAsFile());
+                break;
+            }
+        }
+    });
+
+    async function processImage(file) {
+        statusDiv.innerText = "جاري القراءة... ⏳";
+        dropZone.classList.add('active');
+        try {
+            const { data: { text } } = await Tesseract.recognize(file, 'eng+ara');
+            parseData(text);
+        } catch (err) {
+            statusDiv.innerText = "خطأ في القراءة ❌";
+        }
+        dropZone.classList.remove('active');
+    }
+
+    function parseData(text) {
+        const amountMatch = text.match(/\d{1,7}\.\d{2}/);
+        const amount = amountMatch ? amountMatch[0] : "0.00";
+
+        const timeMatch = text.match(/\d{2}:\d{2}/);
+        const time = timeMatch ? timeMatch[0] : "00:00";
+
+        const dateMatch = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || 
+                          text.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
+        
+        let date = "00-00";
+        let foundYear = "";
+
+        if (dateMatch) {
+            if (dateMatch[1].length === 4) { 
+                // تنسيق يبدأ بالسنة (مثلاً 2026-05-14) -> اليوم 14 والشهر 05
+                foundYear = dateMatch[1];
+                date = `${parseInt(dateMatch[3])}-${parseInt(dateMatch[2])}`;
+            } else { 
+                // تنسيق DD-MM-YYYY (مثلاً 14-05-2026) -> اليوم 14 والشهر 05
+                foundYear = dateMatch[3];
+                date = `${parseInt(dateMatch[1])}-${parseInt(dateMatch[2])}`;
+            }
+        }
+
+        const allFourDigits = text.match(/\d{4}/g) || [];
+        const card = allFourDigits.filter(d => 
+            d !== foundYear && !amount.includes(d) && d !== "2026" && d !== "2025"
+        ).pop() || "0000";
+
+        // الترتيب: بطاقة // مبلغ // وقت // تاريخ (يوم-شهر)
+        const finalResult = `${card} // ${amount} // ${time} // ${date}`;
+        outputDiv.innerText = finalResult;
+        
+        document.getElementById('chip-card').innerText = card;
+        document.getElementById('chip-amount').innerText = amount;
+        document.getElementById('chip-time').innerText = time;
+        document.getElementById('chip-date').innerText = date;
+
+        statusDiv.innerText = "تم الاستخراج بصيغة يوم-شهر! ✅";
+        navigator.clipboard.writeText(finalResult);
+    }
+
+    function copyMe(element) {
+        if (element.innerText === "-") return;
+        navigator.clipboard.writeText(element.innerText);
+        statusDiv.innerText = `نسخ: ${element.innerText}`;
+    }
+
+    function copyFull() {
+        if (outputDiv.innerText.includes("البيانات")) return;
+        navigator.clipboard.writeText(outputDiv.innerText);
+        statusDiv.innerText = "تم نسخ السطر كاملاً";
+    }
+</script>
+
+</body>
+</html>
