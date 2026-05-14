@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Scanner PRO - Day-Month Format</title>
+    <title>Smart Scanner PRO - No AI</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
         .app-container { width: 330px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
         .paste-zone { border: 2px dashed #444; padding: 15px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; color: #888; transition: 0.3s; }
         .paste-zone.active { border-color: #00ff00; background: #122212; color: #fff; }
-        #output { background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 15px; color: #00ff00; border: 1px solid #222; margin-bottom: 12px; cursor: pointer; min-height: 20px; direction: ltr; }
-        .chips-container { display: flex; justify-content: space-between; gap: 5px; direction: ltr; }
-        .chip { flex: 1; background: #333; padding: 10px 2px; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #eee; }
+        #output { background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 15px; color: #00ff00; border: 1px solid #222; margin-bottom: 12px; cursor: pointer; min-height: 20px; }
+        .chips-container { display: flex; justify-content: space-between; gap: 5px; }
+        .chip { flex: 1; background: #333; padding: 10px 2px; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .chip:hover { background: #444; border-color: #00ff00; }
         .chip:active { background: #00ff00; color: #000; }
         .status { font-size: 11px; margin-top: 10px; color: #00ff00; height: 15px; font-weight: bold; }
@@ -32,7 +32,7 @@
         <div class="chip" id="chip-card" onclick="copyMe(this)" title="البطاقة">-</div>
     </div>
     
-    <div id="status" class="status">جاهز.. التنسيق: يوم-شهر</div>
+    <div id="status" class="status">جاهز للاستخدام..</div>
 </div>
 
 <script>
@@ -54,6 +54,7 @@
         statusDiv.innerText = "جاري القراءة... ⏳";
         dropZone.classList.add('active');
         try {
+            // استخدام اللغة العربية والإنجليزية معاً لتحسين الدقة في صور البنوك المحلية
             const { data: { text } } = await Tesseract.recognize(file, 'eng+ara');
             parseData(text);
         } catch (err) {
@@ -63,41 +64,42 @@
     }
 
     function parseData(text) {
-        // تنظيف النصوص
-        const amountMatch = text.match(/\d{1,7}\.\d{2}/);
+        // تنظيف النص من الرموز الغريبة مع الحفاظ على الأرقام والنقاط والفواصل
+        const cleanText = text.replace(/[^\d:.\-\/]/g, ' ');
+        
+        // 1. استخراج المبلغ (رقم عشري طويل مثل 2012.50)
+        const amountMatch = text.match(/\d{1,5}\.\d{2}/);
         const amount = amountMatch ? amountMatch[0] : "0.00";
 
+        // 2. استخراج الوقت (ساعة:دقيقة)
         const timeMatch = text.match(/\d{2}:\d{2}/);
         const time = timeMatch ? timeMatch[0] : "00:00";
 
-        // منطق استخراج التاريخ (يوم-شهر)
-        const dateMatch =  text.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/) || 
-                        text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-      
+        // 3. استخراج التاريخ (دعم تنسيقات متعددة وفصل الشهر واليوم)
+        const dateMatch = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || 
+                          text.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
         
-        let date = "00-00";
-        let foundYear = "";
-
+        let date = "0-0";
         if (dateMatch) {
-            if (dateMatch[1].length === 4) { // تنسيق يبدأ بالسنة YYYY-MM-DD
-                foundYear = dateMatch[1];
-                date = `${parseInt(dateMatch[3])}-${parseInt(dateMatch[2])}`; // يوم-شهر
-            } else { // تنسيق DD-MM-YYYY
-                foundYear = dateMatch[3];
-                date = `${parseInt(dateMatch[1])}-${parseInt(dateMatch[2])}`; // يوم-شهر
+            if (dateMatch[1].length === 4) { // YYYY-MM-DD
+                date = `${parseInt(dateMatch[2])}-${parseInt(dateMatch[3])}`;
+            } else { // DD-MM-YYYY or DD-MM-YY
+                date = `${parseInt(dateMatch[2])}-${parseInt(dateMatch[1])}`;
             }
         }
 
-        // استخراج رقم البطاقة مع استبعاد أرقام التاريخ والمبالغ
+        // 4. استخراج رقم البطاقة (ذكاء إضافي لاستبعاد أرقام التاريخ والمبلغ)
         const allFourDigits = text.match(/\d{4}/g) || [];
+        // نفلتر الأرقام بحيث لا تكون هي السنة ولا جزء من المبلغ المكتشف
         const card = allFourDigits.filter(d => 
-            d !== foundYear && 
+            d !== dateMatch?.[1] && 
             !amount.includes(d) && 
             d !== "2026" && d !== "2025"
         ).pop() || "0000";
 
-        // النتيجة النهائية: يوم-شهر // وقت // مبلغ // بطاقة
-        const finalResult = `${date} // ${time} // ${amount} // ${card}`;
+        // تحديث الواجهة
+        const finalResult = `${card} // ${amount}  // ${time} // ${date} `;
+       
         outputDiv.innerText = finalResult;
         
         document.getElementById('chip-date').innerText = date;
@@ -105,20 +107,22 @@
         document.getElementById('chip-amount').innerText = amount;
         document.getElementById('chip-card').innerText = card;
 
-        statusDiv.innerText = "تم الاستخراج! ✅";
+        statusDiv.innerText = "تم الاستخراج والنسخ تلقائياً! ✅";
         navigator.clipboard.writeText(finalResult);
     }
 
     function copyMe(element) {
         if (element.innerText === "-") return;
         navigator.clipboard.writeText(element.innerText);
-        statusDiv.innerText = `نسخ: ${element.innerText}`;
+        statusDiv.innerText = `تم نسخ: ${element.innerText}`;
+        setTimeout(() => { statusDiv.innerText = "جاهز.."; }, 2000);
     }
 
     function copyFull() {
         if (outputDiv.innerText.includes("البيانات")) return;
         navigator.clipboard.writeText(outputDiv.innerText);
         statusDiv.innerText = "تم نسخ السطر كاملاً";
+        setTimeout(() => { statusDiv.innerText = "جاهز.."; }, 2000);
     }
 </script>
 
