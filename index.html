@@ -98,7 +98,8 @@
         ).pop() || "0000";
 
         // تحديث الواجهة
-        const finalResult = `${date} // ${time} // ${amount} // ${card}`;
+        // الترتيب الجديد: بطاقة // مبلغ // وقت // تاريخ (شهر-يوم)
+ة        const finalResult = `${card} // ${amount} // ${time} // ${date}`;
         outputDiv.innerText = finalResult;
         
         document.getElementById('chip-date').innerText = date;
