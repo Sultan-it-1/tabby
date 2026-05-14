@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Scanner - First Card Priority</title>
+    <title>Smart Scanner - Context Aware</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
@@ -32,7 +32,7 @@
 </div>
 
 <script>
-    const outputDiv = document.getElementById('output');
+    const outputDiv = document.getElementById('fullOutput');
     const statusDiv = document.getElementById('status');
     const dropZone = document.getElementById('dropZone');
 
@@ -58,21 +58,25 @@
         dropZone.classList.remove('active');
     }
 
-    function parseData(text) {
-        // تنظيف المبالغ والوقت
-        const amountMatch = text.match(/\d{1,7}\.\d{2}/);
+    function parseData(rawText) {
+        // تقسيم النص إلى أسطر للبحث عن السياق
+        const lines = rawText.split('\n');
+        const cleanText = rawText.replace(/\s+/g, ' ');
+
+        // 1. استخراج المبلغ
+        const amountMatch = cleanText.match(/\d{1,7}\.\d{2}/);
         const amount = amountMatch ? amountMatch[0] : "0.00";
 
-        const timeMatch = text.match(/\d{2}:\d{2}/);
+        // 2. استخراج الوقت
+        const timeMatch = cleanText.match(/\d{2}:\d{2}/);
         const time = timeMatch ? timeMatch[0] : "00:00";
 
-        // استخراج التاريخ بتنسيق DD-MM
-        const dateMatch = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || 
-                          text.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
+        // 3. استخراج التاريخ DD-MM
+        const dateMatch = cleanText.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || 
+                          cleanText.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
         
         let date = "00-00";
         let foundYear = "";
-
         if (dateMatch) {
             if (dateMatch[1].length === 4) { 
                 foundYear = dateMatch[1];
@@ -83,22 +87,37 @@
             }
         }
 
-        // التعديل الجوهري: استخدام find() بدلاً من pop() لأخذ أول رقم 4 خانات يظهر
-        const allFourDigits = text.match(/\d{4}/g) || [];
-        const card = allFourDigits.find(d => 
-            d !== foundYear && !amount.includes(d) && d !== "2026" && d !== "2025"
-        ) || "0000";
+        // 4. تحسين استخراج البطاقة: البحث عن السطر الذي يحتوي على "بطاقة"
+        let card = "0000";
+        const cardKeywords = ["بطاقة", "card", "mada", "مدى"];
+        
+        for (let line of lines) {
+            if (cardKeywords.some(key => line.toLowerCase().includes(key))) {
+                const match = line.match(/\d{4}/);
+                if (match) {
+                    card = match[0];
+                    break;
+                }
+            }
+        }
 
-        // الترتيب: بطاقة // مبلغ // وقت // تاريخ (يوم-شهر)
+        // إذا لم يجد بطاقة عبر السياق، نستخدم البحث العام
+        if (card === "0000") {
+            const allFourDigits = cleanText.match(/\d{4}/g) || [];
+            card = allFourDigits.find(d => 
+                d !== foundYear && !amount.includes(d) && d !== "2026" && d !== "2025"
+            ) || "0000";
+        }
+
         const finalResult = `${card} // ${amount} // ${time} // ${date}`;
-        outputDiv.innerText = finalResult;
+        document.getElementById('output').innerText = finalResult;
         
         document.getElementById('chip-card').innerText = card;
         document.getElementById('chip-amount').innerText = amount;
         document.getElementById('chip-time').innerText = time;
         document.getElementById('chip-date').innerText = date;
 
-        statusDiv.innerText = "تم الاستخراج بنجاح! ✅";
+        statusDiv.innerText = "تم الاستخراج بدقة السياق! ✅";
         navigator.clipboard.writeText(finalResult);
     }
 
@@ -109,8 +128,9 @@
     }
 
     function copyFull() {
-        if (outputDiv.innerText.includes("البيانات")) return;
-        navigator.clipboard.writeText(outputDiv.innerText);
+        const text = document.getElementById('output').innerText;
+        if (text.includes("البيانات")) return;
+        navigator.clipboard.writeText(text);
         statusDiv.innerText = "تم نسخ السطر كاملاً";
     }
 </script>
