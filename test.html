@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Scanner - DD-MM Format</title>
+    <title>Smart Scanner - Fixed Card Detection</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
@@ -73,20 +73,19 @@
 
         if (dateMatch) {
             if (dateMatch[1].length === 4) { 
-                // تنسيق يبدأ بالسنة (مثلاً 2026-05-14) -> اليوم 14 والشهر 05
                 foundYear = dateMatch[1];
                 date = `${parseInt(dateMatch[3])}-${parseInt(dateMatch[2])}`;
             } else { 
-                // تنسيق DD-MM-YYYY (مثلاً 14-05-2026) -> اليوم 14 والشهر 05
                 foundYear = dateMatch[3];
                 date = `${parseInt(dateMatch[1])}-${parseInt(dateMatch[2])}`;
             }
         }
 
+        // تحسين استخراج رقم البطاقة: نأخذ أول رقم 4 خانات يظهر (عادة بجانب كلمة بطاقة)
         const allFourDigits = text.match(/\d{4}/g) || [];
-        const card = allFourDigits.filter(d => 
+        const card = allFourDigits.find(d => 
             d !== foundYear && !amount.includes(d) && d !== "2026" && d !== "2025"
-        ).pop() || "0000";
+        ) || "0000";
 
         // الترتيب: بطاقة // مبلغ // وقت // تاريخ (يوم-شهر)
         const finalResult = `${card} // ${amount} // ${time} // ${date}`;
@@ -97,7 +96,7 @@
         document.getElementById('chip-time').innerText = time;
         document.getElementById('chip-date').innerText = date;
 
-        statusDiv.innerText = "تم الاستخراج بصيغة يوم-شهر! ✅";
+        statusDiv.innerText = "تم الاستخراج! ✅";
         navigator.clipboard.writeText(finalResult);
     }
 
