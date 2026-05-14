@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Work Panel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h2>🧠 Work Panel</h2>
+
+  <section>
+    <h3>📝 Notes</h3>
+    <textarea id="notes" placeholder="اكتب ملاحظاتك..."></textarea>
+  </section>
+
+  <section>
+    <h3>✅ Todo</h3>
+    <input id="todoInput" placeholder="Add task">
+    <button onclick="addTodo()">Add</button>
+    <ul id="todoList"></ul>
+  </section>
+
+  <section>
+    <h3>🔗 Quick Links</h3>
+    <button onclick="openLink('https://aws.amazon.com')">AWS</button>
+    <button onclick="openLink('https://github.com')">GitHub</button>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
