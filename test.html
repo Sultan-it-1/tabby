@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Scanner - Fixed Card Detection</title>
+    <title>Smart Scanner - First Card Priority</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
@@ -12,7 +12,7 @@
         .paste-zone.active { border-color: #00ff00; background: #122212; }
         #output { background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 15px; color: #00ff00; border: 1px solid #222; margin-bottom: 12px; cursor: pointer; direction: ltr; }
         .chips-container { display: flex; justify-content: space-between; gap: 5px; direction: ltr; }
-        .chip { flex: 1; background: #333; padding: 10px 2px; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #444; color: #eee; }
+        .chip { flex: 1; background: #333; padding: 10px 2px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #444; color: #eee; }
         .chip:hover { background: #444; border-color: #00ff00; }
         .status { font-size: 11px; margin-top: 10px; color: #00ff00; height: 15px; }
     </style>
@@ -28,7 +28,7 @@
         <div class="chip" id="chip-time" onclick="copyMe(this)">-</div>
         <div class="chip" id="chip-date" onclick="copyMe(this)">-</div>
     </div>
-    <div id="status" class="status">جاهز.. التنسيق: يوم-شهر (DD-MM)</div>
+    <div id="status" class="status">جاهز.. التنسيق: DD-MM</div>
 </div>
 
 <script>
@@ -59,12 +59,14 @@
     }
 
     function parseData(text) {
+        // تنظيف المبالغ والوقت
         const amountMatch = text.match(/\d{1,7}\.\d{2}/);
         const amount = amountMatch ? amountMatch[0] : "0.00";
 
         const timeMatch = text.match(/\d{2}:\d{2}/);
         const time = timeMatch ? timeMatch[0] : "00:00";
 
+        // استخراج التاريخ بتنسيق DD-MM
         const dateMatch = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || 
                           text.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
         
@@ -81,7 +83,7 @@
             }
         }
 
-        // تحسين استخراج رقم البطاقة: نأخذ أول رقم 4 خانات يظهر (عادة بجانب كلمة بطاقة)
+        // التعديل الجوهري: استخدام find() بدلاً من pop() لأخذ أول رقم 4 خانات يظهر
         const allFourDigits = text.match(/\d{4}/g) || [];
         const card = allFourDigits.find(d => 
             d !== foundYear && !amount.includes(d) && d !== "2026" && d !== "2025"
@@ -96,7 +98,7 @@
         document.getElementById('chip-time').innerText = time;
         document.getElementById('chip-date').innerText = date;
 
-        statusDiv.innerText = "تم الاستخراج! ✅";
+        statusDiv.innerText = "تم الاستخراج بنجاح! ✅";
         navigator.clipboard.writeText(finalResult);
     }
 
