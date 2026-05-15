@@ -26,7 +26,6 @@
             overflow: hidden; 
         }
 
-        /* تثبيت أبعاد الصندوق بالكامل 230 عرض × 300 ارتفاع */
         .app-container { 
             width: 230px; 
             height: 300px; 
@@ -42,161 +41,32 @@
             justify-content: space-between;
         }
         
-        .header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 6px; 
-            flex-shrink: 0;
-        }
-        .nav-btn { 
-            background: #252525; 
-            border: 1px solid #444; 
-            color: var(--accent-green); 
-            padding: 3px 6px; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 10px; 
-            text-decoration: none; 
-            font-weight: bold; 
-        }
-        .clear-btn { 
-            background: #ff3333; 
-            color: white; 
-            border: none; 
-            padding: 2px 4px; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 9px; 
-            font-weight: bold; 
-        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: var(--accent-green); padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; text-decoration: none; font-weight: bold; }
+        .clear-btn { background: #ff3333; color: white; border: none; padding: 2px 4px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: bold; }
 
-        .scan-zone { 
-            border: 1px dashed #00ff0044; 
-            padding: 10px 5px; 
-            border-radius: 6px; 
-            margin-bottom: 6px; 
-            cursor: pointer; 
-            transition: 0.2s; 
-            background: #1a1a1a; 
-            flex-shrink: 0;
-        }
+        .scan-zone { border: 1px dashed #00ff0044; padding: 10px 5px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: 0.2s; background: #1a1a1a; flex-shrink: 0; }
         .scan-zone:hover { border-color: var(--accent-green); background: #1d2a1d; }
         .scan-zone p { margin: 0; font-size: 11px; color: #888; font-weight: bold; }
-        .scan-zone span { font-size: 8px; color: #555; display: block; margin-top: 2px; }
 
-        .section-title { 
-            font-size: 9px; 
-            color: #aaa; 
-            text-align: right; 
-            margin: 4px 0 2px 0; 
-            font-weight: bold; 
-            border-bottom: 1px solid #222; 
-            padding-bottom: 2px; 
-            flex-shrink: 0;
-        }
+        .section-title { font-size: 9px; color: #aaa; text-align: right; margin: 4px 0 2px 0; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 2px; flex-shrink: 0; }
         
-        /* تفعيل سكرول للمراجعة */
-        .results { 
-            overflow-y: auto; 
-            text-align: left; 
-            direction: ltr; 
-            max-height: 75px; 
-            margin-bottom: 4px;
-        }
-        
-        .card { 
-            background: #000; 
-            border: 1px solid #333; 
-            border-radius: 6px; 
-            padding: 6px; 
-            margin-bottom: 4px; 
-            border-left: 3px solid #ffcc00; 
-        }
+        .results { overflow-y: auto; text-align: left; direction: ltr; max-height: 85px; margin-bottom: 4px; }
+        .card { background: #000; border: 1px solid #333; border-radius: 6px; padding: 6px; margin-bottom: 4px; border-left: 3px solid #ffcc00; }
         .label { font-size: 8px; color: #aaa; display: block; margin-bottom: 4px; text-align: right; }
         
-        /* الحفاظ على وضوح وحجم النص الملون */
-        .visual-check { 
-            font-family: 'Courier New', monospace; 
-            font-size: 14px; 
-            color: var(--accent-green); 
-            word-break: break-all; 
-            margin-bottom: 4px; 
-            font-weight: bold; 
-            background: #111; 
-            padding: 2px; 
-            border-radius: 4px; 
-            text-align: left; 
-        }
+        .visual-check { font-family: 'Courier New', monospace; font-size: 12px; color: var(--accent-green); word-break: break-all; margin-bottom: 4px; font-weight: bold; background: #111; padding: 2px; border-radius: 4px; text-align: left; line-height: 1.2; }
         .highlight { color: #ffcc00; background: #443300; padding: 0 1px; border-radius: 2px; }
         
-        .edit-input { 
-            width: 100%; 
-            background: #222; 
-            border: 1px solid #444; 
-            color: #fff; 
-            font-family: 'Courier New', monospace; 
-            font-size: 13px; 
-            padding: 4px; 
-            border-radius: 4px; 
-            box-sizing: border-box; 
-            font-weight: bold; 
-        }
-        
-        .action-btn { 
-            background: var(--accent-green); 
-            color: #000; 
-            border: none; 
-            width: 100%; 
-            padding: 4px; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 10px; 
-            margin-top: 4px; 
-        }
+        .edit-input { width: 100%; background: #222; border: 1px solid #444; color: #fff; font-family: 'Courier New', monospace; font-size: 11px; padding: 4px; border-radius: 4px; box-sizing: border-box; font-weight: bold; }
+        .action-btn { background: var(--accent-green); color: #000; border: none; width: 100%; padding: 4px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px; margin-top: 4px; }
 
-        /* تفعيل سكرول للقائمة النهائية المعتمدة */
-        .final-list { 
-            max-height: 70px; 
-            overflow-y: auto; 
-            direction: ltr; 
-        }
-        .final-card { 
-            background: #111; 
-            border: 1px solid #222; 
-            border-radius: 4px; 
-            padding: 4px 6px; 
-            margin-bottom: 3px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border-left: 3px solid var(--accent-green); 
-        }
-        .final-value { 
-            font-family: 'Courier New', monospace; 
-            color: var(--accent-green); 
-            font-size: 12px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            flex-grow: 1; 
-        }
-        .copy-hint { font-size: 9px; color: #666; margin-left: 4px; background: #222; padding: 1px 4px; border-radius: 3px; }
+        .final-list { max-height: 70px; overflow-y: auto; direction: ltr; }
+        .final-card { background: #111; border: 1px solid #222; border-radius: 4px; padding: 4px 6px; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--accent-green); }
+        .final-value { font-family: 'Courier New', monospace; color: var(--accent-green); font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        .copy-hint { font-size: 8px; color: #666; margin-left: 4px; background: #222; padding: 1px 3px; border-radius: 3px; }
 
-        .status-bar { 
-            font-size: 9px; 
-            color: var(--accent-green); 
-            font-weight: bold; 
-            min-height: 12px; 
-            border-top: 1px solid #222; 
-            padding-top: 4px; 
-            flex-shrink: 0;
-        }
-
-        /* تخصيص أشرطة التمرير لتكون نحيفة ومخفية بشكل أنيق */
+        .status-bar { font-size: 9px; color: var(--accent-green); font-weight: bold; min-height: 12px; border-top: 1px solid #222; padding-top: 4px; flex-shrink: 0; }
         .results::-webkit-scrollbar, .final-list::-webkit-scrollbar { width: 3px; }
         .results::-webkit-scrollbar-thumb, .final-list::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
@@ -206,28 +76,25 @@
 <div class="app-container">
     <div class="header">
         <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
-        <span style="font-size: 10px; color: #fff; font-weight: bold;">SIMAH SCAN</span>
+        <span style="font-size: 9px; color: #fff; font-weight: bold;">SIMAH V2</span>
     </div>
 
     <div class="scan-zone" id="dropZone">
         <p>الصق الصورة هنا</p>
-        <span>مستخرج الحسابات الذكي</span>
     </div>
 
-    <div class="section-title">المراجعة والتدقيق اليدوي</div>
+    <div class="section-title">التدقيق (36 خانة مدعوم)</div>
     <div id="results" class="results">
         <div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>
     </div>
 
     <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
         <span>القائمة المعتمدة</span>
-        <button class="clear-btn" onclick="clearFinalList()">مسح 🗑️</button>
+        <button class="clear-btn" onclick="clearFinalList()">مسح</button>
     </div>
-    <div id="finalList" class="final-list">
-        <div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">القائمة فارغة</div>
-    </div>
+    <div id="finalList" class="final-list"></div>
 
-    <div id="status" class="status-bar">منظومة التدقيق جاهزة</div>
+    <div id="status" class="status-bar">جاهز لسحب الحسابات</div>
 </div>
 
 <script>
@@ -235,7 +102,6 @@
     const finalListArea = document.getElementById('finalList');
     const statusDiv = document.getElementById('status');
     const dropZone = document.getElementById('dropZone');
-    
     let savedAccountsList = [];
 
     document.addEventListener('paste', e => {
@@ -243,185 +109,100 @@
         if (item && item.type.indexOf('image') !== -1) processImage(item.getAsFile());
     });
 
-    dropZone.onclick = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = e => processImage(e.target.files[0]);
-        input.click();
-    };
-
     async function processImage(file) {
-        statusDiv.innerText = "جاري الفحص البصري... ⏳";
+        statusDiv.innerText = "جاري استخراج البيانات... ⏳";
         resultsArea.innerHTML = '';
-        
         try {
-            const worker = await Tesseract.createWorker('eng+ara');
-            await worker.setParameters({
-                tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/-:'
-            });
-
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({ tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' });
             const { data: { text } } = await worker.recognize(file);
             await worker.terminate();
-
-            extractAndFixAccounts(text);
-        } catch (err) {
-            statusDiv.innerText = "فشل فحص الصورة ❌";
-        }
+            extractAccounts(text);
+        } catch (err) { statusDiv.innerText = "فشل في القراءة ❌"; }
     }
 
-    function autoCorrectX(word) {
-        let clean = word.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-        let digits = (clean.match(/\d/g) || []).length;
-        let letters = clean.length - digits;
-
-        if (clean.length === 20 && letters <= 4) {
-            let fixed = "";
-            for (let char of clean) {
-                if (char === 'O' || char === 'D' || char === 'Q') fixed += '0';
-                else if (char === 'I' || char === 'L' || char === 'T') fixed += '1';
-                else if (char === 'Z') fixed += '2';
-                else if (char === 'S') fixed += '5';
-                else if (char === 'B') fixed += '8';
-                else if (char === 'G') fixed += '6';
-                else fixed += char;
-            }
-            return fixed;
+    function extractAccounts(rawText) {
+        resultsArea.innerHTML = '';
+        let found = [];
+        
+        // تنظيف النص من المسافات الزائدة مع الحفاظ على الشرطات والأسطر
+        let cleanText = rawText.replace(/[ \t]+/g, '');
+        
+        // نمط البحث عن حسابات UUID (مثل الصورة) المكونة من 32 حرف + 4 شرطات = 36 حرف
+        // أو الحسابات الطويلة المدمجة (31-36 حرف)
+        const regex = /[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}|[A-Z0-9]{20,36}/g;
+        
+        let matches = cleanText.match(regex);
+        if (matches) {
+            matches.forEach(acc => {
+                if (!found.includes(acc)) {
+                    found.push(acc);
+                    addReviewCard(acc);
+                }
+            });
         }
 
-        if (clean.length === 31) {
-            let fixed = "";
-            for (let i = 0; i < clean.length; i++) {
-                let char = clean[i];
-                if (char === 'T' && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) fixed += '9';
-                else if (char === 'O' && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) fixed += '0';
-                else fixed += char;
+        // محاولة ثانية: إذا كان رقم الحساب مكسور على سطرين (كما في بعض تقارير سمة)
+        if (found.length === 0) {
+            let lines = rawText.split('\n').map(l => l.replace(/[^A-Z0-9-]/g, ''));
+            for(let i=0; i<lines.length-1; i++) {
+                let combined = lines[i] + lines[i+1];
+                if (combined.length >= 30 && combined.length <= 40) {
+                    addReviewCard(combined);
+                    found.push(combined);
+                    break; 
+                }
             }
-            return fixed;
         }
 
-        return clean;
+        statusDiv.innerText = found.length > 0 ? `وجد ${found.length} حسابات` : "لم يتم العثور على حسابات ❌";
     }
 
     function highlightSuspectCharacters(text) {
-        const suspects = /[0DO8BIL15S]/g;
-        return text.replace(suspects, (match) => `<span class="highlight">${match}</span>`);
-    }
-
-    function extractAndFixAccounts(text) {
-        resultsArea.innerHTML = '';
-        let foundAccounts = [];
-
-        let idFound = text.match(/\b([12]\d{9})\b/);
-        let nationalID = idFound ? idFound[0] : "";
-
-        const words = text.split(/[\s\n\r|:;,\/]+/);
-        
-        words.forEach(word => {
-            let processed = autoCorrectX(word);
-            
-            if (processed.length === 20 || processed.length === 31) {
-                if (processed !== nationalID && !foundAccounts.includes(processed)) {
-                    if (/^[A-Z0-9]+$/.test(processed) && !/^(.)\1+$/.test(processed)) {
-                        foundAccounts.push(processed);
-                        addReviewCard(processed);
-                    }
-                }
-            }
-        });
-
-        if (foundAccounts.length > 0) {
-            statusDiv.innerText = `وجد ${foundAccounts.length} حسابات 🔍`;
-        } else {
-            resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">لم يعثر على حسابات ❌</div>';
-            statusDiv.innerText = "لا يوجد نتائج ❌";
-        }
+        return text.replace(/[0DO8BIL15S]/g, m => `<span class="highlight">${m}</span>`);
     }
 
     function addReviewCard(value) {
-        const cardId = 'card_' + Math.random().toString(36).substr(2, 9);
+        const cardId = 'c_' + Math.random().toString(36).substr(2, 5);
         const div = document.createElement('div');
         div.className = 'card';
         div.id = cardId;
-
-        const highlightedVisual = highlightSuspectCharacters(value);
-
         div.innerHTML = `
-            <span class="label">تدقيق الحساب</span>
-            <div class="visual-check" id="visual_${cardId}">${highlightedVisual}</div>
-            <input type="text" class="edit-input" id="input_${cardId}" value="${value}" oninput="updateVisual(this, 'visual_${cardId}')">
-            <button class="action-btn" onclick="approveAccount('input_${cardId}', '${cardId}')">إعتماد للحفظ ←</button>
+            <span class="label">تأكيد الحساب</span>
+            <div class="visual-check" id="v_${cardId}">${highlightSuspectCharacters(value)}</div>
+            <input type="text" class="edit-input" id="i_${cardId}" value="${value}">
+            <button class="action-btn" onclick="approve('${cardId}')">إعتماد للحفظ</button>
         `;
         resultsArea.appendChild(div);
     }
 
-    document.body.addEventListener('input', function(e) {
-        if(e.target && e.target.classList.contains('edit-input')) {
-            const visualId = e.target.id.replace('input_', 'visual_');
-            const visualDiv = document.getElementById(visualId);
-            if(visualDiv) {
-                visualDiv.innerHTML = highlightSuspectCharacters(e.target.value.toUpperCase());
-            }
+    function approve(cardId) {
+        const val = document.getElementById('i_'+cardId).value.trim().toUpperCase();
+        if (val && !savedAccountsList.includes(val)) {
+            savedAccountsList.push(val);
+            renderList();
         }
-    });
-
-    function approveAccount(inputId, cardId) {
-        const finalValue = document.getElementById(inputId).value.replace(/\s+/g, '').toUpperCase();
-        
-        if (finalValue.length < 5) {
-            alert("الحساب غير صالح");
-            return;
-        }
-
-        if (!savedAccountsList.includes(finalValue)) {
-            savedAccountsList.push(finalValue);
-            renderFinalList();
-            statusDiv.innerText = "تم الحفظ بالقائمة! 🎉";
-        }
-
-        const card = document.getElementById(cardId);
-        if(card) card.remove();
-        
-        if(resultsArea.children.length === 0) {
-            resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">تم مراجعة الكل ✅</div>';
-        }
+        document.getElementById(cardId).remove();
     }
 
-    function renderFinalList() {
-        if (savedAccountsList.length === 0) {
-            finalListArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">القائمة فارغة</div>';
-            return;
-        }
-
-        finalListArea.innerHTML = '';
-        savedAccountsList.forEach(acc => {
-            const div = document.createElement('div');
-            div.className = 'final-card';
-            div.innerHTML = `
-                <div class="final-value" onclick="copyFinalValue('${acc}')">${acc}</div>
-                <span class="copy-hint" onclick="copyFinalValue('${acc}')">نسخ</span>
-            `;
-            finalListArea.appendChild(div);
-        });
+    function renderList() {
+        finalListArea.innerHTML = savedAccountsList.map(acc => `
+            <div class="final-card">
+                <div class="final-value" onclick="copy('${acc}')">${acc}</div>
+                <span class="copy-hint" onclick="copy('${acc}')">نسخ</span>
+            </div>
+        `).join('');
     }
 
-    function copyFinalValue(val) {
+    function copy(val) {
         navigator.clipboard.writeText(val);
-        const original = statusDiv.innerText;
-        statusDiv.innerText = "تم النسخ بنجاح! 📋";
-        setTimeout(() => statusDiv.innerText = original, 1200);
+        statusDiv.innerText = "تم النسخ! 📋";
+        setTimeout(() => statusDiv.innerText = "جاهز..", 1000);
     }
 
     function clearFinalList() {
-        if(savedAccountsList.length > 0) {
-            if(confirm("مسح القائمة؟")) {
-                savedAccountsList = [];
-                renderFinalList();
-                statusDiv.innerText = "تم تفريغ القائمة 🗑️";
-            }
-        }
+        if(confirm("مسح؟")) { savedAccountsList = []; renderList(); }
     }
 </script>
-
 </body>
 </html>
