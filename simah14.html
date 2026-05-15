@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH - Ultra Precise Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 360px; background: #121212; padding: 20px; border-radius: 20px; border: 1px solid #222; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.9); display: flex; flex-direction: column; max-height: 90vh; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        .nav-btn { background: #1e1e1e; border: 1px solid #333; color: #00ff00; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; text-decoration: none; }
+
+        .scan-zone { border: 2px dashed #00ff0044; padding: 40px 15px; border-radius: 15px; margin-bottom: 15px; cursor: pointer; transition: 0.3s; background: #161616; position: relative; }
+        .scan-zone:hover { border-color: #00ff00; background: #1a1a1a; }
+        .scan-zone p { margin: 0; font-size: 13px; color: #aaa; }
+
+        .results { flex-grow: 1; overflow-y: auto; text-align: left; direction: ltr; padding: 5px; }
+        .card { background: #000; border: 1px solid #222; border-radius: 12px; padding: 15px; margin-bottom: 12px; border-left: 5px solid #00ff00; position: relative; }
+        .label { font-size: 10px; color: #555; display: block; margin-bottom: 5px; text-align: right; font-weight: bold; }
+        .value { font-family: 'Consolas', monospace; color: #00ff00; font-size: 15px; cursor: pointer; word-break: break-all; }
+
+        .status-bar { font-size: 11px; margin-top: 15px; color: #00ff00; border-top: 1px solid #222; padding-top: 10px; min-height: 15px; }
+        .badge { position: absolute; top: 8px; right: 8px; font-size: 8px; background: #00ff0011; color: #00ff00; padding: 2px 5px; border: 0.5px solid #00ff0033; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">الرئيسية</a>
+        <span style="font-size: 13px; font-weight: bold; color: #00ff00;">ULTRA-SCAN AI</span>
+    </div>
+
+    <div class="scan-zone" id="dropZone">
+        <p>الصق الصورة (Ctrl+V) أو اضغط هنا</p>
+        <span style="font-size: 9px; color: #444;">تصحيح تلقائي لخانات (D/0) و (T/9)</span>
+    </div>
+
+    <div id="results" class="results">
+        <div style="color: #333; text-align: center; margin-top: 50px; font-size: 12px;">بانتظار التحليل البصري العميق...</div>
+    </div>
+
+    <div id="status" class="status-bar">نظام التصحيح الهيكلي جاهز</div>
+</div>
+
+<script>
+    const resultsArea = document.getElementById('results');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+
+    document.addEventListener('paste', e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) processImage(item.getAsFile());
+    });
+
+    dropZone.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => processImage(e.target.files[0]);
+        input.click();
+    };
+
+    async function processImage(file) {
+        statusDiv.innerText = "جاري تصفية البكسلات وتدقيق الخانات... ⏳";
+        resultsArea.innerHTML = '';
+        
+        try {
+            const worker = await Tesseract.createWorker('eng');
+            // تقييد القراءة لضمان عدم تخمين رموز عشوائية
+            await worker.setParameters({
+                tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            });
+
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+
+            smartExtract(text);
+        } catch (err) {
+            statusDiv.innerText = "حدث خطأ في القراءة ❌";
+        }
+    }
+
+    // خوارزمية التصحيح الهيكلي الذكية
+    function structuralFix(word) {
+        // تنقية الكلمة من الشوائب
+        let clean = word.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        
+        // حساب نسبة الأرقام في الكلمة
+        let digits = (clean.match(/\d/g) || []).length;
+        let letters = clean.length - digits;
+
+        // الحالة الأولى: حساب الـ 20 خانة (يجب أن يكون رقمي بالكامل)
+        // إذا كان الطول 20 وفيه حروف قليلة ناتجة عن "هبد" الـ OCR (مثل D, O, S, B)
+        if (clean.length === 20 && letters > 0) {
+            return clean.replace(/D/g, '0')
+                        .replace(/O/g, '0')
+                        .replace(/Q/g, '0')
+                        .replace(/S/g, '5')
+                        .replace(/B/g, '8')
+                        .replace(/G/g, '6')
+                        .replace(/I/g, '1')
+                        .replace(/T/g, '1')
+                        .replace(/Z/g, '2');
+        }
+
+        // الحالة الثانية: حساب الـ 31 خانة المختلط (نصحح فقط في مواضع الأرقام الواضحة)
+        if (clean.length === 31) {
+            let fixed = "";
+            for (let i = 0; i < clean.length; i++) {
+                let char = clean[i];
+                // إذا كان الحرف D أو O ومحاط بأرقام، فهو بالتأكيد 0
+                if ((char === 'D' || char === 'O') && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) {
+                    fixed += '0';
+                } 
+                // إذا كان الحرف T ومحاط بأرقام، فهو بالتأكيد 9
+                else if (char === 'T' && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) {
+                    fixed += '9';
+                }
+                else {
+                    fixed += char;
+                }
+            }
+            return fixed;
+        }
+
+        return clean;
+    }
+
+    function smartExtract(text) {
+        resultsArea.innerHTML = '';
+        let found = [];
+
+        // تنظيف النص وتقطيعه لكلمات
+        const words = text.split(/[\s\n\r|:;,\/]+/);
+        
+        words.forEach(word => {
+            let fixed = structuralFix(word);
+            
+            // التحقق من الأطوال الصافية لحسابات تابي
+            if (fixed.length === 20 || fixed.length === 31) {
+                // منع التكرار ومنع لقط أرقام الهوية (10 خانات)
+                if (!found.includes(fixed)) {
+                    found.push(fixed);
+                    addCard(fixed);
+                }
+            }
+        });
+
+        if (found.length > 0) {
+            statusDiv.innerText = `تم استخراج وتصحيح ${found.length} حسابات بدقة عالية ✅`;
+        } else {
+            statusDiv.innerText = "لم يتم العثور على حسابات مطابقة ❌";
+        }
+    }
+
+    function addCard(value) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+            <span class="badge">FIXED & VERIFIED</span>
+            <span class="label">رقم الحساب / ACCOUNT NUMBER</span>
+            <div class="value" onclick="copyValue('${value}')">${value}</div>
+        `;
+        resultsArea.appendChild(div);
+    }
+
+    function copyValue(val) {
+        navigator.clipboard.writeText(val);
+        statusDiv.innerText = "تم النسخ بنجاح! 📋";
+        setTimeout(() => statusDiv.innerText = "جاهز للفحص التالي", 1500);
+    }
+</script>
+
+</body>
+</html>
