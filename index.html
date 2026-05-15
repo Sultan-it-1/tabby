@@ -10,6 +10,7 @@
             --card-bg: #1a1a1a;
             --accent-green: #00ff00;
             --accent-blue: #00d4ff;
+            --accent-yellow: #ffcc00;
             --text: #eee;
             --border: #333;
         }
@@ -29,12 +30,12 @@
         .container {
             text-align: center;
             width: 100%;
-            max-width: 360px; /* تم تصغير عرض الحاوية لتناسب المربعات الأصغر */
+            max-width: 360px;
             padding: 20px;
         }
 
         .header h1 {
-            font-size: 22px; /* تصغير عنوان الصفحة قليلاً */
+            font-size: 22px;
             color: var(--accent-green);
             margin-bottom: 8px;
             text-transform: uppercase;
@@ -45,20 +46,20 @@
         .header p {
             color: #888;
             font-size: 13px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .menu-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 12px; /* تقليل الفراغ بين المربعات */
+            gap: 12px;
         }
 
         .menu-item {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 12px; /* تصغير زوايا الانحناء ليناسب الحجم الجديد */
-            padding: 15px 20px; /* تم تقليل الـ Padding لتصغير المربع (كان 25px) */
+            border-radius: 12px;
+            padding: 15px 20px;
             text-decoration: none;
             color: var(--text);
             transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -70,9 +71,13 @@
         }
 
         .menu-item:hover {
-            transform: translateY(-3px); /* تقليل قفزة الهوفر لتناسب الحجم الصغير */
+            transform: translateY(-3px);
             border-color: var(--accent-green);
             box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .menu-item.simah-tool:hover {
+            border-color: var(--accent-yellow);
         }
 
         .menu-item.card-tool:hover {
@@ -80,23 +85,22 @@
         }
 
         .icon {
-            font-size: 28px; /* تصغير حجم الأيقونة (كان 40px) */
-            margin-bottom: 8px; /* تقليل المسافة أسفل الأيقونة */
+            font-size: 28px;
+            margin-bottom: 8px;
         }
 
         .title {
-            font-size: 15px; /* تصغير حجم عنوان المربع (كان 18px) */
+            font-size: 15px;
             font-weight: bold;
             margin-bottom: 5px;
         }
 
         .desc {
-            font-size: 11px; /* تصغير حجم الوصف (كان 12px) */
+            font-size: 11px;
             color: #888;
             line-height: 1.4;
         }
 
-        /* تأثير النيون الخفي عند الهوفر */
         .menu-item::after {
             content: '';
             position: absolute;
@@ -132,6 +136,13 @@
                 <div class="icon">📝</div>
                 <div class="title">نظام النوتات الذكي</div>
                 <div class="desc">إدارة ونسخ نصوص خدمة العملاء والاختصارات الجاهزة بضغطة واحدة.</div>
+            </a>
+
+            <!-- رابط أداة سمة المضافة حديثاً -->
+            <a href="simah.html" class="menu-item simah-tool">
+                <div class="icon">📊</div>
+                <div class="title">مستخرج حسابات سمة (SIMAH)</div>
+                <div class="desc">استخراج وتدقيق أرقام الحسابات بصرياً وتلوين الخانات المشبوهة.</div>
             </a>
 
             <!-- رابط أداة الـ Scanner/Card -->
