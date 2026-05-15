@@ -27,99 +27,115 @@
             overflow: hidden;
         }
 
-        /* تصغير حجم الصندوق الرئيسي بالكامل */
+        /* تثبيت أبعاد الصندوق بالكامل حسب طلبك 230 عرض في 300 ارتفاع */
         .container {
             text-align: center;
-            width: 100%;
-            max-width: 290px; 
-            padding: 15px;
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
         }
 
         .header h1 {
-            font-size: 18px; /* تصغير العنوان */
+            font-size: 14px;
             color: var(--accent-green);
-            margin-bottom: 4px;
+            margin: 2px 0;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
         }
 
         .header p {
-            color: #888;
-            font-size: 11px; /* تصغير الوصف الفرعي */
-            margin-bottom: 15px;
+            color: #666;
+            font-size: 9px;
+            margin: 0 0 8px 0;
         }
 
+        /* قائمة الأدوات مع ميزة تمرير ذكي مرن يناسب الأبعاد الجديدة */
         .menu-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px; /* تقليل الفراغات بين الصناديق */
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 2px;
+        }
+
+        /* تخصيص شكل شريط التمرير ليكون مخفي ونحيف جداً */
+        .menu-grid::-webkit-scrollbar {
+            width: 3px;
+        }
+        .menu-grid::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
         }
 
         .menu-item {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 8px; /* زوايا أنعم متناسقة مع الحجم الصغير */
-            padding: 10px 14px; /* تقليص الحشو الداخلي لجعلها نحيفة */
+            border-radius: 6px;
+            padding: 6px 10px;
             text-decoration: none;
             color: var(--text);
-            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: 0.2s ease;
             display: flex;
-            flex-direction: column;
             align-items: center;
+            gap: 8px;
+            text-align: right;
             position: relative;
-            overflow: hidden;
         }
 
         .menu-item:hover {
-            transform: translateY(-2px);
+            transform: translateX(-2px);
             border-color: var(--accent-green);
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+            background: #1f1f1f;
         }
 
-        .menu-item.simah-tool:hover {
-            border-color: var(--accent-yellow);
-        }
-
-        .menu-item.card-tool:hover {
-            border-color: var(--accent-blue);
-        }
+        .menu-item.simah-tool:hover { border-color: var(--accent-yellow); }
+        .menu-item.card-tool:hover { border-color: var(--accent-blue); }
 
         .icon {
-            font-size: 20px; /* تصغير الأيقونات */
-            margin-bottom: 4px;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .text-wrapper {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         .title {
-            font-size: 13px; /* تصغير عناوين الأدوات */
+            font-size: 11px;
             font-weight: bold;
-            margin-bottom: 3px;
+            margin-bottom: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .desc {
-            font-size: 10px; /* تصغير نصوص الشرح */
-            color: #777;
-            line-height: 1.3;
-        }
-
-        .menu-item::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(0, 255, 0, 0.05), transparent);
-            transform: translateX(-100%);
-            transition: 0.5s;
-        }
-
-        .menu-item:hover::after {
-            transform: translateX(100%);
+            font-size: 8px;
+            color: #666;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .footer {
-            margin-top: 20px;
-            font-size: 9px;
-            color: #444;
-            letter-spacing: 1px;
+            margin-top: 5px;
+            font-size: 8px;
+            color: #333;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 4px;
         }
     </style>
 </head>
@@ -132,25 +148,31 @@
         </div>
 
         <div class="menu-grid">
-            <!-- رابط أداة النوتات -->
+            <!-- نظام النوتات الذكي -->
             <a href="note.html" class="menu-item">
                 <div class="icon">📝</div>
-                <div class="title">نظام النوتات الذكي</div>
-                <div class="desc">إدارة ونسخ نصوص خدمة العملاء والاختصارات بضغطة واحدة.</div>
+                <div class="text-wrapper">
+                    <div class="title">نظام النوتات الذكي</div>
+                    <div class="desc">إدارة ونسخ نصوص واختصارات العملاء بضغطة.</div>
+                </div>
             </a>
 
-            <!-- رابط أداة سمة (SIMAH) -->
+            <!-- مستخرج حسابات سمة -->
             <a href="simah.html" class="menu-item simah-tool">
                 <div class="icon">📊</div>
-                <div class="title">مستخرج حسابات سمة (SIMAH)</div>
-                <div class="desc">استخراج وتدقيق أرقام الحسابات وتلوين الخانات المشبوهة.</div>
+                <div class="text-wrapper">
+                    <div class="title">حسابات سمة (SIMAH)</div>
+                    <div class="desc">استخراج وتدقيق الحسابات وتلوين الخانات المشبوهة.</div>
+                </div>
             </a>
 
-            <!-- رابط أداة الـ Scanner/Card -->
+            <!-- ماسح البيانات -->
             <a href="card.html" class="menu-item card-tool">
                 <div class="icon">🔍</div>
-                <div class="title">ماسح البيانات (Scanner)</div>
-                <div class="desc">استخراج بيانات البطاقات، المبالغ، والوقت من الصور تلقائياً.</div>
+                <div class="text-wrapper">
+                    <div class="title">ماسح البيانات (Scanner)</div>
+                    <div class="desc">استخراج بيانات البطاقات والمبالغ من الصور تلقائياً.</div>
+                </div>
             </a>
         </div>
 
