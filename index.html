@@ -27,7 +27,6 @@
             overflow: hidden;
         }
 
-        /* تثبيت أبعاد الصندوق بالكامل حسب طلبك 230 عرض في 300 ارتفاع */
         .container {
             text-align: center;
             width: 230px;
@@ -58,7 +57,6 @@
             margin: 0 0 8px 0;
         }
 
-        /* قائمة الأدوات مع ميزة تمرير ذكي مرن يناسب الأبعاد الجديدة */
         .menu-grid {
             display: flex;
             flex-direction: column;
@@ -68,14 +66,8 @@
             padding-right: 2px;
         }
 
-        /* تخصيص شكل شريط التمرير ليكون مخفي ونحيف جداً */
-        .menu-grid::-webkit-scrollbar {
-            width: 3px;
-        }
-        .menu-grid::-webkit-scrollbar-thumb {
-            background: #333;
-            border-radius: 10px;
-        }
+        .menu-grid::-webkit-scrollbar { width: 3px; }
+        .menu-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
         .menu-item {
             background: var(--card-bg);
@@ -89,7 +81,6 @@
             align-items: center;
             gap: 8px;
             text-align: right;
-            position: relative;
         }
 
         .menu-item:hover {
@@ -101,16 +92,8 @@
         .menu-item.simah-tool:hover { border-color: var(--accent-yellow); }
         .menu-item.card-tool:hover { border-color: var(--accent-blue); }
 
-        .icon {
-            font-size: 16px;
-            flex-shrink: 0;
-        }
-
-        .text-wrapper {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+        .icon { font-size: 16px; flex-shrink: 0; }
+        .text-wrapper { display: flex; flex-direction: column; overflow: hidden; }
 
         .title {
             font-size: 11px;
@@ -130,12 +113,28 @@
             text-overflow: ellipsis;
         }
 
+        /* تنسيق الحقوق الجديد */
         .footer {
             margin-top: 5px;
             font-size: 8px;
-            color: #333;
+            color: #444;
             border-top: 1px solid #1a1a1a;
-            padding-top: 4px;
+            padding-top: 6px;
+            transition: 0.3s;
+        }
+        
+        .heart {
+            color: #ff3333;
+            display: inline-block;
+            transition: 0.3s;
+        }
+
+        .container:hover .heart {
+            transform: scale(1.2);
+        }
+
+        .footer b {
+            color: #666;
         }
     </style>
 </head>
@@ -148,7 +147,6 @@
         </div>
 
         <div class="menu-grid">
-            <!-- نظام النوتات الذكي -->
             <a href="note.html" class="menu-item">
                 <div class="icon">📝</div>
                 <div class="text-wrapper">
@@ -157,7 +155,6 @@
                 </div>
             </a>
 
-            <!-- مستخرج حسابات سمة -->
             <a href="simah.html" class="menu-item simah-tool">
                 <div class="icon">📊</div>
                 <div class="text-wrapper">
@@ -166,7 +163,6 @@
                 </div>
             </a>
 
-            <!-- ماسح البيانات -->
             <a href="card.html" class="menu-item card-tool">
                 <div class="icon">🔍</div>
                 <div class="text-wrapper">
@@ -177,7 +173,7 @@
         </div>
 
         <div class="footer">
-            SMART WORKFLOW ENGINE &copy; 2026
+            Built with <span class="heart">❤️</span> by <b>Sultan Alkharmani</b>
         </div>
     </div>
 
