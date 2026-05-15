@@ -3,37 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Scanner - Reversed Order</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <title>بوابة الأدوات الذكية - الرئيسية</title>
     <style>
-        body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        .app-container { width: 330px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
-        .paste-zone { border: 2px dashed #444; padding: 15px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; color: #888; }
-        .paste-zone.active { border-color: #00ff00; background: #122212; }
-        #output { background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 15px; color: #00ff00; border: 1px solid #222; margin-bottom: 12px; cursor: pointer; direction: ltr; }
-        .chips-container { display: flex; justify-content: space-between; gap: 5px; direction: ltr; }
-        .chip { flex: 1; background: #333; padding: 10px 2px; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #444; color: #eee; }
-        .chip:hover { background: #444; border-color: #00ff00; }
-        .status { font-size: 11px; margin-top: 10px; color: #00ff00; height: 15px; }
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: #00ff00;
+            --accent-blue: #00d4ff;
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--accent-green);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .header p {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .menu-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 25px;
+            text-decoration: none;
+            color: var(--text);
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-item:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-green);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .menu-item.card-tool:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .desc {
+            font-size: 12px;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        /* تأثير النيون الخفي عند الهوفر */
+        .menu-item::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(0, 255, 0, 0.05), transparent);
+            transform: translateX(-100%);
+            transition: 0.5s;
+        }
+
+        .menu-item:hover::after {
+            transform: translateX(100%);
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-size: 11px;
+            color: #444;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div class="paste-zone" id="dropZone">اضغط هنا ثم الصق (Ctrl+V)</div>
-    <div id="output" onclick="copyFull()">البيانات ستظهر هنا</div>
-    <div class="chips-container">
-        <div class="chip" id="chip-card" onclick="copyMe(this)">-</div>
-        <div class="chip" id="chip-amount" onclick="copyMe(this)">-</div>
-        <div class="chip" id="chip-time" onclick="copyMe(this)">-</div>
-        <div class="chip" id="chip-date" onclick="copyMe(this)">-</div>
-    </div>
-    <div id="status" class="status">جاهز.. الترتيب: بطاقة // مبلغ // وقت // تاريخ</div>
-</div>
+    <div class="container">
+        <div class="header">
+            <h1>FAST TOOLKIT</h1>
+            <p>اختر الأداة المطلوبة للبدء</p>
+        </div>
 
-<script>
-    const outputDiv = document.getElementById('output');
-    const statusDiv = document.getElementById('status');
+        <div class="menu-grid">
+            <!-- رابط أداة النوتات -->
+            <a href="note.html" class="menu-item">
+                <div class="icon">📝</div>
+                <div class="title">نظام النوتات الذكي</div>
+                <div class="desc">إدارة ونسخ نصوص خدمة العملاء والاختصارات الجاهزة بضغطة واحدة.</div>
+            </a>
+
+            <!-- رابط أداة الـ Scanner/Card -->
+            <a href="card.html" class="menu-item card-tool">
+                <div class="icon">🔍</div>
+                <div class="title">ماسح البيانات (Scanner)</div>
+                <div class="desc">استخراج بيانات البطاقات، المبالغ، والوقت من الصور تلقائياً.</div>
+            </a>
+        </div>
+
+        <div class="footer">
+            SMART WORKFLOW ENGINE &copy; 2026
+        </div>
+    </div>
+
+</body>
+</html>
     const dropZone = document.getElementById('dropZone');
 
     document.addEventListener('paste', async (e) => {
