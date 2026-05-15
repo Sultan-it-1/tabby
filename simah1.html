@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH - Exact Account Extractor</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0c0c0c; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 380px; background: #161616; padding: 20px; border-radius: 16px; border: 1px solid #333; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; max-height: 95vh; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: #00ff00; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; text-decoration: none; font-weight: bold; }
+        .clear-btn { background: #ff3333; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .clear-btn:hover { background: #cc0000; }
+
+        .scan-zone { border: 2px dashed #00ff0044; padding: 25px 15px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.3s; background: #1a1a1a; }
+        .scan-zone:hover { border-color: #00ff00; background: #1d2a1d; }
+        .scan-zone p { margin: 0; font-size: 13px; color: #888; }
+
+        .section-title { font-size: 11px; color: #aaa; text-align: right; margin: 10px 0 5px 0; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 3px; }
+        
+        .results { flex-grow: 1; overflow-y: auto; text-align: left; direction: ltr; padding-right: 5px; max-height: 180px; }
+        
+        /* كرت المراجعة والتعديل */
+        .card { background: #000; border: 1px solid #333; border-radius: 10px; padding: 12px; margin-bottom: 10px; position: relative; border-left: 4px solid #ffcc00; }
+        .label { font-size: 10px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: right; letter-spacing: 0.5px; }
+        
+        /* تلوين الحروف المشكوك فيها في المعاينة البصرية */
+        .visual-check { font-family: 'Courier New', monospace; font-size: 15px; color: #00ff00; word-break: break-all; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px; background: #111; padding: 4px; border-radius: 4px; text-align: left; }
+        .highlight { color: #ffcc00; background: #443300; padding: 0 2px; border-radius: 2px; border: 1px solid #ffcc0055; }
+        
+        .edit-input { width: 100%; background: #222; border: 1px solid #444; color: #fff; font-family: 'Courier New', monospace; font-size: 14px; padding: 6px; border-radius: 4px; box-sizing: border-box; text-align: left; font-weight: bold; }
+        .edit-input:focus { border-color: #00ff00; outline: none; }
+        
+        .action-btn { background: #00ff00; color: #000; border: none; width: 100%; padding: 6px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-top: 8px; }
+        .action-btn:hover { background: #00cc00; }
+
+        /* قائمة الحسابات الجاهزة للنسخ */
+        .final-list { max-height: 180px; overflow-y: auto; direction: ltr; }
+        .final-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #00ff00; }
+        .final-value { font-family: 'Courier New', monospace; color: #00ff00; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; text-align: left; }
+        .copy-hint { font-size: 10px; color: #666; margin-left: 10px; background: #222; padding: 2px 6px; border-radius: 4px; font-family: 'Segoe UI'; }
+
+        .status-bar { font-size: 11px; margin-top: 15px; color: #00ff00; font-weight: bold; min-height: 18px; border-top: 1px solid #222; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+        <span style="font-size: 13px; color: #fff; font-weight: bold;">ACCOUNT SCANNER</span>
+    </div>
+
+    <div class="scan-zone" id="dropZone">
+        <p>الصق صورة التقرير هنا أو اضغط للرفع</p>
+        <span style="font-size: 10px; color: #555;">مستخرج مدقق ومعزز بالفحص البصري التنبيهي</span>
+    </div>
+
+    <div class="section-title">المراجعة والتدقيق اليدوي (أصفر = مشكوك فيه)</div>
+    <div id="results" class="results">
+        <div style="color: #444; text-align: center; margin-top: 30px; font-size: 12px;">بانتظار استخراج الحسابات للمراجعة...</div>
+    </div>
+
+    <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>قائمة الحسابات المعتمدة (اضغط للنسخ الفوري)</span>
+        <button class="clear-btn" id="clearListBtn" onclick="clearFinalList()">مسح الكل 🗑️</button>
+    </div>
+    <div id="finalList" class="final-list">
+        <div style="color: #444; text-align: center; margin-top: 20px; font-size: 12px;">القائمة فارغة حالياً</div>
+    </div>
+
+    <div id="status" class="status-bar">منظومة تدقيق وتلوين الخانات جاهزة</div>
+</div>
+
+<script>
+    const resultsArea = document.getElementById('results');
+    const finalListArea = document.getElementById('finalList');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+    
+    // مصفوفة لتخزين الحسابات المعتمدة في اللائحة النهائية
+    let savedAccountsList = [];
+
+    document.addEventListener('paste', e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) processImage(item.getAsFile());
+    });
+
+    dropZone.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => processImage(e.target.files[0]);
+        input.click();
+    };
+
+    async function processImage(file) {
+        statusDiv.innerText = "جاري تصفية وتدقيق الخانات بصرياً... ⏳";
+        resultsArea.innerHTML = '';
+        
+        try {
+            const worker = await Tesseract.createWorker('eng+ara');
+            await worker.setParameters({
+                tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/-:'
+            });
+
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+
+            extractAndFixAccounts(text);
+        } catch (err) {
+            statusDiv.innerText = "فشل في فحص ومطابقة الصورة ❌";
+        }
+    }
+
+    // تصحيح أولي ذكي بناء على الطول المعياري للحسابات
+    function autoCorrectX(word) {
+        let clean = word.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        let digits = (clean.match(/\d/g) || []).length;
+        let letters = clean.length - digits;
+
+        if (clean.length === 20 && letters <= 4) {
+            let fixed = "";
+            for (let char of clean) {
+                if (char === 'O' || char === 'D' || char === 'Q') fixed += '0';
+                else if (char === 'I' || char === 'L' || char === 'T') fixed += '1';
+                else if (char === 'Z') fixed += '2';
+                else if (char === 'S') fixed += '5';
+                else if (char === 'B') fixed += '8';
+                else if (char === 'G') fixed += '6';
+                else fixed += char;
+            }
+            return fixed;
+        }
+
+        if (clean.length === 31) {
+            let fixed = "";
+            for (let i = 0; i < clean.length; i++) {
+                let char = clean[i];
+                if (char === 'T' && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) fixed += '9';
+                else if (char === 'O' && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) fixed += '0';
+                else fixed += char;
+            }
+            return fixed;
+        }
+
+        return clean;
+    }
+
+    // دالة توليد كود الـ HTML الملون للأحرف المشبوهة
+    function highlightSuspectCharacters(text) {
+        // الرموز التي يكثر الخطأ فيها بالـ OCR ويجب مراجعتها يدوياً
+        const suspects = /[0DO8BIL1]/g;
+        return text.replace(suspects, (match) => `<span class="highlight">${match}</span>`);
+    }
+
+    function extractAndFixAccounts(text) {
+        resultsArea.innerHTML = '';
+        let foundAccounts = [];
+
+        // تم إلغاء استخراج التاريخ والهوية والاكتفاء بالحسابات فقط
+        let idFound = text.match(/\b([12]\d{9})\b/);
+        let nationalID = idFound ? idFound[0] : "";
+
+        const words = text.split(/[\s\n\r|:;,\/]+/);
+        
+        words.forEach(word => {
+            let processed = autoCorrectX(word);
+            
+            if (processed.length === 20 || processed.length === 31) {
+                if (processed !== nationalID && !foundAccounts.includes(processed)) {
+                    if (/^[A-Z0-9]+$/.test(processed) && !/^(.)\1+$/.test(processed)) {
+                        foundAccounts.push(processed);
+                        addReviewCard(processed);
+                    }
+                }
+            }
+        });
+
+        if (foundAccounts.length > 0) {
+            statusDiv.innerText = `تم العثور على ${foundAccounts.length} حسابات للمراجعة 🔍`;
+        } else {
+            resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 30px; font-size: 12px;">لم يتم العثور على أرقام حسابات مطابقة للأبعاد ❌</div>';
+            statusDiv.innerText = "لم يتم العثور على أرقام حسابات ❌";
+        }
+    }
+
+    // إنشاء كرت المراجعة المزود بحقل إدخال وزر إضافة
+    function addReviewCard(value) {
+        const cardId = 'card_' + Math.random().toString(36).substr(2, 9);
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.id = cardId;
+
+        // توليد النص الملون للمعاينة
+        const highlightedVisual = highlightSuspectCharacters(value);
+
+        div.innerHTML = `
+            <span class="label">تأكيد رقم الحساب / ACCOUNT AUDIT</span>
+            <div class="visual-check" id="visual_${cardId}">${highlightedVisual}</div>
+            <input type="text" class="edit-input" id="input_${cardId}" value="${value}" oninput="updateVisual(this, 'visual_${cardId}')">
+            <button class="action-btn" onclick="approveAccount('input_${cardId}', '${cardId}')">إعتماد وإضافة للقائمة ←</button>
+        `;
+        resultsArea.appendChild(div);
+    }
+
+    // تحديث الألوان فورياً أثناء قيام المستخدم بالتعديل يدويًا داخل الصندوق
+    function updateVisual(inputElement, visualId) {
+        const visualDiv = document.getElementById(visualId);
+        visualDiv.innerHTML = highlightSuspectCharacters(inputElement.value.toUpperCase());
+    }
+
+    // اعتماد الحساب ونقله للأسفل بعد التعديل اليدوي
+    function approveAccount(inputId, cardId) {
+        const finalValue = document.getElementById(inputId).value.replace(/\s+/g, '').toUpperCase();
+        
+        if (finalValue.length < 5) {
+            alert("رقم الحساب قصير جداً أو غير صالح");
+            return;
+        }
+
+        if (!savedAccountsList.includes(finalValue)) {
+            savedAccountsList.push(finalValue);
+            renderFinalList();
+            statusDiv.innerText = "تم إعتماد الحساب بنجاح! 🎉";
+        } else {
+            statusDiv.innerText = "هذا الحساب موجود بالفعل في القائمة أدناه ⚠️";
+        }
+
+        // إخفاء كرت المراجعة بعد اعتماده لتسهيل التركيز على البقية
+        const card = document.getElementById(cardId);
+        card.style.display = 'none';
+    }
+
+    // تحديث عرض القائمة النهائية القابلة للنسخ المباشر السريع
+    function renderFinalList() {
+        if (savedAccountsList.length === 0) {
+            finalListArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 20px; font-size: 12px;">القائمة فارغة حالياً</div>';
+            return;
+        }
+
+        finalListArea.innerHTML = '';
+        savedAccountsList.forEach(acc => {
+            const div = document.createElement('div');
+            div.className = 'final-card';
+            div.innerHTML = `
+                <div class="final-value" onclick="copyFinalValue('${acc}')">${acc}</div>
+                <span class="copy-hint" onclick="copyFinalValue('${acc}')">نسخ 📋</span>
+            `;
+            finalListArea.appendChild(div);
+        });
+    }
+
+    // دالة النسخ السريع من الضغطة الأولى للحسابات المعتمدة
+    function copyFinalValue(val) {
+        navigator.clipboard.writeText(val);
+        const original = statusDiv.innerText;
+        statusDiv.innerText = `تم نسخ الحساب المعتمد: ${val} 📋`;
+        setTimeout(() => statusDiv.innerText = original, 1500);
+    }
+
+    // زر مسح القائمة المعتمدة كاملة بضغطة واحدة
+    function clearFinalList() {
+        if(savedAccountsList.length > 0) {
+            if(confirm("هل أنت متأكد من مسح جميع الحسابات المعتمدة من القائمة؟")) {
+                savedAccountsList = [];
+                renderFinalList();
+                statusDiv.innerText = "تم تفريغ اللائحة المعتمدة بالكامل 🗑️";
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
