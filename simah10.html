@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH AI OCR - Ultimate PDF Scanner</title>
+    <!-- استدعاء مكتبات المعالجة الرقمية والبصرية معاً -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0c0c0c; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 360px; background: #161616; padding: 20px; border-radius: 16px; border: 1px solid #333; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; max-height: 95vh; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: #00ff00; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; text-decoration: none; font-weight: bold; }
+
+        .upload-zone { border: 2px dashed #00ff0044; padding: 30px 15px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.3s; background: #1a1a1a; }
+        .upload-zone:hover { border-color: #00ff00; background: #1d2a1d; }
+        .upload-zone p { margin: 0; font-size: 13px; color: #888; }
+
+        .results { flex-grow: 1; overflow-y: auto; text-align: left; direction: ltr; padding-right: 5px; }
+        .card { background: #000; border: 1px solid #222; border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; border-left: 4px solid #333; }
+        .card.tabby-active { border-left-color: #ff74d2; background: #1e161b; }
+        .label { font-size: 10px; color: #666; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: right; }
+        .value { font-family: 'Courier New', monospace; color: #00ff00; font-size: 14px; cursor: pointer; word-break: break-all; font-weight: bold; }
+
+        .status-bar { font-size: 11px; margin-top: 15px; color: #00ff00; font-weight: bold; min-height: 18px; border-top: 1px solid #222; padding-top: 10px; }
+        .badge { position: absolute; top: 10px; right: 10px; font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #00ff0022; color: #00ff00; border: 1px solid #00ff0044; }
+        
+        .loader { display: none; margin: 10px auto; border: 3px solid #333; border-top: 3px solid #00ff00; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        canvas { display: none; } /* إخفاء لوحة المعالجة الصورية الباطنية */
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+        <span style="font-size: 13px; color: #fff; font-weight: bold;">SIMAH IMAGE-PDF AI</span>
+    </div>
+
+    <div class="upload-zone" onclick="document.getElementById('pdfInput').click()">
+        <p id="fileName">ارفع ملف سمة المرفوع كصورة (PDF)</p>
+        <input type="file" id="pdfInput" hidden accept="application/pdf" onchange="processImagePDF(event)">
+    </div>
+
+    <div class="loader" id="loader"></div>
+    <div id="results" class="results">
+        <div style="color: #444; text-align: center; margin-top: 40px; font-size: 12px;">بانتظار تحويل صفحات الـ PDF برمجياً وقراءتها بصرياً...</div>
+    </div>
+
+    <div id="status" class="status-bar">جاهز للمعالجة البصرية العميقة</div>
+    <canvas id="hiddenCanvas"></canvas>
+</div>
+
+<script>
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    async function processImagePDF(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('status');
+        const resultsArea = document.getElementById('results');
+
+        loader.style.display = 'block';
+        status.innerText = "جاري تسييل الصفحات وتحويلها لصور عالية الدقة... ⏳";
+        resultsArea.innerHTML = '';
+        document.getElementById('fileName').innerText = file.name;
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let finalOcrText = "";
+
+            // نمسح أول 4 صفحات فقط لأنها تحتوي على جداول المنتجات عادةً، ولتوفير الوقت
+            const totalPages = Math.min(pdf.numPages, 4);
+
+            for (let i = 1; i <= totalPages; i++) {
+                status.innerText = `جاري استخراج وقراءة الصفحة بصرياً (${i} من ${totalPages})... 🔍`;
+                
+                const page = await pdf.getPage(i);
+                // رفع الـ Scale إلى 2.5 لتكبير بكسلات الصورة المدمجة وضمان وضوح الحروف (CEBC وغيرها)
+                const viewport = page.getViewport({ scale: 2.5 }); 
+                const canvas = document.getElementById('hiddenCanvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                // رندرة الصفحة كصورة داخل الـ Canvas
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+                // تسليم الصورة الناتجة لمحرك Tesseract بقراءة مزدوجة (عربي + إنجليزي)
+                const { data: { text } } = await Tesseract.recognize(canvas, 'eng+ara');
+                finalOcrText += text + "\n";
+            }
+
+            aiContextParser(finalOcrText);
+        } catch (err) {
+            status.innerText = "فشل التحليل البصري للملف ❌";
+            console.error(err);
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    function aiContextParser(rawText) {
+        // تنظيف وتطهير شامل للنصوص المستخرجة من الـ OCR ومنع تداخل الحسابات بسبب الفواصل
+        const cleanText = rawText.replace(/[|:;ـ]+/g, ' ').replace(/\s+/g, ' ');
+        const resultsArea = document.getElementById('results');
+        resultsArea.innerHTML = '';
+
+        let nationalID = "";
+        let reportDate = "";
+        let foundAccounts = [];
+
+        // 1. صيد الهوية وتاريخ الإصدار
+        const idMatch = cleanText.match(/\b([12]\d{9})\b/);
+        if (idMatch) nationalID = idMatch[1];
+
+        const dateMatch = cleanText.match(/(\d{4}[-\/]\d{2}[-\/]\d{2})|(\d{2}[-\/]\d{2}[-\/]\d{4})/);
+        if (dateMatch) reportDate = dateMatch[0];
+
+        if (reportDate) addCard("تاريخ التقرير / DATE", reportDate);
+        if (nationalID) addCard("رقم الهوية / ID", nationalID);
+
+        // 2. خوارزمية النافذة السياقية (صيد الحسابات المتعددة 20 و 36 خانة)
+        // نقوم بتقسيم النص البصري الإجمالي إلى كتل بناءً على حالة المنتج
+        const blocks = rawText.split(/حالة المنتج|Product Status/i);
+
+        blocks.forEach(block => {
+            const isTabby = /تابي|TABBY/i.test(block);
+            const isActive = /نشط|Active|منتظم|Regular/i.test(block) && !/مغلق|Closed/i.test(block);
+
+            if (isTabby && isActive) {
+                // البحث عن السلاسل المدمجة (حروف وأرقام) بطول 20 أو 36 حرف
+                const tabbyRegex = /\b([A-Z0-9]{20}|[A-Z0-9]{36})\b/gi;
+                let m;
+                while ((m = tabbyRegex.exec(block)) !== null) {
+                    let cleanedAcc = m[1].trim();
+                    if (cleanedAcc !== nationalID && !foundAccounts.includes(cleanedAcc)) {
+                        foundAccounts.push(cleanedAcc);
+                    }
+                }
+            }
+        });
+
+        // عرض كافة الحسابات النشطة المستخرجة
+        foundAccounts.forEach(acc => {
+            addCard("حساب تابي نشط / ACTIVE ACCOUNT", acc, true);
+        });
+
+        const status = document.getElementById('status');
+        if (foundAccounts.length > 0) {
+            status.innerText = `تم استخراج ${foundAccounts.length} حسابات نشطة بصرياً! ✅`;
+        } else {
+            status.innerText = "لم يتم العثور على حسابات تابي نشطة ❌";
+        }
+    }
+
+    function addCard(label, value, isTabby = false) {
+        const div = document.createElement('div');
+        div.className = `card ${isTabby ? 'tabby-active' : ''}`;
+        if (isTabby) div.innerHTML += `<span class="badge">ACTIVE</span>`;
+        div.innerHTML += `
+            <span class="label">${label}</span>
+            <div class="value" onclick="copyValue('${value}')">${value}</div>
+        `;
+        document.getElementById('results').appendChild(div);
+    }
+
+    function copyValue(val) {
+        navigator.clipboard.writeText(val);
+        const s = document.getElementById('status');
+        const old = s.innerText;
+        s.innerText = "تم نسخ: " + val;
+        setTimeout(() => s.innerText = old, 1200);
+    }
+</script>
+
+</body>
+</html>
