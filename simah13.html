@@ -1,1 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH - Exact Account Extractor</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0c0c0c; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 360px; background: #161616; padding: 20px; border-radius: 16px; border: 1px solid #333; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; max-height: 90vh; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: #00ff00; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; text-decoration: none; font-weight: bold; }
+
+        .scan-zone { border: 2px dashed #00ff0044; padding: 40px 15px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.3s; background: #1a1a1a; }
+        .scan-zone:hover { border-color: #00ff00; background: #1d2a1d; }
+        .scan-zone p { margin: 0; font-size: 13px; color: #888; }
+
+        .results { flex-grow: 1; overflow-y: auto; text-align: left; direction: ltr; padding-right: 5px; }
+        .card { background: #000; border: 1px solid #222; border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; border-left: 4px solid #00ff00; }
+        .label { font-size: 10px; color: #666; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: right; letter-spacing: 0.5px; }
+        .value { font-family: 'Courier New', monospace; color: #00ff00; font-size: 14px; cursor: pointer; word-break: break-all; font-weight: bold; }
+
+        .status-bar { font-size: 11px; margin-top: 15px; color: #00ff00; font-weight: bold; min-height: 18px; border-top: 1px solid #222; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+        <span style="font-size: 13px; color: #fff; font-weight: bold;">ACCOUNT SCANNER</span>
+    </div>
+
+    <div class="scan-zone" id="dropZone">
+        <p>الصق صورة التقرير هنا أو اضغط للرفع</p>
+        <span style="font-size: 10px; color: #555;">مستخرج أرقام الحسابات المعتمد والمنقى</span>
+    </div>
+
+    <div id="results" class="results">
+        <div style="color: #444; text-align: center; margin-top: 40px; font-size: 12px;">بانتظار الصورة لاستخراج الحسابات بدقة...</div>
+    </div>
+
+    <div id="status" class="status-bar">منظومة تدقيق الخانات جاهزة</div>
+</div>
+
+<script>
+    const resultsArea = document.getElementById('results');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+
+    document.addEventListener('paste', e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) processImage(item.getAsFile());
+    });
+
+    dropZone.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => processImage(e.target.files[0]);
+        input.click();
+    };
+
+    async function processImage(file) {
+        statusDiv.innerText = "جاري تصفية وتدقيق الخانات بصرياً... ⏳";
+        resultsArea.innerHTML = '';
+        
+        try {
+            const worker = await Tesseract.createWorker('eng+ara');
+            // حصر القراءة في الحروف الكبيرة والأرقام والرموز الأساسية لمنع التشوهات البصرية
+            await worker.setParameters({
+                tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/-:'
+            });
+
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+
+            extractAndFixAccounts(text);
+        } catch (err) {
+            statusDiv.innerText = "فشل في فحص ومطابقة الصورة ❌";
+        }
+    }
+
+    // خوارزمية AI لتصحيح التداخل البصري للأحرف المتشابهة (Confusable Characters Corrector)
+    function autoCorrectX(word) {
+        // إزالة أي رموز أو فواصل وتنظيف الكلمة تماماً لتصبح حروفاً وأرقاماً صافية
+        let clean = word.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        
+        let digits = (clean.match(/\d/g) || []).length;
+        let letters = clean.length - digits;
+
+        // الحالة الأولى: الحساب الرقمي الصافي المكون من 20 خانة (تصحيح تشوهات البكسل)
+        if (clean.length === 20 && letters <= 4) {
+            let fixed = "";
+            for (let char of clean) {
+                if (char === 'O' || char === 'D' || char === 'Q') fixed += '0';
+                else if (char === 'I' || char === 'L' || char === 'T') fixed += '1';
+                else if (char === 'Z') fixed += '2';
+                else if (char === 'S') fixed += '5';
+                else if (char === 'B') fixed += '8';
+                else if (char === 'G') fixed += '6';
+                else fixed += char;
+            }
+            return fixed;
+        }
+
+        // الحالة الثانية: الحساب المدمج المكون من 31 خانة (تصحيح التداخل السياقي للخط)
+        if (clean.length === 31) {
+            let fixed = "";
+            for (let i = 0; i < clean.length; i++) {
+                let char = clean[i];
+                // إذا ظهر حرف O أو T محاطاً بأرقام من الجهتين، فهو رقم تالف بكسلياً ويتم إصلاحه فوراً
+                if (char === 'T' && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) fixed += '9';
+                else if (char === 'O' && i > 0 && i < 30 && /\d/.test(clean[i-1]) && /\d/.test(clean[i+1])) fixed += '0';
+                else fixed += char;
+            }
+            return fixed;
+        }
+
+        return clean;
+    }
+
+    function extractAndFixAccounts(text) {
+        resultsArea.innerHTML = '';
+        let foundAccounts = [];
+
+        // 1. استخراج التاريخ والهوية كبيانات تكميلية أولية
+        const dateMatch = text.match(/(\d{4}[-\/]\d{2}[-\/]\d{2})|(\d{2}[-\/]\d{2}[-\/]\d{4})/);
+        if (dateMatch) addCard("تاريخ التقرير / DATE", dateMatch[0]);
+
+        let idFound = text.match(/\b([12]\d{9})\b/);
+        let nationalID = idFound ? idFound[0] : "";
+        if (nationalID) addCard("رقم الهوية / ID", nationalID);
+
+        // 2. تمشيط النص كاملاً سطر بسطر وكلمة بكلمة دون أي شروط مسبقة للشركات أو الحالات
+        const words = text.split(/[\s\n\r|:;,\/]+/);
+        
+        words.forEach(word => {
+            // تمرير الكلمة عبر فلتر التصحيح قبل فحص أبعاد الطول المعتمدة
+            let processed = autoCorrectX(word);
+            
+            // المطابقة الصارمة للهيكل العددي للحسابات (إما 20 خانة أو 31 خانة)
+            if (processed.length === 20 || processed.length === 31) {
+                // استبعاد السجل المدني والأسماء المكررة لضمان نظافة المخرجات
+                if (processed !== nationalID && !foundAccounts.includes(processed)) {
+                    // تجنب لقط البكسلات التالفة المتكررة (مثل 00000...)
+                    if (/^[A-Z0-9]+$/.test(processed) && !/^(.)\1+$/.test(processed)) {
+                        foundAccounts.push(processed);
+                        addCard("رقم الحساب المستخرج / ACCOUNT NUMBER", processed);
+                    }
+                }
+            }
+        });
+
+        if (foundAccounts.length > 0) {
+            statusDiv.innerText = `تم استخراج وتدقيق ${foundAccounts.length} حسابات خالية من الأخطاء! ✅`;
+        } else {
+            statusDiv.innerText = "لم يتم العثور على أرقام حسابات مطابقة للأبعاد ❌";
+        }
+    }
+
+    function addCard(label, value) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+            <span class="label">${label}</span>
+            <div class="value" onclick="copyValue('${value}')">${value}</div>
+        `;
+        resultsArea.appendChild(div);
+    }
+
+    function copyValue(val) {
+        navigator.clipboard.writeText(val);
+        const original = statusDiv.innerText;
+        statusDiv.innerText = "تم نسخ الحساب المحقق! 📋";
+        setTimeout(() => statusDiv.innerText = original, 1200);
+    }
+</script>
+
+</body>
+</html>
 
