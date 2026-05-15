@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH - Ultimate D/0 Fixer</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0c0c0c; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 360px; background: #161616; padding: 20px; border-radius: 16px; border: 1px solid #333; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; max-height: 90vh; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: #00ff00; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; text-decoration: none; font-weight: bold; }
+
+        .scan-zone { border: 2px dashed #00ff0044; padding: 40px 15px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.3s; background: #1a1a1a; }
+        .scan-zone:hover { border-color: #00ff00; background: #1d2a1d; }
+        .scan-zone p { margin: 0; font-size: 13px; color: #888; }
+
+        .results { flex-grow: 1; overflow-y: auto; text-align: left; direction: ltr; padding-right: 5px; }
+        .card { background: #000; border: 1px solid #222; border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; border-left: 4px solid #00ff00; }
+        .label { font-size: 10px; color: #666; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: right; }
+        .value { font-family: 'Courier New', monospace; color: #00ff00; font-size: 14px; cursor: pointer; word-break: break-all; font-weight: bold; }
+
+        .status-bar { font-size: 11px; margin-top: 15px; color: #00ff00; font-weight: bold; min-height: 18px; border-top: 1px solid #222; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+        <span style="font-size: 13px; color: #fff; font-weight: bold;">ANTI D/0 SCANNER</span>
+    </div>
+
+    <div class="scan-zone" id="dropZone">
+        <p>الصق صورة التقرير هنا أو اضغط للرفع</p>
+        <span style="font-size: 10px; color: #555;">معالجة جنائية ذكية لفك التداخل بين D و 0</span>
+    </div>
+
+    <div id="results" class="results">
+        <div style="color: #444; text-align: center; margin-top: 40px; font-size: 12px;">بانتظار الصورة لإجراء الفحص الحاد...</div>
+    </div>
+
+    <div id="status" class="status-bar">منظومة تعقب الخانات المزدوجة جاهزة</div>
+</div>
+
+<script>
+    const resultsArea = document.getElementById('results');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+
+    document.addEventListener('paste', e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) processImage(item.getAsFile());
+    });
+
+    dropZone.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => processImage(e.target.files[0]);
+        input.click();
+    };
+
+    async function processImage(file) {
+        statusDiv.innerText = "جاري تسييل البكسلات وفك تشابك الخانات... ⏳";
+        resultsArea.innerHTML = '';
+        
+        try {
+            // استخدام المحرك الإنجليزي فقط لرفع كفاءة التفريق بين الحروف والرموز اللاتينية
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({
+                tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            });
+
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+
+            extractAndEnforceAccounts(text);
+        } catch (err) {
+            statusDiv.innerText = "فشل في معالجة وفلترة الصورة ❌";
+        }
+    }
+
+    // خوارزمية هندسة التدقيق العكسي للخانات (Reverse Confusables Logic)
+    function enforceStructure(word) {
+        let clean = word.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        
+        // الحالة الأولى: حساب الـ 20 خانة الرقمي الصافي
+        // إذا قرأ المحرك بكسل الـ 0 كـ D بالخطأ، نقوم بإرجاعها لـ 0 فوراً لأن الحساب رقمي بالكامل
+        if (clean.length === 20) {
+            return clean.replace(/D/g, '0').replace(/O/g, '0').replace(/Q/g, '0');
+        }
+
+        // الحالة الثانية: حساب الـ 31 خانة المختلط (وهنا تحدث مشكلة قراءة D كـ 0)
+        // نقوم بفحص السياق: إذا وجدنا "0" محاطاً بحروف كابيتال واضحة، فإنه هندسياً حرف D مشوه بصرياً
+        if (clean.length === 31) {
+            let fixed = "";
+            for (let i = 0; i < clean.length; i++) {
+                let char = clean[i];
+                
+                // إذا قرأ المحرك 0 وكان قبلها أو بعدها حروف كابيتال (سياق الحروف في تابي)، يُعاد تصحيحه إلى D
+                if (char === '0' && i > 0 && i < 30 && /[A-Z]/.test(clean[i-1]) || /[A-Z]/.test(clean[i+1])) {
+                    fixed += 'D';
+                } else {
+                    fixed += char;
+                }
+            }
+            return fixed;
+        }
+
+        return clean;
+    }
+
+    function extractAndEnforceAccounts(text) {
+        resultsArea.innerHTML = '';
+        let foundAccounts = [];
+
+        // عزل الكلمات بناءً على الفواصل الشائعة في التقرير
+        const words = text.split(/[\s\n\r|:;,\/]+/);
+        
+        words.forEach(word => {
+            // تنظيف الكلمة وتمريرها عبر معالج فك التشابك الذكي
+            let processed = enforceStructure(word);
+            
+            // الفحص الصارم لأطوال حسابات تابي المعتمدة (20 أو 31 خانة)
+            if (processed.length === 20 || processed.length === 31) {
+                if (!foundAccounts.includes(processed)) {
+                    // استبعاد التكرار والأنماط الميتة الناتجة عن عيوب بكسل الصورة
+                    if (/^[A-Z0-9]+$/.test(processed) && !/^(.)\1+$/.test(processed)) {
+                        foundAccounts.push(processed);
+                        addCard("رقم الحساب المستخرج / ACCOUNT NUMBER", processed);
+                    }
+                }
+            }
+        });
+
+        if (foundAccounts.length > 0) {
+            statusDiv.innerText = `تم فك تشابك الخانات واستخراج ${foundAccounts.length} حسابات بنجاح! ✅`;
+        } else {
+            statusDiv.innerText = "لم يتم العثور على أرقام حسابات مطابقة للأبعاد المعيارية ❌";
+        }
+    }
+
+    function addCard(label, value) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+            <span class="label">${label}</span>
+            <div class="value" onclick="copyValue('${value}')">${value}</div>
+        `;
+        resultsArea.appendChild(div);
+    }
+
+    function copyValue(val) {
+        navigator.clipboard.writeText(val);
+        const original = statusDiv.innerText;
+        statusDiv.innerText = "تم نسخ الحساب الصافي! 📋";
+        setTimeout(() => statusDiv.innerText = original, 1200);
+    }
+</script>
+
+</body>
+</html>
