@@ -1,714 +1,387 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH - Ensemble Voting Extractor</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card-bg: #151515;
+            --accent-green: #00e676;
+            --accent-blue: #00b0ff;
+            --text: #eee;
+            --warn: #ffea00;
+            --alert: #ff1744;
+        }
 
-<title>SIMAH ULTRA OCR</title>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+        .app-container { 
+            width: 260px; 
+            height: 380px; 
+            background: #111; 
+            padding: 10px; 
+            border-radius: 12px; 
+            border: 1px solid #2a2a2a; 
+            text-align: center; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9); 
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box;
+            justify-content: space-between;
+        }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0; border-bottom: 1px solid #222; padding-bottom: 6px;}
+        .nav-btn { background: #222; border: 1px solid #444; color: var(--text); padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; text-decoration: none; font-weight: bold; }
+        .clear-btn { background: #333; color: var(--alert); border: 1px solid #555; padding: 2px 5px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: bold; }
 
-<style>
+        .scan-zone { border: 1px dashed #00b0ff55; padding: 12px 5px; border-radius: 6px; margin-bottom: 6px; cursor: default; background: #151515; flex-shrink: 0; transition: 0.3s;}
+        .scan-zone p { margin: 0; font-size: 10px; color: #888; font-weight: bold; }
+        .scan-zone.active { border-color: var(--accent-blue); background: #00b0ff11; }
 
-:root{
-    --bg:#0a0a0a;
-    --card:#131313;
-    --green:#00ff88;
-    --red:#ff4444;
-    --yellow:#ffcc00;
-    --border:#2a2a2a;
-    --text:#eee;
-}
+        .progress-bar-container { width: 100%; background: #222; height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 6px; display: none; }
+        .progress-bar { width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.2s; }
 
-*{
-    box-sizing:border-box;
-}
+        .section-title { font-size: 9px; color: #aaa; text-align: right; margin: 4px 0; font-weight: bold; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;}
+        
+        .results { overflow-y: auto; text-align: left; direction: ltr; max-height: 120px; margin-bottom: 4px; }
+        .card { background: #000; border: 1px solid #333; border-radius: 6px; padding: 6px; margin-bottom: 6px; }
+        
+        .vote-badge { font-size: 8px; padding: 2px 4px; border-radius: 3px; font-weight: bold; color: #000; display: inline-block;}
+        .vote-high { background: var(--accent-green); } /* 5-6 votes */
+        .vote-med { background: var(--warn); } /* 3-4 votes */
+        .vote-low { background: var(--alert); color: #fff;} /* 1-2 votes */
 
-body{
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font-family:Segoe UI,sans-serif;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-    overflow:hidden;
-}
+        .visual-check { font-family: 'Courier New', monospace; font-size: 11px; color: #fff; word-break: break-all; margin: 4px 0; font-weight: bold; background: #1a1a1a; padding: 4px; border-radius: 4px; text-align: left; line-height: 1.3; border-left: 2px solid #444;}
+        .highlight { color: #000; background: var(--warn); padding: 0 1px; border-radius: 2px; font-weight: 900; }
+        
+        .edit-input { width: 100%; background: #222; border: 1px solid #444; color: var(--accent-green); font-family: 'Courier New', monospace; font-size: 10px; padding: 5px; border-radius: 4px; box-sizing: border-box; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;}
+        .action-btn { background: #222; color: var(--accent-blue); border: 1px solid var(--accent-blue); width: 100%; padding: 5px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px; transition: 0.2s; }
+        .action-btn:hover { background: var(--accent-blue); color: #000; }
 
-.app{
-    width:360px;
-    height:95vh;
-    background:#111;
-    border:1px solid #222;
-    border-radius:18px;
-    padding:12px;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    box-shadow:0 0 40px rgba(0,0,0,.9);
-}
+        .final-list { max-height: 70px; overflow-y: auto; direction: ltr; }
+        .final-card { background: #111; border: 1px solid #222; border-radius: 4px; padding: 4px 6px; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; border-left: 2px solid var(--accent-green); }
+        .final-value { font-family: 'Courier New', monospace; color: #fff; font-size: 10px; font-weight: bold; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
 
-.header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.logo{
-    font-weight:900;
-    letter-spacing:2px;
-    color:var(--green);
-}
-
-.status{
-    font-size:11px;
-    color:#999;
-}
-
-.drop{
-    border:2px dashed #00ff8844;
-    border-radius:14px;
-    padding:25px 10px;
-    text-align:center;
-    background:#151515;
-    transition:.2s;
-}
-
-.drop.active{
-    border-color:var(--green);
-    background:#00ff8820;
-}
-
-.drop h2{
-    margin:0;
-    font-size:15px;
-}
-
-.drop p{
-    margin-top:6px;
-    font-size:11px;
-    color:#888;
-}
-
-.results{
-    flex:1;
-    overflow:auto;
-}
-
-.card{
-    background:var(--card);
-    border:1px solid var(--border);
-    border-left:5px solid var(--yellow);
-    border-radius:12px;
-    padding:10px;
-    margin-bottom:10px;
-}
-
-.card.perfect{
-    border-left-color:var(--green);
-}
-
-.top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:8px;
-}
-
-.badge{
-    padding:3px 6px;
-    border-radius:6px;
-    font-size:10px;
-    background:#222;
-}
-
-.visual{
-    font-family:Consolas;
-    background:#0a0a0a;
-    border-radius:8px;
-    padding:10px;
-    word-break:break-all;
-    line-height:1.6;
-    margin-bottom:8px;
-    font-size:13px;
-    color:var(--green);
-}
-
-.highlight{
-    background:var(--yellow);
-    color:#000;
-    padding:0 2px;
-    border-radius:3px;
-    font-weight:900;
-}
-
-.input{
-    width:100%;
-    background:#222;
-    border:1px solid #444;
-    border-radius:8px;
-    color:white;
-    padding:8px;
-    font-family:Consolas;
-    margin-bottom:8px;
-    font-size:13px;
-}
-
-.btn{
-    width:100%;
-    border:none;
-    background:var(--green);
-    color:#000;
-    padding:8px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:900;
-}
-
-.final{
-    max-height:140px;
-    overflow:auto;
-}
-
-.finalCard{
-    background:#181818;
-    border-left:4px solid var(--green);
-    padding:8px;
-    border-radius:8px;
-    margin-bottom:8px;
-    font-family:Consolas;
-    font-size:12px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.copy{
-    cursor:pointer;
-    color:#aaa;
-    font-size:11px;
-}
-
-.progress{
-    height:6px;
-    background:#222;
-    border-radius:20px;
-    overflow:hidden;
-}
-
-.bar{
-    height:100%;
-    background:var(--green);
-    width:0%;
-    transition:.2s;
-}
-
-</style>
+        .status-bar { font-size: 9px; color: #aaa; font-weight: bold; min-height: 12px; border-top: 1px solid #222; padding-top: 4px; flex-shrink: 0; text-align: center;}
+        
+        /* التمرير */
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+    </style>
 </head>
-
 <body>
 
-<div class="app">
-
+<div class="app-container">
     <div class="header">
-        <div class="logo">SIMAH ULTRA</div>
-        <div class="status" id="status">جاهز</div>
+        <a href="index.html" class="nav-btn">الرئيسية</a>
+        <span style="font-size: 10px; color: #fff; font-weight: bold; letter-spacing: 1px;">SIMAH <span style="color:var(--accent-blue)">AI VOTING</span></span>
     </div>
 
-    <div class="drop" id="drop">
-        <h2>الصق الصورة هنا</h2>
-        <p>CTRL + V</p>
+    <div class="scan-zone" id="dropZone">
+        <p>الصق الصورة لبدء 6 قراءات (Ctrl + V)</p>
+    </div>
+    
+    <div class="progress-bar-container" id="progressContainer">
+        <div class="progress-bar" id="progressBar"></div>
     </div>
 
-    <div class="progress">
-        <div class="bar" id="bar"></div>
+    <div class="section-title">نتائج التصويت الخوارزمي</div>
+    <div id="results" class="results">
+        <div style="color: #444; text-align: center; margin-top: 25px; font-size: 10px;">بانتظار الصورة...</div>
     </div>
 
-    <div class="results" id="results"></div>
+    <div class="section-title">
+        <span>القائمة المعتمدة</span>
+        <button class="clear-btn" onclick="clearFinalList()">مسح</button>
+    </div>
+    <div id="finalList" class="final-list"></div>
 
-    <div class="final" id="final"></div>
-
+    <div id="status" class="status-bar">جاهز</div>
 </div>
 
 <script>
+    const resultsArea = document.getElementById('results');
+    const finalListArea = document.getElementById('finalList');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    let savedAccountsList = [];
 
-const drop = document.getElementById('drop');
-const results = document.getElementById('results');
-const final = document.getElementById('final');
-const statusDiv = document.getElementById('status');
-const bar = document.getElementById('bar');
+    // مصفوفة الفلاتر المطلوبة
+    const filters = ['grayscale', 'threshold', 'sharpen', 'invert', 'contrast', 'edge'];
 
-let saved = [];
-
-const confusionMap = {
-    'O':['0'],
-    '0':['O'],
-    'I':['1','L'],
-    '1':['I','L'],
-    'S':['5'],
-    '5':['S'],
-    'B':['8'],
-    '8':['B'],
-    'Z':['2'],
-    '2':['Z']
-};
-
-document.addEventListener('paste', async(e)=>{
-
-    const item = e.clipboardData.items[0];
-
-    if(!item || !item.type.includes('image')) return;
-
-    drop.classList.add('active');
-
-    setTimeout(()=>{
-        drop.classList.remove('active');
-    },400);
-
-    const file = item.getAsFile();
-
-    startOCR(file);
-
-});
-
-async function startOCR(file){
-
-    statusDiv.innerText = "تهيئة الصورة...";
-
-    bar.style.width = "10%";
-
-    const versions = await createImageVariants(file);
-
-    let candidates = [];
-
-    let index = 0;
-
-    for(const img of versions){
-
-        index++;
-
-        statusDiv.innerText =
-        `OCR Pass ${index}/${versions.length}`;
-
-        bar.style.width =
-        `${20 + (index/versions.length)*60}%`;
-
-        const text =
-        await runOCR(img);
-
-        const extracted =
-        extractUUIDs(text);
-
-        candidates.push(...extracted);
-
-    }
-
-    const ranked =
-    rankCandidates(candidates);
-
-    renderResults(ranked);
-
-    bar.style.width = "100%";
-
-    statusDiv.innerText =
-    `اكتمل التحليل`;
-
-}
-
-async function createImageVariants(file){
-
-    const base =
-    await loadImage(file);
-
-    const variants = [];
-
-    variants.push(process(base,{
-        grayscale:true,
-        contrast:220,
-        brightness:110,
-        threshold:150
-    }));
-
-    variants.push(process(base,{
-        grayscale:true,
-        contrast:300,
-        brightness:130,
-        threshold:170
-    }));
-
-    variants.push(process(base,{
-        grayscale:true,
-        contrast:250,
-        brightness:120,
-        invert:true,
-        threshold:140
-    }));
-
-    return variants;
-
-}
-
-function loadImage(file){
-
-    return new Promise(resolve=>{
-
-        const img = new Image();
-
-        img.onload = ()=>resolve(img);
-
-        img.src =
-        URL.createObjectURL(file);
-
+    document.addEventListener('paste', async e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) {
+            dropZone.classList.add('active');
+            setTimeout(() => dropZone.classList.remove('active'), 300);
+            startExtractionProcess(item.getAsFile());
+        }
     });
 
-}
+    async function startExtractionProcess(file) {
+        resultsArea.innerHTML = '';
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        let allExtracted = [];
 
-function process(img,opts){
+        try {
+            const imgCanvas = await fileToCanvas(file);
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({ 
+                tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
+                preserve_interword_spaces: '0'
+            });
 
-    const canvas =
-    document.createElement('canvas');
+            // اجرای القراءات الستة
+            for (let i = 0; i < filters.length; i++) {
+                const filterName = filters[i];
+                statusDiv.innerText = `قراءة ${i+1}/6: ${filterName.toUpperCase()}...`;
+                progressBar.style.width = `${((i+1)/6)*100}%`;
 
-    const ctx =
-    canvas.getContext('2d');
+                // تطبيق الفلتر على نسخة جديدة من الصورة
+                const processedCanvas = applyFilter(imgCanvas, filterName);
+                const dataUrl = processedCanvas.toDataURL('image/png');
+                
+                const { data: { text } } = await worker.recognize(dataUrl);
+                const accountsInPass = extractAccountsFromText(text.toUpperCase());
+                
+                allExtracted = allExtracted.concat(accountsInPass);
+            }
+            
+            await worker.terminate();
+            progressContainer.style.display = 'none';
+            statusDiv.innerText = "اكتمل التصويت وجاري الفرز...";
+            
+            processVotingSystem(allExtracted);
 
-    canvas.width = img.width * 3;
-    canvas.height = img.height * 3;
-
-    ctx.imageSmoothingEnabled = false;
-
-    ctx.drawImage(
-        img,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    ctx.filter =
-    `
-    grayscale(${opts.grayscale ? 1 : 0})
-    contrast(${opts.contrast}%)
-    brightness(${opts.brightness}%)
-    `;
-
-    ctx.drawImage(canvas,0,0);
-
-    let imageData =
-    ctx.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    let d = imageData.data;
-
-    for(let i=0;i<d.length;i+=4){
-
-        let avg =
-        (d[i]+d[i+1]+d[i+2])/3;
-
-        let val =
-        avg > opts.threshold ? 255 : 0;
-
-        if(opts.invert)
-            val = 255 - val;
-
-        d[i]=d[i+1]=d[i+2]=val;
+        } catch (err) { 
+            statusDiv.innerText = "حدث خطأ في المعالجة ❌"; 
+            console.error(err);
+            progressContainer.style.display = 'none';
+        }
     }
 
-    ctx.putImageData(imageData,0,0);
+    // استخراج الحسابات من نص القراءة الواحدة
+    function extractAccountsFromText(rawText) {
+        let pureText = rawText.replace(/[^A-Z0-9-]/g, '');
+        let cleanTextForConcat = rawText.replace(/\s+/g, '');
+        let found = [];
 
-    return canvas.toDataURL();
+        // 36-char UUID pattern
+        const perfectRegex = /[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}/g;
+        let perfectMatches = cleanTextForConcat.match(perfectRegex) || [];
+        perfectMatches.forEach(acc => found.push(acc));
 
-}
+        // 32-char continuous pattern -> auto format
+        const continuous32Regex = /[A-Z0-9]{32}/g;
+        let raw32Matches = pureText.replace(/-/g, '').match(continuous32Regex) || [];
+        raw32Matches.forEach(acc => {
+            let formattedAcc = `${acc.substr(0,8)}-${acc.substr(8,4)}-${acc.substr(12,4)}-${acc.substr(16,4)}-${acc.substr(20,12)}`;
+            found.push(formattedAcc);
+        });
 
-async function runOCR(img){
+        // إزالة التكرار من نفس القراءة (حتى لا نصوت لنفس الحساب مرتين في قراءة واحدة)
+        return [...new Set(found)]; 
+    }
 
-    const worker =
-    await Tesseract.createWorker('eng');
-
-    await worker.setParameters({
-
-        tessedit_pageseg_mode: 6,
-
-        tessedit_char_whitelist:
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-'
-
-    });
-
-    const {
-        data:{ text }
-    } = await worker.recognize(img);
-
-    await worker.terminate();
-
-    return text.toUpperCase();
-
-}
-
-function extractUUIDs(text){
-
-    const found = [];
-
-    const cleaned =
-    text.replace(/\s+/g,'');
-
-    const regex =
-    /[A-Z0-9-]{20,40}/g;
-
-    const matches =
-    cleaned.match(regex) || [];
-
-    for(let m of matches){
-
-        let recovered =
-        recoverUUID(m);
-
-        if(recovered){
-
-            found.push(recovered);
-
+    // نظام الفرز والتصويت (Voting System)
+    function processVotingSystem(allAccountsArray) {
+        if (allAccountsArray.length === 0) {
+            resultsArea.innerHTML = "<div style='color:var(--alert); text-align:center; font-size:10px; margin-top:20px;'>لم ينجح أي فلتر في استخراج الحساب ❌</div>";
+            statusDiv.innerText = "فشل الاستخراج";
+            return;
         }
 
+        // عد الأصوات
+        let voteMap = {};
+        allAccountsArray.forEach(acc => {
+            voteMap[acc] = (voteMap[acc] || 0) + 1;
+        });
+
+        // ترتيب الحسابات حسب الأعلى تصويتاً
+        let sortedCandidates = Object.keys(voteMap).sort((a, b) => voteMap[b] - voteMap[a]);
+
+        resultsArea.innerHTML = '';
+        sortedCandidates.forEach(acc => {
+            let votes = voteMap[acc];
+            addVotedCard(acc, votes);
+        });
+
+        statusDiv.innerText = `تمت القراءات بنجاح ✔️`;
     }
 
-    return found;
-
-}
-
-function recoverUUID(str){
-
-    str = str.replace(/[^A-Z0-9]/g,'');
-
-    if(str.length < 32) return null;
-
-    str = str.substring(0,32);
-
-    let chars = str.split('');
-
-    for(let i=0;i<chars.length;i++){
-
-        let c = chars[i];
-
-        if(confusionMap[c]){
-
-            let best =
-            chooseBest(c);
-
-            chars[i] = best;
-
-        }
-
-    }
-
-    str = chars.join('');
-
-    return formatUUID(str);
-
-}
-
-function chooseBest(c){
-
-    if(c === 'O') return '0';
-    if(c === 'I') return '1';
-    if(c === 'S') return '5';
-    if(c === 'B') return '8';
-    if(c === 'Z') return '2';
-
-    return c;
-
-}
-
-function formatUUID(str){
-
-    return `
-${str.substring(0,8)}-
-${str.substring(8,12)}-
-${str.substring(12,16)}-
-${str.substring(16,20)}-
-${str.substring(20,32)}
-`
-.replace(/\s/g,'');
-
-}
-
-function scoreUUID(uuid){
-
-    let score = 100;
-
-    if(uuid.length !== 36)
-        score -= 50;
-
-    const parts =
-    uuid.split('-');
-
-    const expected =
-    [8,4,4,4,12];
-
-    parts.forEach((p,i)=>{
-
-        if(p.length !== expected[i])
-            score -= 20;
-
-    });
-
-    const suspicious =
-    /OOOO|1111|SSSS|BBBB/g;
-
-    if(suspicious.test(uuid))
-        score -= 25;
-
-    return score;
-
-}
-
-function rankCandidates(candidates){
-
-    const unique =
-    [...new Set(candidates)];
-
-    return unique
-    .map(c=>({
-        value:c,
-        score:scoreUUID(c)
-    }))
-    .sort((a,b)=>b.score-a.score);
-
-}
-
-function highlight(text){
-
-    return text.replace(
-        /[O0I1S5B8Z2]/g,
-        m=>`<span class="highlight">${m}</span>`
-    );
-
-}
-
-function renderResults(items){
-
-    results.innerHTML = '';
-
-    if(items.length === 0){
-
-        results.innerHTML =
-        `
-        <div style="text-align:center;color:#777;padding:30px">
-        لم يتم العثور على نتائج
-        </div>
-        `;
-
-        return;
-    }
-
-    items.forEach(item=>{
-
-        const div =
-        document.createElement('div');
-
-        div.className =
-        item.score >= 90
-        ? 'card perfect'
-        : 'card';
+    function addVotedCard(value, votes) {
+        const cardId = 'c_' + Math.random().toString(36).substr(2, 5);
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.id = cardId;
+        
+        let badgeClass = 'vote-low';
+        if (votes >= 5) badgeClass = 'vote-high';
+        else if (votes >= 3) badgeClass = 'vote-med';
 
         div.innerHTML = `
-
-        <div class="top">
-
-            <div>
-            Confidence ${item.score}%
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:8px; color:#aaa;">الثقة: ${Math.round((votes/6)*100)}%</span>
+                <span class="vote-badge ${badgeClass}">${votes}/6 أصوات</span>
             </div>
-
-            <div class="badge">
-            ${
-                item.score >= 90
-                ? 'ممتاز'
-                : 'مراجعة'
-            }
-            </div>
-
-        </div>
-
-        <div class="visual">
-        ${highlight(item.value)}
-        </div>
-
-        <input
-        class="input"
-        value="${item.value}"
-        id="i_${btoa(item.value)}"
-        >
-
-        <button
-        class="btn"
-        onclick="approve('${item.value}')"
-        >
-        اعتماد
-        </button>
+            <div class="visual-check">${highlightSuspectCharacters(value)}</div>
+            <input type="text" class="edit-input" id="i_${cardId}" value="${value}">
+            <button class="action-btn" onclick="approve('${cardId}')">حفظ القيمة (${votes} أصوات)</button>
         `;
+        resultsArea.appendChild(div);
+    }
 
-        results.appendChild(div);
+    function highlightSuspectCharacters(text) {
+        return text.replace(/[0O1Il8B5S2Z]/g, m => `<span class="highlight">${m}</span>`);
+    }
 
-    });
+    function approve(cardId) {
+        const inputField = document.getElementById('i_'+cardId);
+        const val = inputField.value.trim().toUpperCase();
+        
+        if (val.length >= 20 && !savedAccountsList.includes(val)) {
+            savedAccountsList.push(val);
+            renderList();
+        }
+        document.getElementById(cardId).remove();
+        if(resultsArea.children.length === 0) statusDiv.innerText = "القائمة فارغة";
+    }
 
-}
-
-function approve(val){
-
-    const id =
-    'i_' + btoa(val);
-
-    const input =
-    document.getElementById(id);
-
-    const v =
-    input.value.trim();
-
-    if(saved.includes(v))
-        return;
-
-    saved.push(v);
-
-    renderFinal();
-
-}
-
-function renderFinal(){
-
-    final.innerHTML =
-    saved.map(v=>`
-
-        <div class="finalCard">
-
-            <div onclick="copyVal('${v}')">
-            ${v}
+    function renderList() {
+        finalListArea.innerHTML = savedAccountsList.map(acc => `
+            <div class="final-card" onclick="copy('${acc}')">
+                <div class="final-value">${acc}</div>
             </div>
+        `).join('');
+    }
 
-            <div
-            class="copy"
-            onclick="copyVal('${v}')"
-            >
-            نسخ
-            </div>
+    function copy(val) {
+        navigator.clipboard.writeText(val);
+        statusDiv.innerText = "تم النسخ 📋";
+        setTimeout(() => { if(statusDiv.innerText.includes("نسخ")) statusDiv.innerText = "جاهز"; }, 1500);
+    }
 
-        </div>
+    function clearFinalList() {
+        savedAccountsList = []; 
+        renderList(); 
+    }
 
-    `).join('');
+    // ==========================================
+    // محرك معالجة الصور المصغر (Mini Image Engine)
+    // ==========================================
+    function fileToCanvas(file) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+                resolve(canvas);
+            };
+            img.src = url;
+        });
+    }
 
-}
+    function applyFilter(sourceCanvas, filterType) {
+        const canvas = document.createElement('canvas');
+        const w = sourceCanvas.width;
+        const h = sourceCanvas.height;
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(sourceCanvas, 0, 0);
+        
+        let imgData = ctx.getImageData(0, 0, w, h);
+        let d = imgData.data;
 
-function copyVal(v){
+        if (filterType === 'grayscale') {
+            for (let i = 0; i < d.length; i += 4) {
+                let v = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+                d[i] = d[i+1] = d[i+2] = v;
+            }
+        } 
+        else if (filterType === 'threshold') {
+            for (let i = 0; i < d.length; i += 4) {
+                let v = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]);
+                let val = v > 120 ? 255 : 0; // Adaptive threshold approximation
+                d[i] = d[i+1] = d[i+2] = val;
+            }
+        }
+        else if (filterType === 'invert') {
+            for (let i = 0; i < d.length; i += 4) {
+                d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2];
+            }
+        }
+        else if (filterType === 'contrast') {
+            const factor = (259 * (128 + 255)) / (255 * (259 - 128)); // Boost contrast
+            for (let i = 0; i < d.length; i += 4) {
+                d[i] = factor * (d[i] - 128) + 128;
+                d[i+1] = factor * (d[i+1] - 128) + 128;
+                d[i+2] = factor * (d[i+2] - 128) + 128;
+            }
+        }
+        else if (filterType === 'sharpen') {
+            imgData = convolute(imgData, [0, -1, 0, -1, 5, -1, 0, -1, 0]);
+        }
+        else if (filterType === 'edge') {
+            imgData = convolute(imgData, [-1, -1, -1, -1, 9, -1, -1, -1, -1]);
+        }
 
-    navigator.clipboard.writeText(v);
+        ctx.putImageData(imgData, 0, 0);
+        return canvas;
+    }
 
-    statusDiv.innerText =
-    "تم النسخ";
-
-}
-
+    // دالة لتطبيق مصفوفات الالتفاف الرياضية (للتنعيم أو زيادة الحواف)
+    function convolute(pixels, weights) {
+        const side = Math.round(Math.sqrt(weights.length));
+        const halfSide = Math.floor(side/2);
+        const src = pixels.data;
+        const sw = pixels.width, sh = pixels.height;
+        const w = sw, h = sh;
+        const output = new ImageData(w, h);
+        const dst = output.data;
+        
+        for (let y=0; y<h; y++) {
+            for (let x=0; x<w; x++) {
+                const dstOff = (y*w+x)*4;
+                let r=0, g=0, b=0;
+                for (let cy=0; cy<side; cy++) {
+                    for (let cx=0; cx<side; cx++) {
+                        const scy = y + cy - halfSide;
+                        const scx = x + cx - halfSide;
+                        if (scy >= 0 && scy < h && scx >= 0 && scx < w) {
+                            const srcOff = (scy*w+scx)*4;
+                            const wt = weights[cy*side+cx];
+                            r += src[srcOff] * wt;
+                            g += src[srcOff+1] * wt;
+                            b += src[srcOff+2] * wt;
+                        }
+                    }
+                }
+                dst[dstOff] = r; dst[dstOff+1] = g; dst[dstOff+2] = b; dst[dstOff+3] = 255;
+            }
+        }
+        return output;
+    }
 </script>
-
 </body>
 </html>
