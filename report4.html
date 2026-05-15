@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIMAH Scanner Pro V2</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b0b0b; color: white; font-family: Segoe UI, sans-serif; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+    .app { width: 380px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; background: #151515; border: 1px solid #2c2c2c; border-radius: 18px; padding: 18px; box-shadow: 0 0 40px rgba(0,0,0,.8); }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .title { font-size: 14px; font-weight: bold; color: #00ff88; }
+    .btn { background: #202020; border: 1px solid #333; color: #00ff88; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; }
+    .drop-zone { border: 2px dashed #00ff8855; border-radius: 14px; padding: 40px 15px; text-align: center; cursor: pointer; transition: .25s; background: #181818; }
+    .drop-zone:hover { border-color: #00ff88; background: #1f1f1f; }
+    .drop-zone p { margin: 0; font-size: 13px; color: #aaa; }
+    .hint { margin-top: 10px; font-size: 10px; color: #666; }
+    .results { margin-top: 15px; overflow-y: auto; flex: 1; }
+    .card { background: black; border: 1px solid #222; border-left: 4px solid #00ff88; border-radius: 10px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+    .card:hover { border-left-color: #ffffff; background: #111; }
+    .label { font-size: 10px; color: #666; margin-bottom: 6px; }
+    .value { font-family: Consolas, monospace; color: #00ff88; font-size: 14px; font-weight: bold; word-break: break-all; }
+    .status { margin-top: 10px; padding-top: 10px; border-top: 1px solid #222; font-size: 11px; color: #00ff88; min-height: 20px; }
+    canvas { display: none; }
+</style>
+</head>
+<body>
+
+<div class="app">
+    <div class="header">
+        <div class="title">SIMAH OCR PRO</div>
+        <button class="btn" onclick="openPicker()">رفع صورة</button>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+        <p>اضغط أو الصق صورة التقرير</p>
+        <div class="hint">OCR Engine + Smart Anti-Distortion</div>
+    </div>
+
+    <div class="results" id="results">
+        <div style="text-align:center;color:#555;margin-top:30px;font-size:12px;">بانتظار الصورة...</div>
+    </div>
+
+    <div class="status" id="status">جاهز للفحص</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const dropZone = document.getElementById("dropZone");
+const results = document.getElementById("results");
+const statusBar = document.getElementById("status");
+
+document.addEventListener("paste", e => {
+    const item = [...e.clipboardData.items].find(i => i.type.includes("image"));
+    if(item) processImage(item.getAsFile());
+});
+
+dropZone.addEventListener("click", openPicker);
+function openPicker(){
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if(file) processImage(file);
+    };
+    input.click();
+}
+
+async function processImage(file){
+    try {
+        results.innerHTML = "";
+        statusBar.innerText = "جاري تحسين أبعاد وتباينة الصورة... ⏳";
+
+        const imageBitmap = await createImageBitmap(file);
+        const processedBlob = await preprocessImage(imageBitmap);
+
+        statusBar.innerText = "جاري تسييل البكسلات وفك الأكواد... 🧠";
+
+        const worker = await Tesseract.createWorker("eng");
+        await worker.setParameters({
+            tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            tessedit_pageseg_mode: "6", // فرض قراءة النص ككتلة واحدة موحدة
+            preserve_interword_spaces: "1",
+            load_system_dawg: "0",      // إيقاف قاموس اللغات لمنع إجبار الأحرف لتصبح أرقام
+            load_freq_dawg: "0"
+        });
+
+        const { data } = await worker.recognize(processedBlob);
+        await worker.terminate();
+
+        statusBar.innerText = "جاري تطبيق الهندسة الرقمية للمعرفات...";
+        extractAccounts(data.text);
+
+    } catch(err) {
+        console.error(err);
+        statusBar.innerText = "فشل في معالجة الصورة ❌";
+    }
+}
+
+async function preprocessImage(imageBitmap){
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // تكبير الصورة بمقدار مرتين (2x Scaling) لزيادة حدة الحروف النحيفة وتسهيل قراءة D و 0
+    canvas.width = imageBitmap.width * 2;
+    canvas.height = imageBitmap.height * 2;
+    
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // موازنة ألوان مرنة بدلاً من الـ Threshold القاسي
+    for(let i = 0; i < data.length; i += 4){
+        let r = data[i], g = data[i + 1], b = data[i + 2];
+        let v = (0.2126 * r + 0.7152 * g + 0.0722 * b); // تحويل رمادي احترافي يعتمد على إضاءة العين
+        
+        // تحسين التباين (Contrast Stretch) لزيادة سواد النص وبياض الخلفية دون محو الحواف
+        v = (v < 120) ? v * 0.6 : 255; 
+        
+        data[i] = data[i+1] = data[i+2] = v;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+}
+
+function extractAccounts(text){
+    results.innerHTML = "";
+    const found = new Set();
+
+    // تقسيم ذكي مبني على الفواصل والمسافات والرموز الشائعة في جداول سمة
+    const words = text.split(/[\s\n\r|:;,\/\-\_]+/);
+
+    for(let raw of words){
+        // تنظيف أولي من الرموز العشوائية
+        let clean = raw.replace(/[^A-Z0-9]/gi,"").toUpperCase();
+
+        // الفحص الذكي لبنية الحسابات وتصحيح مشكلة الـ D والـ 0
+        clean = forcePatternFix(clean);
+
+        if(clean.length === 20 || clean.length === 31){
+            if(!found.has(clean) && !/^(.)\1+$/.test(clean)){
+                found.add(clean);
+                addCard(clean);
+            }
+        }
+    }
+
+    if(found.size){
+        statusBar.innerText = `تم استخراج ${found.size} نتائج بنجاح ✅`;
+    }else{
+        statusBar.innerText = "لم يتم العثور على أرقام حسابات مطابقة ❌";
+    }
+}
+
+// خوارزمية إصلاح الخانات المشوهة هندسياً بناءً على نوع الحساب وطوله
+function forcePatternFix(cleanWord) {
+    // 1. حساب الـ 20 خانة الرقمي الصافي:
+    // إذا ظهر فيه D أو O أو Q بسبب تشوه في جدول سمة، فالمقصود به حتماً صفر 0
+    if (cleanWord.length === 20) {
+        return cleanWord.replace(/[DOQ]/g, '0');
+    }
+
+    // 2. حساب الـ 31 خانة المختلط (مشكلة حسابات تابي):
+    // البنية الرياضية لتابي تبدأ بـ حرف، ثم رقمين، ثم 3 حروف (تتضمن D عادةً)، ثم أرقام.
+    if (cleanWord.length === 31) {
+        let chars = cleanWord.split('');
+        
+        for (let i = 0; i < chars.length; i++) {
+            // إذا واجهنا صفر في مكان من المفترض هيكلياً أن يكون حرفاً كابيتال
+            if (chars[i] === '0') {
+                let isFirstChar = (i === 0);
+                let isLetterBlock = (i >= 3 && i <= 5); // الخانات المخصصة للحروف مثل D
+                
+                if (isFirstChar || isLetterBlock) {
+                    chars[i] = 'D'; // فرض قناع الحرف D بقوة المنطق الهيكلي للحساب
+                }
+            }
+        }
+        return chars.join('');
+    }
+
+    return cleanWord;
+}
+
+function addCard(value){
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+        <div class="label">ACCOUNT NUMBER (اضغط للنسخ)</div>
+        <div class="value">${value}</div>
+    `;
+    card.onclick = () => copyValue(value);
+    results.appendChild(card);
+}
+
+async function copyValue(value){
+    try{
+        await navigator.clipboard.writeText(value);
+        const old = statusBar.innerText;
+        statusBar.innerText = "تم نسخ الحساب بنجاح! 📋";
+        setTimeout(() => { statusBar.innerText = old; }, 1200);
+    }catch{
+        statusBar.innerText = "فشل النسخ ❌";
+    }
+}
+</script>
+
+</body>
+</html>
