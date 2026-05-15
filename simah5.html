@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH PDF - Precise Mode</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0c0c0c; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 360px; background: #161616; padding: 20px; border-radius: 16px; border: 1px solid #333; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; max-height: 90vh; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: #00ff00; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; text-decoration: none; font-weight: bold; }
+
+        .upload-area { border: 2px dashed #00ff0044; padding: 30px 15px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.3s; background: #1a1a1a; }
+        .upload-area:hover { border-color: #00ff00; background: #1d2a1d; }
+        .upload-area p { margin: 0; font-size: 13px; color: #888; }
+
+        .results { flex-grow: 1; overflow-y: auto; text-align: left; direction: ltr; padding-right: 5px; }
+        .card { background: #000; border: 1px solid #222; border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; border-left: 4px solid #333; }
+        .card.tabby-active { border-left-color: #ff74d2; background: #1e161b; }
+        .label { font-size: 10px; color: #666; display: block; margin-bottom: 6px; }
+        .value { font-family: 'Courier New', monospace; color: #00ff00; font-size: 14px; cursor: pointer; word-break: break-all; font-weight: bold; }
+
+        .status-bar { font-size: 11px; margin-top: 15px; color: #00ff00; font-weight: bold; min-height: 18px; border-top: 1px solid #222; padding-top: 10px; }
+        .loader { display: none; margin: 10px auto; border: 3px solid #333; border-top: 3px solid #00ff00; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+        <span style="font-size: 13px; color: #fff; font-weight: bold;">SIMAH PDF PRO</span>
+    </div>
+
+    <div class="upload-area" onclick="document.getElementById('pdfInput').click()">
+        <p id="fileName">ارفع ملف تقرير سمة (PDF)</p>
+        <input type="file" id="pdfInput" hidden accept="application/pdf" onchange="processPDF(event)">
+    </div>
+
+    <div class="loader" id="loader"></div>
+
+    <div id="results" class="results">
+        <div style="color: #444; text-align: center; margin-top: 40px; font-size: 12px;">بانتظار ملف الـ PDF...</div>
+    </div>
+
+    <div id="status" class="status-bar">جاهز للمعالجة الرقمية</div>
+</div>
+
+<script>
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    async function processPDF(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('status').innerText = "جاري استخراج البيانات... ⏳";
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('fileName').innerText = file.name;
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = "";
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                // دمج النصوص مع تنظيف المسافات والرموز التي تظهر في الـ PDF
+                fullText += content.items.map(item => item.str).join(" ") + "\n";
+            }
+
+            parseStrictPDF(fullText);
+        } catch (err) {
+            document.getElementById('status').innerText = "خطأ في قراءة الـ PDF ❌";
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    function parseStrictPDF(text) {
+        // تنظيف النص من الفواصل العمودية والرموز الغريبة
+        const cleanText = text.replace(/[|]+/g, ' ').replace(/\s+/g, ' ');
+        const resultsArea = document.getElementById('results');
+        resultsArea.innerHTML = '';
+
+        // 1. استخراج تاريخ التقرير (من خانة التاريخ والوقت)
+        const dateRegex = /(?:التاريخ والوقت|Date and Time)[:\s]*(\d{4}[-\/]\d{2}[-\/]\d{2}|\d{2}[-\/]\d{2}[-\/]\d{4})/i;
+        const dateMatch = cleanText.match(dateRegex);
+        if (dateMatch) addCard("تاريخ التقرير / DATE", dateMatch[1]);
+
+        // 2. استخراج الهوية
+        const idMatch = cleanText.match(/\b([12]\d{9})\b/);
+        const nationalID = idMatch ? idMatch[1] : null;
+        if (nationalID) addCard("رقم الهوية / ID", nationalID);
+
+        // 3. تحليل حسابات تابي (20 أو 36 خانة)
+        // نقسم النص بناءً على "حالة المنتج" لضمان ربط الحالة برقم الحساب الصحيح
+        const productBlocks = text.split(/حالة المنتج|Product Status/i);
+        let found = false;
+
+        productBlocks.forEach(block => {
+            const isTabby = /TABBY|تابي/i.test(block);
+            const isActive = /نشط|Active/i.test(block);
+
+            if (isTabby && isActive) {
+                // البحث عن سلاسل (أرقام وحروف) بطول 20 أو 36
+                const accRegex = /\b([A-Z0-9]{20}|[A-Z0-9]{36})\b/gi;
+                let match;
+                while ((match = accRegex.exec(block)) !== null) {
+                    if (match[1] !== nationalID) {
+                        addCard("حساب تابي نشط / ACTIVE ACCOUNT", match[1], true);
+                        found = true;
+                    }
+                }
+            }
+        });
+
+        document.getElementById('status').innerText = found ? "تم الاستخراج بنجاح ✅" : "لم يتم العثور على حسابات نشطة";
+    }
+
+    function addCard(label, value, isTabby = false) {
+        const div = document.createElement('div');
+        div.className = `card ${isTabby ? 'tabby-active' : ''}`;
+        div.innerHTML = `
+            <span class="label">${label}</span>
+            <div class="value" onclick="copyValue('${value}')">${value}</div>
+        `;
+        document.getElementById('results').appendChild(div);
+    }
+
+    function copyValue(val) {
+        navigator.clipboard.writeText(val);
+        const status = document.getElementById('status');
+        const old = status.innerText;
+        status.innerText = "تم النسخ: " + val;
+        setTimeout(() => status.innerText = old, 1200);
+    }
+</script>
+
+</body>
+</html>
