@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SIMAH ULTRA OCR</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+
+:root{
+    --bg:#0a0a0a;
+    --card:#131313;
+    --green:#00ff88;
+    --red:#ff4444;
+    --yellow:#ffcc00;
+    --border:#2a2a2a;
+    --text:#eee;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Segoe UI,sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    overflow:hidden;
+}
+
+.app{
+    width:360px;
+    height:95vh;
+    background:#111;
+    border:1px solid #222;
+    border-radius:18px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    box-shadow:0 0 40px rgba(0,0,0,.9);
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    font-weight:900;
+    letter-spacing:2px;
+    color:var(--green);
+}
+
+.status{
+    font-size:11px;
+    color:#999;
+}
+
+.drop{
+    border:2px dashed #00ff8844;
+    border-radius:14px;
+    padding:25px 10px;
+    text-align:center;
+    background:#151515;
+    transition:.2s;
+}
+
+.drop.active{
+    border-color:var(--green);
+    background:#00ff8820;
+}
+
+.drop h2{
+    margin:0;
+    font-size:15px;
+}
+
+.drop p{
+    margin-top:6px;
+    font-size:11px;
+    color:#888;
+}
+
+.results{
+    flex:1;
+    overflow:auto;
+}
+
+.card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-left:5px solid var(--yellow);
+    border-radius:12px;
+    padding:10px;
+    margin-bottom:10px;
+}
+
+.card.perfect{
+    border-left-color:var(--green);
+}
+
+.top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+}
+
+.badge{
+    padding:3px 6px;
+    border-radius:6px;
+    font-size:10px;
+    background:#222;
+}
+
+.visual{
+    font-family:Consolas;
+    background:#0a0a0a;
+    border-radius:8px;
+    padding:10px;
+    word-break:break-all;
+    line-height:1.6;
+    margin-bottom:8px;
+    font-size:13px;
+    color:var(--green);
+}
+
+.highlight{
+    background:var(--yellow);
+    color:#000;
+    padding:0 2px;
+    border-radius:3px;
+    font-weight:900;
+}
+
+.input{
+    width:100%;
+    background:#222;
+    border:1px solid #444;
+    border-radius:8px;
+    color:white;
+    padding:8px;
+    font-family:Consolas;
+    margin-bottom:8px;
+    font-size:13px;
+}
+
+.btn{
+    width:100%;
+    border:none;
+    background:var(--green);
+    color:#000;
+    padding:8px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:900;
+}
+
+.final{
+    max-height:140px;
+    overflow:auto;
+}
+
+.finalCard{
+    background:#181818;
+    border-left:4px solid var(--green);
+    padding:8px;
+    border-radius:8px;
+    margin-bottom:8px;
+    font-family:Consolas;
+    font-size:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.copy{
+    cursor:pointer;
+    color:#aaa;
+    font-size:11px;
+}
+
+.progress{
+    height:6px;
+    background:#222;
+    border-radius:20px;
+    overflow:hidden;
+}
+
+.bar{
+    height:100%;
+    background:var(--green);
+    width:0%;
+    transition:.2s;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <div class="header">
+        <div class="logo">SIMAH ULTRA</div>
+        <div class="status" id="status">جاهز</div>
+    </div>
+
+    <div class="drop" id="drop">
+        <h2>الصق الصورة هنا</h2>
+        <p>CTRL + V</p>
+    </div>
+
+    <div class="progress">
+        <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="results" id="results"></div>
+
+    <div class="final" id="final"></div>
+
+</div>
+
+<script>
+
+const drop = document.getElementById('drop');
+const results = document.getElementById('results');
+const final = document.getElementById('final');
+const statusDiv = document.getElementById('status');
+const bar = document.getElementById('bar');
+
+let saved = [];
+
+const confusionMap = {
+    'O':['0'],
+    '0':['O'],
+    'I':['1','L'],
+    '1':['I','L'],
+    'S':['5'],
+    '5':['S'],
+    'B':['8'],
+    '8':['B'],
+    'Z':['2'],
+    '2':['Z']
+};
+
+document.addEventListener('paste', async(e)=>{
+
+    const item = e.clipboardData.items[0];
+
+    if(!item || !item.type.includes('image')) return;
+
+    drop.classList.add('active');
+
+    setTimeout(()=>{
+        drop.classList.remove('active');
+    },400);
+
+    const file = item.getAsFile();
+
+    startOCR(file);
+
+});
+
+async function startOCR(file){
+
+    statusDiv.innerText = "تهيئة الصورة...";
+
+    bar.style.width = "10%";
+
+    const versions = await createImageVariants(file);
+
+    let candidates = [];
+
+    let index = 0;
+
+    for(const img of versions){
+
+        index++;
+
+        statusDiv.innerText =
+        `OCR Pass ${index}/${versions.length}`;
+
+        bar.style.width =
+        `${20 + (index/versions.length)*60}%`;
+
+        const text =
+        await runOCR(img);
+
+        const extracted =
+        extractUUIDs(text);
+
+        candidates.push(...extracted);
+
+    }
+
+    const ranked =
+    rankCandidates(candidates);
+
+    renderResults(ranked);
+
+    bar.style.width = "100%";
+
+    statusDiv.innerText =
+    `اكتمل التحليل`;
+
+}
+
+async function createImageVariants(file){
+
+    const base =
+    await loadImage(file);
+
+    const variants = [];
+
+    variants.push(process(base,{
+        grayscale:true,
+        contrast:220,
+        brightness:110,
+        threshold:150
+    }));
+
+    variants.push(process(base,{
+        grayscale:true,
+        contrast:300,
+        brightness:130,
+        threshold:170
+    }));
+
+    variants.push(process(base,{
+        grayscale:true,
+        contrast:250,
+        brightness:120,
+        invert:true,
+        threshold:140
+    }));
+
+    return variants;
+
+}
+
+function loadImage(file){
+
+    return new Promise(resolve=>{
+
+        const img = new Image();
+
+        img.onload = ()=>resolve(img);
+
+        img.src =
+        URL.createObjectURL(file);
+
+    });
+
+}
+
+function process(img,opts){
+
+    const canvas =
+    document.createElement('canvas');
+
+    const ctx =
+    canvas.getContext('2d');
+
+    canvas.width = img.width * 3;
+    canvas.height = img.height * 3;
+
+    ctx.imageSmoothingEnabled = false;
+
+    ctx.drawImage(
+        img,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    ctx.filter =
+    `
+    grayscale(${opts.grayscale ? 1 : 0})
+    contrast(${opts.contrast}%)
+    brightness(${opts.brightness}%)
+    `;
+
+    ctx.drawImage(canvas,0,0);
+
+    let imageData =
+    ctx.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    let d = imageData.data;
+
+    for(let i=0;i<d.length;i+=4){
+
+        let avg =
+        (d[i]+d[i+1]+d[i+2])/3;
+
+        let val =
+        avg > opts.threshold ? 255 : 0;
+
+        if(opts.invert)
+            val = 255 - val;
+
+        d[i]=d[i+1]=d[i+2]=val;
+    }
+
+    ctx.putImageData(imageData,0,0);
+
+    return canvas.toDataURL();
+
+}
+
+async function runOCR(img){
+
+    const worker =
+    await Tesseract.createWorker('eng');
+
+    await worker.setParameters({
+
+        tessedit_pageseg_mode: 6,
+
+        tessedit_char_whitelist:
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-'
+
+    });
+
+    const {
+        data:{ text }
+    } = await worker.recognize(img);
+
+    await worker.terminate();
+
+    return text.toUpperCase();
+
+}
+
+function extractUUIDs(text){
+
+    const found = [];
+
+    const cleaned =
+    text.replace(/\s+/g,'');
+
+    const regex =
+    /[A-Z0-9-]{20,40}/g;
+
+    const matches =
+    cleaned.match(regex) || [];
+
+    for(let m of matches){
+
+        let recovered =
+        recoverUUID(m);
+
+        if(recovered){
+
+            found.push(recovered);
+
+        }
+
+    }
+
+    return found;
+
+}
+
+function recoverUUID(str){
+
+    str = str.replace(/[^A-Z0-9]/g,'');
+
+    if(str.length < 32) return null;
+
+    str = str.substring(0,32);
+
+    let chars = str.split('');
+
+    for(let i=0;i<chars.length;i++){
+
+        let c = chars[i];
+
+        if(confusionMap[c]){
+
+            let best =
+            chooseBest(c);
+
+            chars[i] = best;
+
+        }
+
+    }
+
+    str = chars.join('');
+
+    return formatUUID(str);
+
+}
+
+function chooseBest(c){
+
+    if(c === 'O') return '0';
+    if(c === 'I') return '1';
+    if(c === 'S') return '5';
+    if(c === 'B') return '8';
+    if(c === 'Z') return '2';
+
+    return c;
+
+}
+
+function formatUUID(str){
+
+    return `
+${str.substring(0,8)}-
+${str.substring(8,12)}-
+${str.substring(12,16)}-
+${str.substring(16,20)}-
+${str.substring(20,32)}
+`
+.replace(/\s/g,'');
+
+}
+
+function scoreUUID(uuid){
+
+    let score = 100;
+
+    if(uuid.length !== 36)
+        score -= 50;
+
+    const parts =
+    uuid.split('-');
+
+    const expected =
+    [8,4,4,4,12];
+
+    parts.forEach((p,i)=>{
+
+        if(p.length !== expected[i])
+            score -= 20;
+
+    });
+
+    const suspicious =
+    /OOOO|1111|SSSS|BBBB/g;
+
+    if(suspicious.test(uuid))
+        score -= 25;
+
+    return score;
+
+}
+
+function rankCandidates(candidates){
+
+    const unique =
+    [...new Set(candidates)];
+
+    return unique
+    .map(c=>({
+        value:c,
+        score:scoreUUID(c)
+    }))
+    .sort((a,b)=>b.score-a.score);
+
+}
+
+function highlight(text){
+
+    return text.replace(
+        /[O0I1S5B8Z2]/g,
+        m=>`<span class="highlight">${m}</span>`
+    );
+
+}
+
+function renderResults(items){
+
+    results.innerHTML = '';
+
+    if(items.length === 0){
+
+        results.innerHTML =
+        `
+        <div style="text-align:center;color:#777;padding:30px">
+        لم يتم العثور على نتائج
+        </div>
+        `;
+
+        return;
+    }
+
+    items.forEach(item=>{
+
+        const div =
+        document.createElement('div');
+
+        div.className =
+        item.score >= 90
+        ? 'card perfect'
+        : 'card';
+
+        div.innerHTML = `
+
+        <div class="top">
+
+            <div>
+            Confidence ${item.score}%
+            </div>
+
+            <div class="badge">
+            ${
+                item.score >= 90
+                ? 'ممتاز'
+                : 'مراجعة'
+            }
+            </div>
+
+        </div>
+
+        <div class="visual">
+        ${highlight(item.value)}
+        </div>
+
+        <input
+        class="input"
+        value="${item.value}"
+        id="i_${btoa(item.value)}"
+        >
+
+        <button
+        class="btn"
+        onclick="approve('${item.value}')"
+        >
+        اعتماد
+        </button>
+        `;
+
+        results.appendChild(div);
+
+    });
+
+}
+
+function approve(val){
+
+    const id =
+    'i_' + btoa(val);
+
+    const input =
+    document.getElementById(id);
+
+    const v =
+    input.value.trim();
+
+    if(saved.includes(v))
+        return;
+
+    saved.push(v);
+
+    renderFinal();
+
+}
+
+function renderFinal(){
+
+    final.innerHTML =
+    saved.map(v=>`
+
+        <div class="finalCard">
+
+            <div onclick="copyVal('${v}')">
+            ${v}
+            </div>
+
+            <div
+            class="copy"
+            onclick="copyVal('${v}')"
+            >
+            نسخ
+            </div>
+
+        </div>
+
+    `).join('');
+
+}
+
+function copyVal(v){
+
+    navigator.clipboard.writeText(v);
+
+    statusDiv.innerText =
+    "تم النسخ";
+
+}
+
+</script>
+
+</body>
+</html>
