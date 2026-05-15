@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH - Pro Account Extractor</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: #00ff00;
+            --text: #eee;
+            --border: #333;
+            --alert: #ff4444;
+            --warn: #ffcc00;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        .app-container { 
+            width: 240px; 
+            height: 340px; 
+            background: #111; 
+            padding: 8px; 
+            border-radius: 12px; 
+            border: 1px solid #222; 
+            text-align: center; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.9); 
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box;
+            justify-content: space-between;
+        }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: var(--accent-green); padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; text-decoration: none; font-weight: bold; }
+        .clear-btn { background: var(--alert); color: white; border: none; padding: 2px 4px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: bold; }
+
+        .scan-zone { border: 1px dashed #00ff0044; padding: 10px 5px; border-radius: 6px; margin-bottom: 6px; cursor: default; pointer-events: none; transition: 0.2s; background: #1a1a1a; flex-shrink: 0; }
+        .scan-zone p { margin: 0; font-size: 11px; color: #888; font-weight: bold; }
+        .scan-zone.active { border-color: var(--accent-green); background: #00ff0011; }
+
+        .section-title { font-size: 9px; color: #aaa; text-align: right; margin: 4px 0 2px 0; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 2px; flex-shrink: 0; }
+        
+        .results { overflow-y: auto; text-align: left; direction: ltr; max-height: 100px; margin-bottom: 4px; }
+        .card { background: #000; border: 1px solid #333; border-radius: 6px; padding: 6px; margin-bottom: 4px; border-left: 3px solid var(--warn); }
+        .card.perfect-match { border-left-color: var(--accent-green); }
+        
+        .label { font-size: 8px; color: #aaa; display: flex; justify-content: space-between; margin-bottom: 4px; text-align: right; }
+        .badge { background: #222; padding: 1px 4px; border-radius: 3px; font-size: 7px; color: var(--warn); }
+        .perfect-match .badge { color: var(--accent-green); }
+
+        .visual-check { font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent-green); word-break: break-all; margin-bottom: 4px; font-weight: bold; background: #111; padding: 4px; border-radius: 4px; text-align: left; line-height: 1.3; letter-spacing: 0.5px; }
+        .highlight { color: #000; background: var(--warn); padding: 0 1px; border-radius: 2px; font-weight: 900; box-shadow: 0 0 2px var(--warn); }
+        
+        .edit-input { width: 100%; background: #222; border: 1px solid #444; color: #fff; font-family: 'Courier New', monospace; font-size: 11px; padding: 4px; border-radius: 4px; box-sizing: border-box; font-weight: bold; text-transform: uppercase; }
+        .action-btn { background: var(--accent-green); color: #000; border: none; width: 100%; padding: 4px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px; margin-top: 4px; transition: 0.2s; }
+        .action-btn:hover { background: #00cc00; }
+
+        .final-list { max-height: 70px; overflow-y: auto; direction: ltr; }
+        .final-card { background: #111; border: 1px solid #222; border-radius: 4px; padding: 4px 6px; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--accent-green); }
+        .final-value { font-family: 'Courier New', monospace; color: var(--accent-green); font-size: 10px; font-weight: bold; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        .copy-hint { font-size: 8px; color: #666; margin-left: 4px; background: #222; padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+        .copy-hint:hover { color: #fff; background: #444; }
+
+        .status-bar { font-size: 9px; color: var(--accent-green); font-weight: bold; min-height: 12px; border-top: 1px solid #222; padding-top: 4px; flex-shrink: 0; }
+        .results::-webkit-scrollbar, .final-list::-webkit-scrollbar { width: 3px; }
+        .results::-webkit-scrollbar-thumb, .final-list::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+        <span style="font-size: 10px; color: #fff; font-weight: bold; letter-spacing: 1px;">SIMAH <span style="color:var(--accent-green)">PRO</span></span>
+    </div>
+
+    <div class="scan-zone" id="dropZone">
+        <p>الصق الصورة هنا (Ctrl + V)</p>
+    </div>
+
+    <div class="section-title">التدقيق الذكي (36 خانة)</div>
+    <div id="results" class="results">
+        <div style="color: #555; text-align: center; margin-top: 20px; font-size: 10px;">بانتظار التقاط الحساب...</div>
+    </div>
+
+    <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>العمليات المعتمدة</span>
+        <button class="clear-btn" onclick="clearFinalList()">مسح الكل</button>
+    </div>
+    <div id="finalList" class="final-list"></div>
+
+    <div id="status" class="status-bar">جاهز للاستخراج فائق الدقة</div>
+</div>
+
+<script>
+    const resultsArea = document.getElementById('results');
+    const finalListArea = document.getElementById('finalList');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+    let savedAccountsList = [];
+
+    // التقاط اللصق
+    document.addEventListener('paste', async e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) {
+            dropZone.classList.add('active');
+            setTimeout(() => dropZone.classList.remove('active'), 300);
+            
+            const file = item.getAsFile();
+            const processedImageBase64 = await preprocessImage(file);
+            processImage(processedImageBase64);
+        }
+    });
+
+    // السر الأول: معالجة الصورة قبل إرسالها لـ Tesseract (Binarization)
+    // هذا يزيل التشويش ويرفع دقة الحروف بشكل هائل
+    function preprocessImage(file) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // رسم الصورة
+                ctx.drawImage(img, 0, 0);
+                
+                // تحويل لتباين عالي (أسود وأبيض نقي)
+                let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                let data = imgData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    let r = data[i], g = data[i+1], b = data[i+2];
+                    // حساب النصوع
+                    let luminance = (0.299*r + 0.587*g + 0.114*b);
+                    // Thresholding قاسي لبروز النص
+                    let val = luminance > 130 ? 255 : 0; 
+                    data[i] = data[i+1] = data[i+2] = val;
+                }
+                ctx.putImageData(imgData, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+                URL.revokeObjectURL(url);
+            };
+            img.src = url;
+        });
+    }
+
+    async function processImage(imageBase64) {
+        statusDiv.innerText = "جاري التحليل المعمق... ⏳";
+        resultsArea.innerHTML = '';
+        try {
+            const worker = await Tesseract.createWorker('eng');
+            // تقييد الحروف لتقليل الهلوسة إلى أقصى حد
+            await worker.setParameters({ 
+                tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
+                preserve_interword_spaces: '0'
+            });
+            const { data: { text } } = await worker.recognize(imageBase64);
+            await worker.terminate();
+            extractAccounts(text.toUpperCase());
+        } catch (err) { 
+            statusDiv.innerText = "فشل في محرك القراءة ❌"; 
+            console.error(err);
+        }
+    }
+
+    function extractAccounts(rawText) {
+        resultsArea.innerHTML = '';
+        let found = new Map(); // استخدام Map لمنع التكرار ولتخزين خصائص الحساب
+        
+        // تنظيف شامل للنص من أي شوائب غير الحروف، الأرقام، والفواصل
+        let pureText = rawText.replace(/[^A-Z0-9-]/g, '');
+        let cleanTextForConcat = rawText.replace(/\s+/g, ''); // دمج الأسطر المكسورة
+
+        // الخوارزمية متعددة المراحل (Multi-Pass)
+        
+        // المرحلة 1: البحث عن النمط المثالي (UUID الكامل 36 خانة)
+        const perfectRegex = /[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}/g;
+        let perfectMatches = cleanTextForConcat.match(perfectRegex) || [];
+        perfectMatches.forEach(acc => found.set(acc, 'perfect'));
+
+        // المرحلة 2: البحث عن حسابات 32 خانة متصلة (بدون فواصل) وحقن الفواصل برمجياً
+        if (found.size === 0) {
+            const continuous32Regex = /[A-Z0-9]{32}/g;
+            let raw32Matches = pureText.replace(/-/g, '').match(continuous32Regex) || [];
+            raw32Matches.forEach(acc => {
+                // حقن الفواصل لتكوين UUID سليم
+                let formattedAcc = `${acc.substr(0,8)}-${acc.substr(8,4)}-${acc.substr(12,4)}-${acc.substr(16,4)}-${acc.substr(20,12)}`;
+                if(!found.has(formattedAcc)) found.set(formattedAcc, 'auto-formatted');
+            });
+        }
+
+        // المرحلة 3: شبكة الأمان (حسابات تتراوح بين 20 إلى 36 خانة لا تطابق النمط القياسي)
+        if (found.size === 0) {
+            const fallbackRegex = /[A-Z0-9-]{20,36}/g;
+            let fallbackMatches = cleanTextForConcat.match(fallbackRegex) || [];
+            fallbackMatches.forEach(acc => {
+                if(!found.has(acc) && acc.replace(/-/g, '').length >= 20) {
+                    found.set(acc, 'warning');
+                }
+            });
+        }
+
+        // عرض النتائج
+        if (found.size > 0) {
+            found.forEach((status, acc) => addReviewCard(acc, status));
+            statusDiv.innerText = `تم اقتناص ${found.size} حساب بنجاح 🎯`;
+        } else {
+            statusDiv.innerHTML = "<span style='color:var(--alert)'>لم يتم العثور على صيغة حساب صحيحة ❌</span>";
+        }
+    }
+
+    // نظام التنبيه البصري الصارم للحروف القابلة للبس
+    function highlightSuspectCharacters(text) {
+        // تمييز شديد للأحرف التي تسبب كوارث في التحويلات
+        const suspects = /[0O1Il8B5S2Z]/g;
+        return text.replace(suspects, m => `<span class="highlight">${m}</span>`);
+    }
+
+    function addReviewCard(value, status) {
+        const cardId = 'c_' + Math.random().toString(36).substr(2, 5);
+        const div = document.createElement('div');
+        div.className = `card ${status === 'perfect' ? 'perfect-match' : ''}`;
+        div.id = cardId;
+        
+        let statusBadge = "⚠ بحاجة للتدقيق";
+        if(status === 'perfect') statusBadge = "✔ تطابق 100%";
+        if(status === 'auto-formatted') statusBadge = "🛠 تم حقن الفواصل";
+
+        div.innerHTML = `
+            <div class="label">
+                <span>تأكيد الحساب المستخرج</span>
+                <span class="badge">${statusBadge}</span>
+            </div>
+            <div class="visual-check" title="دقق المربعات الصفراء بعناية">${highlightSuspectCharacters(value)}</div>
+            <input type="text" class="edit-input" id="i_${cardId}" value="${value}">
+            <button class="action-btn" onclick="approve('${cardId}')">إعتماد نهائي للحفظ</button>
+        `;
+        resultsArea.appendChild(div);
+    }
+
+    function approve(cardId) {
+        const inputField = document.getElementById('i_'+cardId);
+        const val = inputField.value.trim().toUpperCase();
+        
+        // فحص أخير قبل الحفظ لمنع الأخطاء البشرية
+        if (val.length < 20) {
+            alert("تنبيه: طول الحساب غير منطقي (أقل من 20 خانة)!");
+            return;
+        }
+
+        if (val && !savedAccountsList.includes(val)) {
+            savedAccountsList.push(val);
+            renderList();
+        }
+        document.getElementById(cardId).remove();
+        
+        if(document.getElementById('results').children.length === 0) {
+            statusDiv.innerText = "اكتمل التدقيق ✔️";
+        }
+    }
+
+    function renderList() {
+        finalListArea.innerHTML = savedAccountsList.map(acc => `
+            <div class="final-card">
+                <div class="final-value" title="${acc}" onclick="copy('${acc}')">${acc}</div>
+                <span class="copy-hint" onclick="copy('${acc}')">نسخ</span>
+            </div>
+        `).join('');
+    }
+
+    function copy(val) {
+        navigator.clipboard.writeText(val);
+        statusDiv.innerText = "تم النسخ بنجاح! 📋";
+        setTimeout(() => {
+            if(statusDiv.innerText.includes("النسخ")) statusDiv.innerText = "جاهز..";
+        }, 1500);
+    }
+
+    function clearFinalList() {
+        if(savedAccountsList.length > 0 && confirm("هل أنت متأكد من مسح القائمة المعتمدة؟")) { 
+            savedAccountsList = []; 
+            renderList(); 
+            statusDiv.innerText = "تم تفريغ القائمة 🗑️";
+        }
+    }
+</script>
+</body>
+</html>
