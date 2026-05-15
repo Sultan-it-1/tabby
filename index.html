@@ -29,14 +29,14 @@
         .container {
             text-align: center;
             width: 100%;
-            max-width: 400px;
+            max-width: 360px; /* تم تصغير عرض الحاوية لتناسب المربعات الأصغر */
             padding: 20px;
         }
 
         .header h1 {
-            font-size: 24px;
+            font-size: 22px; /* تصغير عنوان الصفحة قليلاً */
             color: var(--accent-green);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 2px;
             text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
@@ -44,21 +44,21 @@
 
         .header p {
             color: #888;
-            font-size: 14px;
-            margin-bottom: 30px;
+            font-size: 13px;
+            margin-bottom: 25px;
         }
 
         .menu-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 15px;
+            gap: 12px; /* تقليل الفراغ بين المربعات */
         }
 
         .menu-item {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 15px;
-            padding: 25px;
+            border-radius: 12px; /* تصغير زوايا الانحناء ليناسب الحجم الجديد */
+            padding: 15px 20px; /* تم تقليل الـ Padding لتصغير المربع (كان 25px) */
             text-decoration: none;
             color: var(--text);
             transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -70,9 +70,9 @@
         }
 
         .menu-item:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px); /* تقليل قفزة الهوفر لتناسب الحجم الصغير */
             border-color: var(--accent-green);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
         }
 
         .menu-item.card-tool:hover {
@@ -80,18 +80,18 @@
         }
 
         .icon {
-            font-size: 40px;
-            margin-bottom: 15px;
+            font-size: 28px; /* تصغير حجم الأيقونة (كان 40px) */
+            margin-bottom: 8px; /* تقليل المسافة أسفل الأيقونة */
         }
 
         .title {
-            font-size: 18px;
+            font-size: 15px; /* تصغير حجم عنوان المربع (كان 18px) */
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
 
         .desc {
-            font-size: 12px;
+            font-size: 11px; /* تصغير حجم الوصف (كان 12px) */
             color: #888;
             line-height: 1.4;
         }
@@ -111,8 +111,8 @@
         }
 
         .footer {
-            margin-top: 40px;
-            font-size: 11px;
+            margin-top: 30px;
+            font-size: 10px;
             color: #444;
             letter-spacing: 1px;
         }
