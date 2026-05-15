@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH Visual Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .app-container { width: 350px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.6); display: flex; flex-direction: column; max-height: 90vh; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .nav-btn { background: #252525; border: 1px solid #444; color: #00ff00; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; text-decoration: none; }
+
+        .paste-zone { border: 2px dashed #444; padding: 25px 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #888; transition: 0.3s; cursor: pointer; }
+        .paste-zone.active { border-color: #00ff00; background: #122212; color: #00ff00; }
+
+        .results { flex-grow: 1; overflow-y: auto; text-align: left; direction: ltr; }
+        .card { background: #000; border: 1px solid #222; border-radius: 8px; padding: 12px; margin-bottom: 8px; position: relative; border-right: 3px solid #333; }
+        .card.tabby { border-right-color: #ff74d2; background: #1a1418; }
+        .label { font-size: 9px; color: #666; text-transform: uppercase; display: block; margin-bottom: 4px; }
+        .value { font-family: monospace; color: #00ff00; font-size: 13px; cursor: pointer; word-break: break-all; }
+
+        .status { font-size: 11px; margin-top: 10px; color: #00ff00; font-weight: bold; height: 15px; }
+        hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+        <span style="font-size: 12px; color: #00ff00; font-weight: bold;">SIMAH OCR PRO</span>
+    </div>
+
+    <div class="paste-zone" id="dropZone">
+        اضغط هنا وارفع الصورة أو الصقها (Ctrl+V)
+    </div>
+
+    <div id="results" class="results">
+        <div style="color: #444; text-align: center; margin-top: 20px;">في انتظار سكرين شوت التقرير...</div>
+    </div>
+
+    <div id="status" class="status">جاهز للفحص البصري..</div>
+</div>
+
+<script>
+    const resultsArea = document.getElementById('results');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+
+    // دعم اللصق (Paste)
+    document.addEventListener('paste', e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) {
+            processImage(item.getAsFile());
+        }
+    });
+
+    // دعم الرفع بالضغط
+    dropZone.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => processImage(e.target.files[0]);
+        input.click();
+    };
+
+    async function processImage(file) {
+        statusDiv.innerText = "جاري استخراج النصوص بصرياً... ⏳";
+        resultsArea.innerHTML = '';
+        dropZone.classList.add('active');
+
+        try {
+            // استخدام اللغة العربية والإنجليزية معاً لضمان الدقة
+            const { data: { text } } = await Tesseract.recognize(file, 'ara+eng', {
+                logger: m => { if(m.status === 'recognizing text') statusDiv.innerText = `جاري القراءة: ${Math.round(m.progress * 100)}%`; }
+            });
+            parseVisualData(text);
+        } catch (err) {
+            statusDiv.innerText = "خطأ في معالجة الصورة ❌";
+        }
+        dropZone.classList.remove('active');
+    }
+
+    function parseVisualData(text) {
+        // تنظيف النص من المسافات الزائدة لسهولة البحث
+        const cleanText = text.replace(/\s+/g, ' ');
+        
+        // 1. استخراج الهوية (10 أرقام)
+        const idMatch = cleanText.match(/\b([12]\d{9})\b/);
+        const nationalID = idMatch ? idMatch[1] : null;
+
+        // 2. استخراج التاريخ (البحث عن النمط القريب من "الوقت" أو "التاريخ")
+        // نبحث عن تنسيق DD/MM/YYYY أو YYYY/MM/DD
+        const dateMatch = cleanText.match(/(\d{2}[-\/]\d{2}[-\/]\d{4})|(\d{4}[-\/]\d{2}[-\/]\d{2})/);
+        
+        resultsArea.innerHTML = ''; // مسح النتائج السابقة
+
+        if (nationalID) addCard("رقم الهوية", nationalID);
+        if (dateMatch) addCard("تاريخ التقرير", dateMatch[0]);
+
+        // 3. استخراج حسابات تابي (20 أو 36 خانة)
+        // نقسم النص إلى أجزاء عند ذكر تابي لضمان السياق
+        const parts = text.split(/(?=تابي|TABBY)/gi);
+        let found = false;
+
+        parts.forEach(part => {
+            const isTabby = /تابي|TABBY/i.test(part);
+            const isActive = /نشط|Active|منتظم|Regular/i.test(part) && !/مغلق|Closed|Default/i.test(part);
+
+            if (isTabby && isActive) {
+                // استخراج أي سلسلة أرقام بطول 20 أو 36 داخل هذا الجزء
+                const accMatches = part.match(/\d{20}|\d{36}/g);
+                if (accMatches) {
+                    accMatches.forEach(acc => {
+                        if (acc !== nationalID) {
+                            addCard("حساب تابي نشط", acc, true);
+                            found = true;
+                        }
+                    });
+                }
+            }
+        });
+
+        statusDiv.innerText = found ? "تم الاستخراج بنجاح ✅" : "لم يتم العثور على حسابات نشطة";
+    }
+
+    function addCard(label, value, isTabby = false) {
+        const div = document.createElement('div');
+        div.className = `card ${isTabby ? 'tabby' : ''}`;
+        div.innerHTML = `
+            <span class="label">${label}</span>
+            <div class="value" onclick="copyValue('${value}')">${value}</div>
+        `;
+        resultsArea.appendChild(div);
+    }
+
+    function copyValue(val) {
+        navigator.clipboard.writeText(val);
+        statusDiv.innerText = "تم النسخ: " + val;
+        setTimeout(() => statusDiv.innerText = "جاهز..", 1200);
+    }
+</script>
+
+</body>
+</html>
