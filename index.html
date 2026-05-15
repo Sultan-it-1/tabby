@@ -27,17 +27,18 @@
             overflow: hidden;
         }
 
+        /* تصغير حجم الصندوق الرئيسي بالكامل */
         .container {
             text-align: center;
             width: 100%;
-            max-width: 360px;
-            padding: 20px;
+            max-width: 290px; 
+            padding: 15px;
         }
 
         .header h1 {
-            font-size: 22px;
+            font-size: 18px; /* تصغير العنوان */
             color: var(--accent-green);
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 2px;
             text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
@@ -45,21 +46,21 @@
 
         .header p {
             color: #888;
-            font-size: 13px;
-            margin-bottom: 20px;
+            font-size: 11px; /* تصغير الوصف الفرعي */
+            margin-bottom: 15px;
         }
 
         .menu-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 8px; /* تقليل الفراغات بين الصناديق */
         }
 
         .menu-item {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 15px 20px;
+            border-radius: 8px; /* زوايا أنعم متناسقة مع الحجم الصغير */
+            padding: 10px 14px; /* تقليص الحشو الداخلي لجعلها نحيفة */
             text-decoration: none;
             color: var(--text);
             transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -71,9 +72,9 @@
         }
 
         .menu-item:hover {
-            transform: translateY(-3px);
+            transform: translateY(-2px);
             border-color: var(--accent-green);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
         }
 
         .menu-item.simah-tool:hover {
@@ -85,20 +86,20 @@
         }
 
         .icon {
-            font-size: 28px;
-            margin-bottom: 8px;
+            font-size: 20px; /* تصغير الأيقونات */
+            margin-bottom: 4px;
         }
 
         .title {
-            font-size: 15px;
+            font-size: 13px; /* تصغير عناوين الأدوات */
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .desc {
-            font-size: 11px;
-            color: #888;
-            line-height: 1.4;
+            font-size: 10px; /* تصغير نصوص الشرح */
+            color: #777;
+            line-height: 1.3;
         }
 
         .menu-item::after {
@@ -115,8 +116,8 @@
         }
 
         .footer {
-            margin-top: 30px;
-            font-size: 10px;
+            margin-top: 20px;
+            font-size: 9px;
             color: #444;
             letter-spacing: 1px;
         }
@@ -135,14 +136,14 @@
             <a href="note.html" class="menu-item">
                 <div class="icon">📝</div>
                 <div class="title">نظام النوتات الذكي</div>
-                <div class="desc">إدارة ونسخ نصوص خدمة العملاء والاختصارات الجاهزة بضغطة واحدة.</div>
+                <div class="desc">إدارة ونسخ نصوص خدمة العملاء والاختصارات بضغطة واحدة.</div>
             </a>
 
-            <!-- رابط أداة سمة المضافة حديثاً -->
+            <!-- رابط أداة سمة (SIMAH) -->
             <a href="simah.html" class="menu-item simah-tool">
                 <div class="icon">📊</div>
                 <div class="title">مستخرج حسابات سمة (SIMAH)</div>
-                <div class="desc">استخراج وتدقيق أرقام الحسابات بصرياً وتلوين الخانات المشبوهة.</div>
+                <div class="desc">استخراج وتدقيق أرقام الحسابات وتلوين الخانات المشبوهة.</div>
             </a>
 
             <!-- رابط أداة الـ Scanner/Card -->
