@@ -58,14 +58,15 @@
         .results { overflow-y: auto; text-align: left; direction: ltr; max-height: 80px; margin-bottom: 4px; }
         .card { background: #000; border: 1px solid #333; border-radius: 6px; padding: 6px; margin-bottom: 4px; border-left: 3px solid #ffcc00; }
         
+        /* ترويسة الكارت مقسمة لليمين واليسار بشكل متزن */
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; direction: rtl; }
+        .card-header-right { display: flex; align-items: center; gap: 4px; }
         .label { font-size: 8px; color: #aaa; }
         
-        /* تنسيق العداد ومؤشر الحالة للـ input */
-        .input-wrapper { position: relative; display: flex; align-items: center; }
-        .char-counter { position: absolute; left: 6px; font-size: 9px; font-weight: bold; padding: 2px 4px; border-radius: 3px; background: rgba(0,0,0,0.6); pointer-events: none; direction: ltr; }
-        .counter-valid { color: var(--accent-green); }
-        .counter-invalid { color: var(--danger-red); }
+        /* تنسيق العداد الجديد المنفصل */
+        .char-counter { font-size: 8px; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: #111; direction: ltr; }
+        .counter-valid { color: var(--accent-green); border: 1px solid rgba(0, 255, 0, 0.2); }
+        .counter-invalid { color: var(--danger-red); border: 1px solid rgba(255, 51, 51, 0.2); }
 
         .play-btn { background: transparent; border: none; cursor: pointer; font-size: 12px; padding: 0; transition: transform 0.1s; }
         .play-btn:active { transform: scale(0.9); }
@@ -73,7 +74,8 @@
         .visual-check { font-family: 'Courier New', monospace; font-size: 12px; color: var(--accent-green); word-break: break-all; margin-bottom: 4px; font-weight: bold; background: #111; padding: 2px; border-radius: 4px; text-align: left; line-height: 1.2; }
         .highlight { color: #ffcc00; background: #443300; padding: 0 1px; border-radius: 2px; }
         
-        .edit-input { width: 100%; background: #222; border: 1px solid #444; color: #fff; font-family: 'Courier New', monospace; font-size: 11px; padding: 4px 35px 4px 4px; box-sizing: border-box; font-weight: bold; border-radius: 4px; }
+        /* مربع الإدخال الآن متاح بالكامل للأرقام دون تداخل */
+        .edit-input { width: 100%; background: #222; border: 1px solid #444; color: #fff; font-family: 'Courier New', monospace; font-size: 11px; padding: 4px; box-sizing: border-box; font-weight: bold; border-radius: 4px; }
         .action-btn { background: var(--accent-green); color: #000; border: none; width: 100%; padding: 4px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px; margin-top: 4px; }
 
         .final-list { max-height: 70px; overflow-y: auto; direction: ltr; }
@@ -206,13 +208,13 @@
         window.speechSynthesis.speak(utterance);
     }
 
-    // دالة تحديث العداد واللون ديناميكياً عند الكتابة أو التعديل
+    // دالة تحديث العداد واللون
     function updateCounter(cardId) {
         const inputEl = document.getElementById(`i_${cardId}`);
         const counterEl = document.getElementById(`count_${cardId}`);
         const len = inputEl.value.trim().length;
         
-        counterEl.innerText = len;
+        counterEl.innerText = len + " خانة";
         
         if (len === 20 || len === 36) {
             counterEl.className = 'char-counter counter-valid';
@@ -228,19 +230,19 @@
         div.id = cardId;
         div.innerHTML = `
             <div class="card-header">
-                <span class="label">تأكيد الحساب</span>
+                <div class="card-header-right">
+                    <span class="label">تأكيد الحساب</span>
+                    <span id="count_${cardId}" class="char-counter">0 خانة</span>
+                </div>
                 <button class="play-btn" onclick="speakAccount('i_${cardId}')" title="استماع للحساب">🔊</button>
             </div>
             <div class="visual-check" id="v_${cardId}">${highlightSuspectCharacters(value)}</div>
-            <div class="input-wrapper">
-                <input type="text" class="edit-input" id="i_${cardId}" value="${value}" oninput="updateCounter('${cardId}')">
-                <span id="count_${cardId}" class="char-counter">0</span>
-            </div>
+            <input type="text" class="edit-input" id="i_${cardId}" value="${value}" oninput="updateCounter('${cardId}')">
             <button class="action-btn" onclick="approve('${cardId}')">إعتماد للحفظ</button>
         `;
         resultsArea.appendChild(div);
         
-        // تشغيل العداد لأول مرة عند إنشاء البطاقة تلقائياً
+        // تشغيل العداد عند الإنشاء الأول للبطاقة
         updateCounter(cardId);
     }
 
