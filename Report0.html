@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SIMAH Scanner Pro</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+    *{
+        box-sizing:border-box;
+    }
+
+    body{
+        margin:0;
+        background:#0b0b0b;
+        color:white;
+        font-family:Segoe UI,sans-serif;
+        height:100vh;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        overflow:hidden;
+    }
+
+    .app{
+        width:380px;
+        max-height:90vh;
+        overflow:hidden;
+        display:flex;
+        flex-direction:column;
+        background:#151515;
+        border:1px solid #2c2c2c;
+        border-radius:18px;
+        padding:18px;
+        box-shadow:0 0 40px rgba(0,0,0,.8);
+    }
+
+    .header{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:15px;
+    }
+
+    .title{
+        font-size:14px;
+        font-weight:bold;
+        color:#00ff88;
+    }
+
+    .btn{
+        background:#202020;
+        border:1px solid #333;
+        color:#00ff88;
+        padding:6px 12px;
+        border-radius:8px;
+        cursor:pointer;
+        font-size:11px;
+    }
+
+    .drop-zone{
+        border:2px dashed #00ff8855;
+        border-radius:14px;
+        padding:40px 15px;
+        text-align:center;
+        cursor:pointer;
+        transition:.25s;
+        background:#181818;
+    }
+
+    .drop-zone:hover{
+        border-color:#00ff88;
+        background:#1f1f1f;
+    }
+
+    .drop-zone p{
+        margin:0;
+        font-size:13px;
+        color:#aaa;
+    }
+
+    .hint{
+        margin-top:10px;
+        font-size:10px;
+        color:#666;
+    }
+
+    .results{
+        margin-top:15px;
+        overflow-y:auto;
+        flex:1;
+    }
+
+    .card{
+        background:black;
+        border:1px solid #222;
+        border-left:4px solid #00ff88;
+        border-radius:10px;
+        padding:12px;
+        margin-bottom:10px;
+    }
+
+    .label{
+        font-size:10px;
+        color:#666;
+        margin-bottom:6px;
+    }
+
+    .value{
+        font-family:Consolas,monospace;
+        color:#00ff88;
+        font-size:14px;
+        font-weight:bold;
+        word-break:break-all;
+        cursor:pointer;
+    }
+
+    .status{
+        margin-top:10px;
+        padding-top:10px;
+        border-top:1px solid #222;
+        font-size:11px;
+        color:#00ff88;
+        min-height:20px;
+    }
+
+    canvas{
+        display:none;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <div class="header">
+        <div class="title">SIMAH OCR PRO</div>
+        <button class="btn" onclick="openPicker()">رفع صورة</button>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+        <p>اضغط أو الصق صورة التقرير</p>
+        <div class="hint">
+            OCR Engine + Smart Detection
+        </div>
+    </div>
+
+    <div class="results" id="results">
+        <div style="text-align:center;color:#555;margin-top:30px;font-size:12px;">
+            بانتظار الصورة...
+        </div>
+    </div>
+
+    <div class="status" id="status">
+        جاهز للفحص
+    </div>
+
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const dropZone = document.getElementById("dropZone");
+const results = document.getElementById("results");
+const statusBar = document.getElementById("status");
+
+document.addEventListener("paste", e => {
+
+    const item = [...e.clipboardData.items]
+        .find(i => i.type.includes("image"));
+
+    if(item){
+        processImage(item.getAsFile());
+    }
+});
+
+dropZone.addEventListener("click", openPicker);
+
+function openPicker(){
+
+    const input = document.createElement("input");
+
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.onchange = e => {
+        const file = e.target.files[0];
+
+        if(file){
+            processImage(file);
+        }
+    };
+
+    input.click();
+}
+
+async function processImage(file){
+
+    try{
+
+        results.innerHTML = "";
+        statusBar.innerText = "جاري تجهيز الصورة...";
+
+        const imageBitmap = await createImageBitmap(file);
+
+        // تحسين الصورة قبل OCR
+        const processedBlob = await preprocessImage(imageBitmap);
+
+        statusBar.innerText = "جاري تشغيل محرك OCR...";
+
+        const worker = await Tesseract.createWorker("eng");
+
+        await worker.setParameters({
+
+            tessedit_char_whitelist:
+                "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+
+            tessedit_pageseg_mode: "6",
+
+            preserve_interword_spaces: "1"
+        });
+
+        const { data } = await worker.recognize(processedBlob);
+
+        await worker.terminate();
+
+        statusBar.innerText = "جاري تحليل النتائج...";
+
+        extractAccounts(data.text);
+
+    }catch(err){
+
+        console.error(err);
+
+        statusBar.innerText = "فشل في معالجة الصورة";
+    }
+}
+
+async function preprocessImage(imageBitmap){
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = imageBitmap.width;
+    canvas.height = imageBitmap.height;
+
+    ctx.drawImage(imageBitmap,0,0);
+
+    // تحسين التباين والحدة
+    const imageData = ctx.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    const data = imageData.data;
+
+    for(let i = 0; i < data.length; i += 4){
+
+        let r = data[i];
+        let g = data[i + 1];
+        let b = data[i + 2];
+
+        // grayscale
+        let gray = (r + g + b) / 3;
+
+        // threshold قوي
+        gray = gray > 140 ? 255 : 0;
+
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+    }
+
+    ctx.putImageData(imageData,0,0);
+
+    return await new Promise(resolve => {
+        canvas.toBlob(resolve,"image/png");
+    });
+}
+
+function extractAccounts(text){
+
+    results.innerHTML = "";
+
+    const found = new Set();
+
+    // تنظيف وتقسيم
+    const words = text.split(/[\s\n\r|:;,\/]+/);
+
+    for(let raw of words){
+
+        let clean = normalize(raw);
+
+        // استبعاد القيم القصيرة
+        if(clean.length < 20){
+            continue;
+        }
+
+        // السماح فقط بـ A-Z + 0-9
+        if(!/^[A-Z0-9]+$/.test(clean)){
+            continue;
+        }
+
+        // الأحجام المطلوبة
+        if(clean.length === 20 || clean.length === 31){
+
+            // منع القيم المكررة
+            if(!found.has(clean)){
+
+                found.add(clean);
+
+                addCard(clean);
+            }
+        }
+    }
+
+    if(found.size){
+
+        statusBar.innerText =
+            `تم استخراج ${found.size} نتائج بنجاح`;
+
+    }else{
+
+        statusBar.innerText =
+            "لم يتم العثور على نتائج مطابقة";
+    }
+}
+
+function normalize(text){
+
+    return text
+        .replace(/[^A-Z0-9]/gi,"")
+        .toUpperCase();
+
+    // ❌ لا نحول D إلى 0
+    // ❌ لا نحول 0 إلى D
+}
+
+function addCard(value){
+
+    const card = document.createElement("div");
+
+    card.className = "card";
+
+    card.innerHTML = `
+        <div class="label">
+            ACCOUNT NUMBER
+        </div>
+
+        <div class="value">
+            ${value}
+        </div>
+    `;
+
+    card.onclick = () => copyValue(value);
+
+    results.appendChild(card);
+}
+
+async function copyValue(value){
+
+    try{
+
+        await navigator.clipboard.writeText(value);
+
+        const old = statusBar.innerText;
+
+        statusBar.innerText = "تم النسخ";
+
+        setTimeout(() => {
+            statusBar.innerText = old;
+        },1200);
+
+    }catch{
+        statusBar.innerText = "فشل النسخ";
+    }
+}
+
+</script>
+
+</body>
+</html>
