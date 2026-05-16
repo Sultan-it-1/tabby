@@ -81,6 +81,8 @@
             outline: none;
             font-family: inherit;
             line-height: 1.4;
+            /* تم تعديل المحاذاة هنا لتتوافق مع الاتجاه التلقائي */
+            text-align: start; 
         }
 
         .note-area:focus {
@@ -149,8 +151,8 @@
             <h1>Sticky Notes</h1>
         </div>
 
-        <!-- ساحة كتابة الملاحظات -->
-        <textarea id="stickyNote" class="note-area" placeholder="اكتب ملاحظاتك هنا... سيتم حفظها تلقائياً"></textarea>
+        <!-- إضافة dir="auto" هنا لحل مشكلة اتجاه النصوص والأرقام تلقائياً -->
+        <textarea id="stickyNote" class="note-area" dir="auto" placeholder="اكتب ملاحظاتك هنا... سيتم حفظها تلقائياً"></textarea>
 
         <!-- أزرار التحكم -->
         <div class="actions">
