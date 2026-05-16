@@ -81,8 +81,10 @@
             outline: none;
             font-family: inherit;
             line-height: 1.4;
-            /* تم تعديل المحاذاة هنا لتتوافق مع الاتجاه التلقائي */
-            text-align: start; 
+            
+            /* التعديل السحري لحل مشكلة اتجاه المؤشر والنصوص بشكل ديناميكي كامل */
+            text-align: start;
+            unicode-bidi: plaintext;
         }
 
         .note-area:focus {
@@ -151,7 +153,7 @@
             <h1>Sticky Notes</h1>
         </div>
 
-        <!-- إضافة dir="auto" هنا لحل مشكلة اتجاه النصوص والأرقام تلقائياً -->
+        <!-- ساحة كتابة الملاحظات مع دعم الاتجاه التلقائي للمؤشر والنص -->
         <textarea id="stickyNote" class="note-area" dir="auto" placeholder="اكتب ملاحظاتك هنا... سيتم حفظها تلقائياً"></textarea>
 
         <!-- أزرار التحكم -->
@@ -174,43 +176,29 @@
         const noteArea = document.getElementById('stickyNote');
         const footerElement = document.getElementById('dynamicFooter');
 
-        // قائمة العبارات التحفيزية التي أرسلتها
+        // قائمة العبارات التحفيزية
         const phrases = [
-            "Keep it up 👏",
-            "Great job 🔥",
-            "Excellent work 🚀",
-            "You’re doing great 💯",
-            "Well done 👌",
-            "Nice progress 📈",
-            "Outstanding 👏",
-            "Impressive work ⭐",
-            "Keep pushing 💪",
-            "You nailed it ✅",
-            "Smooth work 😎",
-            "Solid effort 👌",
-            "Keep grinding 🚀",
-            "Big respect 👏",
-            "That’s clean ✨",
-            "Smart move 🧠",
-            "Strong performance 💯",
-            "Keep shining ⭐",
+            "Keep it up 👏", "Great job 🔥", "Excellent work 🚀", 
+            "You’re doing great 💯", "Well done 👌", "Nice progress 📈", 
+            "Outstanding 👏", "Impressive work ⭐", "Keep pushing 💪", 
+            "You nailed it ✅", "Smooth work 😎", "Solid effort 👌", 
+            "Keep grinding 🚀", "Big respect 👏", "That’s clean ✨", 
+            "Smart move 🧠", "Strong performance 💯", "Keep shining ⭐", 
             "Leveling up 🚀"
         ];
 
-        // اختيار عبارة عشوائية عند تحميل الصفحة
+        // عند تحميل الصفحة
         window.onload = function() {
-            // 1. استرجاع الملاحظة المحفوظة
             const savedNote = localStorage.getItem('quick_sticky_note');
             if (savedNote) {
                 noteArea.value = savedNote;
             }
 
-            // 2. تغيير عبارة الـ Footer بشكل عشوائي
             const randomIndex = Math.floor(Math.random() * phrases.length);
             footerElement.innerText = phrases[randomIndex];
         };
 
-        // حفظ الملاحظة تلقائياً أثناء الكتابة
+        // حفظ الملاحظة تلقائياً
         noteArea.addEventListener('input', function() {
             localStorage.setItem('quick_sticky_note', noteArea.value);
         });
@@ -224,12 +212,11 @@
             }
         }
 
-        // وظيفة زر النسخ السريع
+        // وظيفة زر النسخ
         function copyNote() {
             if (noteArea.value.trim() !== "") {
                 navigator.clipboard.writeText(noteArea.value);
                 
-                // تأثير بصري سريع عند النسخ
                 const copyBtn = document.querySelector('.btn-copy');
                 const originalText = copyBtn.innerHTML;
                 copyBtn.innerHTML = "✅ تم النسخ";
