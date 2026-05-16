@@ -154,7 +154,6 @@
     </div>
 
     <div class="scrollable-content">
-        <!-- تم تعديل النص هنا وإلغاء حدث فتح الملفات تماماً -->
         <div class="paste-zone" id="dropZone">الصق الصورة هنا مباشرة (Ctrl + V)</div>
         
         <div class="output-wrapper">
@@ -216,7 +215,6 @@
         }
     }
 
-    // التنصت لعملية اللصق فقط
     document.addEventListener('paste', async (e) => {
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
@@ -288,11 +286,16 @@
     }
 
     function toggleEditMode() {
-        if (outputDiv.innerText.includes("البيانات ستظهر هنا")) return;
-
         if (!isEditMode) {
             isEditMode = true;
-            outputEdit.value = outputDiv.innerText;
+            
+            // إذا كان النص هو النص الافتراضي، اجعل حقل الإدخال فارغاً للكتابة المباشرة
+            if (outputDiv.innerText.includes("البيانات ستظهر هنا")) {
+                outputEdit.value = "";
+            } else {
+                outputEdit.value = outputDiv.innerText;
+            }
+            
             outputDiv.style.display = 'none';
             outputEdit.style.display = 'block';
             editBtn.innerText = '✅';
@@ -314,6 +317,10 @@
                 updateUI(updatedText, card, amount, time, date);
                 secureCopy(updatedText);
                 statusDiv.innerText = "تم تحديث البيانات ونسخها! 💾";
+            } else {
+                // في حال مسح النص بالكامل، أعد الحالة الافتراضية
+                outputDiv.innerText = "البيانات ستظهر هنا";
+                updateUI("البيانات ستظهر هنا", "-", "-", "-", "-");
             }
         }
     }
