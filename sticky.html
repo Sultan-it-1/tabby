@@ -132,10 +132,12 @@
         .footer {
             margin-top: 5px;
             font-size: 8px;
-            color: #444;
+            color: #555;
             border-top: 1px solid #1a1a1a;
             padding-top: 6px;
             text-align: center;
+            font-weight: 500;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
@@ -144,7 +146,7 @@
     <div class="container">
         <div class="header">
             <a href="index.html" class="back-btn">↩</a>
-            <h1>النوتات السريعة</h1>
+            <h1>Sticky Notes</h1>
         </div>
 
         <!-- ساحة كتابة الملاحظات -->
@@ -160,20 +162,51 @@
             </button>
         </div>
 
-        <div class="footer">
-            Shortcut Toolkit
+        <!-- هنا تظهر العبارات المتغيرة -->
+        <div id="dynamicFooter" class="footer">
+             Toolkit
         </div>
     </div>
 
     <script>
         const noteArea = document.getElementById('stickyNote');
+        const footerElement = document.getElementById('dynamicFooter');
 
-        // تحميل الملاحظة المحفوظة عند فتح الصفحة
+        // قائمة العبارات التحفيزية التي أرسلتها
+        const phrases = [
+            "Keep it up 👏",
+            "Great job 🔥",
+            "Excellent work 🚀",
+            "You’re doing great 💯",
+            "Well done 👌",
+            "Nice progress 📈",
+            "Outstanding 👏",
+            "Impressive work ⭐",
+            "Keep pushing 💪",
+            "You nailed it ✅",
+            "Smooth work 😎",
+            "Looking good 🔥",
+            "Solid effort 👌",
+            "Keep grinding 🚀",
+            "Big respect 👏",
+            "That’s clean ✨",
+            "Smart move 🧠",
+            "Strong performance 💯",
+            "Keep shining ⭐",
+            "Leveling up 🚀"
+        ];
+
+        // اختيار عبارة عشوائية عند تحميل الصفحة
         window.onload = function() {
+            // 1. استرجاع الملاحظة المحفوظة
             const savedNote = localStorage.getItem('quick_sticky_note');
             if (savedNote) {
                 noteArea.value = savedNote;
             }
+
+            // 2. تغيير عبارة الـ Footer بشكل عشوائي
+            const randomIndex = Math.floor(Math.random() * phrases.length);
+            footerElement.innerText = phrases[randomIndex];
         };
 
         // حفظ الملاحظة تلقائياً أثناء الكتابة
