@@ -11,7 +11,7 @@
             --accent-green: #00ff00;
             --accent-blue: #00d4ff;
             --accent-yellow: #ffcc00;
-            --accent-orange: #ff9f43; /* لون مخصص لزر الاستيكي نوت ليتميز */
+            --accent-orange: #ff9f43;
             --text: #eee;
             --border: #333;
         }
@@ -92,7 +92,7 @@
 
         .menu-item.simah-tool:hover { border-color: var(--accent-yellow); }
         .menu-item.card-tool:hover { border-color: var(--accent-blue); }
-        .menu-item.sticky-tool:hover { border-color: var(--accent-orange); } /* تأثير التمرير الخاص بالزر الجديد */
+        .menu-item.sticky-tool:hover { border-color: var(--accent-orange); }
 
         .icon { font-size: 16px; flex-shrink: 0; }
         .text-wrapper { display: flex; flex-direction: column; overflow: hidden; }
@@ -127,26 +127,17 @@
         .heart {
             color: #ff3333;
             display: inline-block;
-            /* إضافة حركة النبض هنا لتستمر للأبد بشكل ناعم */
             animation: pulse 1.4s infinite ease-in-out;
         }
 
-        /* تأثير إضافي عند تمرير الماوس على الحاوية كاملة */
         .container:hover .heart {
-            animation-duration: 0.8s; /* يزداد نبض القلب سرعة قليلاً عند التفاعل */
+            animation-duration: 0.8s;
         }
 
-        /* حركة نبض بسيطة وواقعية (تكبير خفيف جداً ثم العودة للحجم الطبيعي) */
         @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            30% {
-                transform: scale(1.15);
-            }
-            60% {
-                transform: scale(1.05);
-            }
+            0%, 100% { transform: scale(1); }
+            30% { transform: scale(1.15); }
+            60% { transform: scale(1.05); }
         }
 
         .footer b {
@@ -158,7 +149,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>Shortcut</h1>
+            <h1>FAST TOOLKIT</h1>
             <p>اختر الأداة المطلوبة للبدء</p>
         </div>
 
@@ -167,15 +158,7 @@
                 <div class="icon">📝</div>
                 <div class="text-wrapper">
                     <div class="title">النوتات</div>
-                    <div class="desc">إدارة ونسخ نصوص وااختصارات العملاء بضغطة.</div>
-                </div>
-            </a>
-
-            <a href="sticky.html" class="menu-item sticky-tool">
-                <div class="icon">📌</div>
-                <div class="text-wrapper">
-                    <div class="title">ملاحظات لاصقة Sticky Note</div>
-                    <div class="desc">تدوين الملاحظات السريعة والمهمة.</div>
+                    <div class="desc">إدارة ونسخ نصوص واختصارات العملاء بضغطة.</div>
                 </div>
             </a>
 
@@ -192,6 +175,14 @@
                 <div class="text-wrapper">
                     <div class="title">البطاقات Card Scan</div>
                     <div class="desc">استخراج بيانات البطاقات والمبالغ من الصور تلقائياً.</div>
+                </div>
+            </a>
+
+            <a href="sticky.html" class="menu-item sticky-tool">
+                <div class="icon">📌</div>
+                <div class="text-wrapper">
+                    <div class="title">Sticky Notes</div>
+                    <div class="desc">تدوين الملاحظات السريعة والمهمة.</div>
                 </div>
             </a>
         </div>
