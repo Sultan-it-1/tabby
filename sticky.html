@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>النوتات - الملاحظات السريعة</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: #00ff00;
+            --accent-red: #ff3333;
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+        }
+
+        .header {
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 2px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+        }
+
+        .back-btn {
+            position: absolute;
+            right: 0;
+            top: 0;
+            color: #666;
+            text-decoration: none;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+
+        .back-btn:hover {
+            color: var(--accent-green);
+        }
+
+        .note-area {
+            flex-grow: 1;
+            margin: 8px 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            color: var(--text);
+            font-size: 11px;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+
+        .note-area:focus {
+            border-color: var(--accent-green);
+        }
+
+        /* تنسيق شريط التمرير للنوتة */
+        .note-area::-webkit-scrollbar { width: 3px; }
+        .note-area::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .btn-clear {
+            border-color: rgba(255, 51, 51, 0.3);
+        }
+
+        .btn-clear:hover {
+            background: #251515;
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .btn-copy:hover {
+            background: #152515;
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .footer {
+            margin-top: 5px;
+            font-size: 8px;
+            color: #444;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-btn">↩</a>
+            <h1>النوتات السريعة</h1>
+        </div>
+
+        <!-- ساحة كتابة الملاحظات -->
+        <textarea id="stickyNote" class="note-area" placeholder="اكتب ملاحظاتك هنا... سيتم حفظها تلقائياً"></textarea>
+
+        <!-- أزرار التحكم -->
+        <div class="actions">
+            <button onclick="clearNote()" class="btn btn-clear">
+                <span>🗑️</span> مسح
+            </button>
+            <button onclick="copyNote()" class="btn btn-copy">
+                <span>📋</span> نسخ
+            </button>
+        </div>
+
+        <div class="footer">
+            Shortcut Toolkit
+        </div>
+    </div>
+
+    <script>
+        const noteArea = document.getElementById('stickyNote');
+
+        // تحميل الملاحظة المحفوظة عند فتح الصفحة
+        window.onload = function() {
+            const savedNote = localStorage.getItem('quick_sticky_note');
+            if (savedNote) {
+                noteArea.value = savedNote;
+            }
+        };
+
+        // حفظ الملاحظة تلقائياً أثناء الكتابة
+        noteArea.addEventListener('input', function() {
+            localStorage.setItem('quick_sticky_note', noteArea.value);
+        });
+
+        // وظيفة زر المسح
+        function clearNote() {
+            if (noteArea.value.trim() !== "") {
+                noteArea.value = "";
+                localStorage.removeItem('quick_sticky_note');
+                noteArea.focus();
+            }
+        }
+
+        // وظيفة زر النسخ السريع
+        function copyNote() {
+            if (noteArea.value.trim() !== "") {
+                navigator.clipboard.writeText(noteArea.value);
+                
+                // تأثير بصري سريع عند النسخ
+                const copyBtn = document.querySelector('.btn-copy');
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = "✅ تم النسخ";
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, 1000);
+            }
+        }
+    </script>
+
+</body>
+</html>
