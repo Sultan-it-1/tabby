@@ -11,6 +11,7 @@
             --accent-green: #00ff00;
             --accent-blue: #00d4ff;
             --accent-yellow: #ffcc00;
+            --accent-orange: #ff9f43; /* لون مخصص لزر الاستيكي نوت ليتميز */
             --text: #eee;
             --border: #333;
         }
@@ -91,6 +92,7 @@
 
         .menu-item.simah-tool:hover { border-color: var(--accent-yellow); }
         .menu-item.card-tool:hover { border-color: var(--accent-blue); }
+        .menu-item.sticky-tool:hover { border-color: var(--accent-orange); } /* تأثير التمرير الخاص بالزر الجديد */
 
         .icon { font-size: 16px; flex-shrink: 0; }
         .text-wrapper { display: flex; flex-direction: column; overflow: hidden; }
@@ -165,7 +167,15 @@
                 <div class="icon">📝</div>
                 <div class="text-wrapper">
                     <div class="title">النوتات</div>
-                    <div class="desc">إدارة ونسخ نصوص واختصارات العملاء بضغطة.</div>
+                    <div class="desc">إدارة ونسخ نصوص وااختصارات العملاء بضغطة.</div>
+                </div>
+            </a>
+
+            <a href="sticky.html" class="menu-item sticky-tool">
+                <div class="icon">📌</div>
+                <div class="text-wrapper">
+                    <div class="title">ملاحظات لاصقة Sticky Note</div>
+                    <div class="desc">تدوين الملاحظات السريعة والمهمة.</div>
                 </div>
             </a>
 
