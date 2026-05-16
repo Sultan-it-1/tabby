@@ -23,11 +23,11 @@
             position: relative;
         }
         
-        /* نقطة تنبيه الباك أب في زاوية الحاوية */
+        /* نقطة تنبيه الباك أب في الزاوية السفلية اليسرى للحاوية */
         .backup-dot {
             position: absolute;
-            top: 4px;
-            right: 4px;
+            bottom: 5px;
+            left: 6px;
             width: 6px;
             height: 6px;
             background: #ffaa00;
@@ -36,7 +36,7 @@
             z-index: 10;
             box-shadow: 0 0 6px #ffaa00;
         }
-        [dir="ltr"] .backup-dot { right: auto; left: 4px; }
+        [dir="ltr"] .backup-dot { left: auto; right: 6px; }
 
         /* الهيدر والأزرار العلوية */
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-shrink: 0; gap: 4px; }
@@ -106,9 +106,6 @@
 <body>
 
 <div class="app-container">
-    <!-- نقطة تنبيه الباك أب غير المحفوظ في الزاوية -->
-    <div id="backupDot" class="backup-dot" title=""></div>
-
     <div class="header-row">
         <a href="/" class="nav-btn">🏠 <span id="homeTxt">الرئيسية</span></a>
         <button class="nav-btn" onclick="toggleSortMode()" id="sortModeBtn" title="ترتيب الأقسام">⇅</button>
@@ -127,6 +124,9 @@
     <div class="status-container">
         <div id="status" class="status">جاهز..</div>
     </div>
+
+    <!-- نقطة تنبيه الباك أب غير المحفوظ في الزاوية السفلية اليسرى -->
+    <div id="backupDot" class="backup-dot" title=""></div>
 
     <!-- نافذة تأكيد الحذف المدمجة داخل الحاوية -->
     <div id="confirmBox" class="confirm-box">
@@ -236,7 +236,7 @@
                 openEditSectionModal(cat);
             });
 
-            // دعم الضغط بإصبعين للهواتف والشاشات اللمس الذكية
+            // دعم الضغط بإصبعين للهواتف والشاشات اللمس
             labelEl.addEventListener('touchstart', function(e) {
                 if (e.touches.length === 2) {
                     e.preventDefault();
@@ -384,7 +384,6 @@
         closeModal();
     }
 
-    // إدارة الإشعار الداخلي ونقطة الباك أب في زاوية الحاوية
     function checkBackupStatus() {
         const dotEl = document.getElementById('backupDot');
         if (unbackedUpCount > 0) {
@@ -395,7 +394,6 @@
         }
     }
 
-    // نظام صندوق التأكيد الداخلي البديل عن الـ Confirm للمتصفح
     function showCustomConfirm(message, callback) {
         const box = document.getElementById('confirmBox');
         document.getElementById('confirmTxt').innerText = message;
@@ -424,7 +422,7 @@
 
     function triggerDeleteItem() {
         const msg = currentLang === 'ar' ? 'حذف هذا الاختصار؟' : 'Delete this item?';
-        closeModal(); // إغلاق مودال التعديل أولاً لإظهار رسالة التأكيد
+        closeModal(); 
         showCustomConfirm(msg, () => {
             ensureLangSafety(currentLang);
             storageData[currentLang][activeCat] = storageData[currentLang][activeCat].filter(x => x.id !== activeId); 
