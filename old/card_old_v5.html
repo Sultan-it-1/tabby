@@ -1,1 +1,349 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Scanner - Context Aware</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: #00ff00;
+            --accent-blue: #00d4ff;
+            --text: #eee;
+            --border: #333;
+        }
 
+        body { 
+            font-family: sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* تثبيت أبعاد الصندوق بالكامل 230 عرض × 300 ارتفاع */
+        .app-container { 
+            width: 230px; 
+            height: 300px; 
+            background: #111; 
+            padding: 8px; 
+            border-radius: 12px; 
+            border: 1px solid #222; 
+            text-align: center; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7); 
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box;
+            justify-content: space-between;
+        }
+        
+        /* محتوى قابل للتمرير لتفادي الخروج عن الأبعاد */
+        .scrollable-content {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 2px;
+            margin-bottom: 4px;
+        }
+
+        .scrollable-content::-webkit-scrollbar { width: 3px; }
+        .scrollable-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .home-row { display: flex; justify-content: flex-start; margin-bottom: 6px; flex-shrink: 0; }
+        .nav-btn { 
+            background: #252525; 
+            border: 1px solid #444; 
+            color: var(--accent-green); 
+            padding: 3px 6px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 10px; 
+            text-decoration: none; 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+        }
+        .nav-btn:hover { border-color: var(--accent-green); background: #122212; }
+
+        .paste-zone { border: 1px dashed #444; padding: 12px 5px; border-radius: 6px; font-size: 11px; color: #888; font-weight: bold; transition: 0.2s; background: #1a1a1a; cursor: default; }
+        .paste-zone.active { border-color: var(--accent-green); background: #122212; color: var(--accent-green); }
+        
+        /* حاوية معالج الناتج الجديد لتتسع لزر التعديل */
+        .output-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 6px 0;
+        }
+
+        #output { 
+            flex-grow: 1;
+            background: #000; 
+            padding: 6px; 
+            border-radius: 6px; 
+            font-family: monospace; 
+            font-size: 11px; 
+            color: var(--accent-green); 
+            border: 1px solid #222; 
+            cursor: pointer; 
+            direction: ltr; 
+            word-break: break-all;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* حقل الإدخال عند التعديل */
+        #output-edit {
+            display: none;
+            flex-grow: 1;
+            background: #222;
+            color: #fff;
+            border: 1px solid var(--accent-green);
+            padding: 5px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            direction: ltr;
+            text-align: center;
+            outline: none;
+        }
+        
+        .action-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-btn:hover { border-color: var(--accent-green); color: #fff; }
+
+        .chips-container { display: flex; justify-content: space-between; gap: 4px; direction: ltr; margin-bottom: 6px; }
+        .chip { flex: 1; background: #252525; padding: 6px 2px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #333; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chip:hover { background: #333; border-color: var(--accent-green); color: #fff; }
+        .gateway-chip { background: #1e1e1e; color: var(--accent-blue); border-color: #2c2c2c; }
+        
+        .lock-container { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-bottom: 6px; padding: 0 2px; }
+        .lock-label { font-size: 9px; color: #aaa; font-weight: bold; }
+        
+        .switch { position: relative; display: inline-block; width: 30px; height: 16px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .3s; border-radius: 16px; border: 1px solid #444; }
+        .slider:before { position: absolute; content: "🔒"; font-size: 9px; height: 12px; width: 12px; left: 2px; bottom: 1px; transition: .3s; display: flex; align-items: center; justify-content: center; }
+        input:checked + .slider { background-color: #00ff0022; border-color: var(--accent-green); }
+        input:checked + .slider:before { content: "🌐"; transform: translateX(12px); }
+
+        .status { font-size: 9px; color: var(--accent-green); height: 12px; font-weight: bold; border-top: 1px solid #222; padding-top: 4px; flex-shrink: 0; }
+        hr { border: 0; border-top: 1px solid #222; margin: 6px 0; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="home-row">
+        <a href="index.html" class="nav-btn">🏠 الرئيسية</a>
+    </div>
+
+    <div class="scrollable-content">
+        <!-- تم تعديل النص هنا وإلغاء حدث فتح الملفات تماماً -->
+        <div class="paste-zone" id="dropZone">الصق الصورة هنا مباشرة (Ctrl + V)</div>
+        
+        <div class="output-wrapper">
+            <div id="output" onclick="copyFull()">البيانات ستظهر هنا</div>
+            <input type="text" id="output-edit">
+            <button class="action-btn" id="editBtn" onclick="toggleEditMode()" title="تعديل">✏️</button>
+        </div>
+        
+        <div class="chips-container">
+            <div class="chip" id="chip-card" onclick="copyMe(this)">-</div>
+            <div class="chip" id="chip-amount" onclick="copyMe(this)">-</div>
+            <div class="chip" id="chip-time" onclick="copyMe(this)">-</div>
+            <div class="chip" id="chip-date" onclick="copyMe(this)">-</div>
+        </div>
+
+        <hr>
+
+        <div class="lock-container">
+            <span class="lock-label">فتح الرابط تلقائياً?</span>
+            <label class="switch">
+                <input type="checkbox" id="linkToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="chips-container" style="flex-wrap: wrap; gap: 4px;">
+            <div class="chip gateway-chip" style="flex: 1 0 45%;" onclick="openGateway('https://portal.noonpayments.com', 'noon normal')">Noon</div>
+            <div class="chip gateway-chip" style="flex: 1 0 45%;" onclick="openGateway('https://portal.sa.noonpayments.com', 'noon sa')">Noon SA</div>
+            <div class="chip gateway-chip" style="flex: 1 0 45%;" onclick="openGateway('https://dashboard.checkout.com', 'checkout')">Checkout</div>
+            <div class="chip gateway-chip" style="flex: 1 0 45%;" onclick="openGateway('https://fort.payfort.com', 'pay fort')">Payfort</div>
+        </div>
+    </div>
+
+    <div id="status" class="status">جاهز..</div>
+</div>
+
+<script>
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('dropZone');
+    const linkToggle = document.getElementById('linkToggle');
+    const outputDiv = document.getElementById('output');
+    const outputEdit = document.getElementById('output-edit');
+    const editBtn = document.getElementById('editBtn');
+
+    let isEditMode = false;
+
+    async function secureCopy(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (err) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            const success = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return success;
+        }
+    }
+
+    // التنصت لعملية اللصق فقط
+    document.addEventListener('paste', async (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                processImage(items[i].getAsFile());
+                break;
+            }
+        }
+    });
+
+    async function processImage(file) {
+        statusDiv.innerText = "جاري القراءة... ⏳";
+        dropZone.classList.add('active');
+        try {
+            const { data: { text } } = await Tesseract.recognize(file, 'eng+ara');
+            parseData(text);
+        } catch (err) {
+            statusDiv.innerText = "خطأ في القراءة ❌";
+        }
+        dropZone.classList.remove('active');
+    }
+
+    function parseData(rawText) {
+        const lines = rawText.split('\n');
+        const cleanText = rawText.replace(/\s+/g, ' ');
+        const amountMatch = cleanText.match(/\d{1,7}\.\d{2}/);
+        const amount = amountMatch ? amountMatch[0] : "0.00";
+        const timeMatch = cleanText.match(/\d{2}:\d{2}/);
+        const time = timeMatch ? timeMatch[0] : "00:00";
+        const dateMatch = cleanText.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || cleanText.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
+        
+        let date = "00-00";
+        let foundYear = "";
+        if (dateMatch) {
+            if (dateMatch[1].length === 4) { 
+                foundYear = dateMatch[1];
+                date = `${parseInt(dateMatch[3])}-${parseInt(dateMatch[2])}`;
+            } else { 
+                foundYear = dateMatch[3];
+                date = `${parseInt(dateMatch[1])}-${parseInt(dateMatch[2])}`;
+            }
+        }
+
+        let card = "0000";
+        const cardKeywords = ["بطاقة", "card", "mada", "مدى"];
+        for (let line of lines) {
+            if (cardKeywords.some(key => line.toLowerCase().includes(key))) {
+                const match = line.match(/\d{4}/);
+                if (match) { card = match[0]; break; }
+            }
+        }
+        if (card === "0000") {
+            const allFourDigits = cleanText.match(/\d{4}/g) || [];
+            card = allFourDigits.find(d => d !== foundYear && !amount.includes(d) && d !== "2026" && d !== "2025") || "0000";
+        }
+
+        const finalResult = `${card} // ${amount} // ${time} // ${date}`;
+        updateUI(finalResult, card, amount, time, date);
+        statusDiv.innerText = "تم النسخ والتحليل! ✅";
+        secureCopy(finalResult);
+    }
+
+    function updateUI(fullText, card, amount, time, date) {
+        outputDiv.innerText = fullText;
+        document.getElementById('chip-card').innerText = card;
+        document.getElementById('chip-amount').innerText = amount;
+        document.getElementById('chip-time').innerText = time;
+        document.getElementById('chip-date').innerText = date;
+    }
+
+    function toggleEditMode() {
+        if (outputDiv.innerText.includes("البيانات ستظهر هنا")) return;
+
+        if (!isEditMode) {
+            isEditMode = true;
+            outputEdit.value = outputDiv.innerText;
+            outputDiv.style.display = 'none';
+            outputEdit.style.display = 'block';
+            editBtn.innerText = '✅';
+            outputEdit.focus();
+        } else {
+            isEditMode = false;
+            const updatedText = outputEdit.value.trim();
+            outputDiv.style.display = 'block';
+            outputEdit.style.display = 'none';
+            editBtn.innerText = '✏️';
+
+            if (updatedText) {
+                const parts = updatedText.split('//').map(p => p.trim());
+                const card = parts[0] || "0000";
+                const amount = parts[1] || "0.00";
+                const time = parts[2] || "00:00";
+                const date = parts[3] || "00-00";
+
+                updateUI(updatedText, card, amount, time, date);
+                secureCopy(updatedText);
+                statusDiv.innerText = "تم تحديث البيانات ونسخها! 💾";
+            }
+        }
+    }
+
+    function openGateway(url, name) {
+        if (linkToggle.checked) {
+            window.open(url, '_blank');
+        }
+        const msg = `Checking ${name} gateway`;
+        secureCopy(msg).then(() => {
+            statusDiv.innerText = "نسخ: " + name;
+        });
+    }
+
+    function copyMe(element) {
+        if (element.innerText === "-") return;
+        secureCopy(element.innerText).then(() => {
+            statusDiv.innerText = `نسخ: ${element.innerText}`;
+        });
+    }
+
+    function copyFull() {
+        if (isEditMode) return;
+        const text = outputDiv.innerText;
+        if (text.includes("البيانات")) return;
+        secureCopy(text).then(() => {
+            statusDiv.innerText = "تم نسخ السطر كاملاً";
+        });
+    }
+</script>
+
+</body>
+</html>
