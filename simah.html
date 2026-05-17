@@ -57,7 +57,7 @@
         .upload-btn { background: #252525; border: 1px solid #444; color: #fff; padding: 3px 5px; border-radius: 4px; cursor: pointer; font-size: 10px; }
         .settings-btn { background: #252525; border: 1px solid #444; color: #fff; padding: 3px 5px; border-radius: 4px; cursor: pointer; font-size: 10px; }
         
-        .expand-btn { background: #252525; border: 1px solid #444; color: var(--accent-green); padding: 3px 5px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; }
+        .expand-btn { background: #252525; border: 1px solid #444; color: var(--accent-green); padding: 4px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .expand-btn:hover { background: #333; }
 
         .clear-btn { background: var(--danger-red); color: white; border: none; padding: 2px 4px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: bold; }
@@ -144,8 +144,12 @@
 
 <div class="app-container" id="appContainer">
     <div class="header">
-        <a href="index.html" class="nav-btn">🏠</a>
-        <button id="expandBtn" class="expand-btn" onclick="toggleExpand()" title="توسيع الواجهة">🔲</button>
+        <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <button id="expandBtn" class="expand-btn" onclick="toggleExpand()" title="توسيع الواجهة">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+        </button>
         <button id="aiBtn" class="ai-btn" onclick="toggleAI()">AI</button>
         <button class="upload-btn" onclick="document.getElementById('fileInput').click()" title="رفع صورة من الجهاز">📁</button>
         <button class="settings-btn" onclick="openSettings()" title="إعدادات API Key">⚙️</button>
@@ -153,7 +157,7 @@
     </div>
 
     <div id="settingsModal" class="settings-modal">
-        <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">إدخل مفتاح Gemini API:</div>
+        <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">إدخل مفتاح <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: var(--accent-green); text-decoration: underline;" title="احصل على مفتاح مجاني">Gemini API</a>:</div>
         <input type="password" id="apiKeyInput" placeholder="AI Key...">
         <div class="settings-modal-btns">
             <button class="save-key-btn" onclick="saveApiKey()">حفظ</button>
@@ -195,7 +199,11 @@
     const apiKeyInput = document.getElementById('apiKeyInput');
     
     let savedAccountsList = [];
-    let isAIActive = false;
+    let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
+    if (isAIActive) aiBtn.className = 'ai-btn active';
+
+    const iconExpand = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
+    const iconShrink = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>`;
 
     const speechDictionary = {
         '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
@@ -206,10 +214,10 @@
     function toggleExpand() {
         appContainer.classList.toggle('expanded');
         if (appContainer.classList.contains('expanded')) {
-            expandBtn.innerText = "🗗";
+            expandBtn.innerHTML = iconShrink;
             expandBtn.title = "تقليص الواجهة";
         } else {
-            expandBtn.innerText = "🔲";
+            expandBtn.innerHTML = iconExpand;
             expandBtn.title = "توسيع الواجهة";
         }
     }
@@ -230,6 +238,7 @@
     function toggleAI() {
         isAIActive = !isAIActive;
         aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
+        localStorage.setItem('simah_ai_pref', isAIActive);
     }
 
     function openSettings() {
