@@ -147,7 +147,7 @@
     </div>
 
     <div class="message">
-      هذه الصفحة يبدو أنها ضاعت! تأكد من الرابط أو عد للرئيسية.
+      شكلك ضيعت ماعليه لاتخاف شوف زر الرجوع
     </div>
 
     <a href="/" class="btn">رجوع للصفحة الرئيسية</a>
@@ -218,21 +218,8 @@
       }
     }
 
-    // كود عبارات الفوتر العشوائية المتناسقة
-    const quotes = [
-        { emoji: "❤️", text: "Crafted to make your work easier" },
-        { emoji: "✨", text: "Made to fit your needs perfectly" },
-        { emoji: "🌿", text: "Your productivity, our mission" },
-        { emoji: "🪄", text: "Crafted as if it were made only for you" },
-        { emoji: "💎", text: "Built to match your ambitions" },
-        { emoji: "🤍", text: "Made specially for you" }
-    ];
 
-    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-    document.getElementById('dynamic-footer').innerHTML = `
-        <span class="pulse-emoji">${randomQuote.emoji}</span> 
-        ${randomQuote.text} — by <b>Sultan</b>
-    `;
+    
 
     window.addEventListener('load', init);
   </script>
