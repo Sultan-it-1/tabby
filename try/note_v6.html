@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Copy Pro - Secured & Maximized</title>
+    <style>
+        body { font-family: sans-serif; background: #0f0f0f; color: #eee; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        
+        /* الأبعاد الهندسية الصارمة للحاوية */
+        .app-container { 
+            width: 230px; 
+            height: 300px; 
+            background: #1a1a1a; 
+            padding: 6px; 
+            border-radius: 8px; 
+            border: 1px solid #333; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6); 
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box; 
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* نقطة تنبيه الباك أب مع التلميح الذكي */
+        .backup-dot {
+            position: absolute;
+            bottom: 5px;
+            left: 6px;
+            width: 6px;
+            height: 6px;
+            background: #ffaa00;
+            border-radius: 50%;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 0 6px #ffaa00;
+            cursor: help;
+        }
+
+        .backup-dot::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            background: #333;
+            color: #ffaa00;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.2s;
+            border: 1px solid #ffaa00;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .backup-dot:hover::after { opacity: 1; visibility: visible; }
+
+        /* تنسيق وترتيب الهيدر العلوي */
+        .header-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 6px; 
+            flex-shrink: 0; 
+            gap: 4px;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 5px;
+            position: relative;
+        }
+        
+        .header-right, .header-left { display: flex; align-items: center; gap: 4px; }
+        
+        /* شريط البحث الذكي المدمج */
+        .search-container { display: none; position: absolute; inset: 0; background: #1a1a1a; align-items: center; padding-bottom: 5px; z-index: 5; }
+        .search-input { width: 100%; background: #000; color: #00ff00; border: 1px solid #444; border-radius: 4px; padding: 2px 6px; font-size: 10px; height: 20px; box-sizing: border-box; }
+        .search-close { color: #ff4444; cursor: pointer; font-size: 12px; font-weight: bold; padding: 0 4px; user-select: none; }
+
+        .nav-btn { 
+            background: #252525; 
+            border: 1px solid #444; 
+            color: #00ff00; 
+            padding: 3px 5px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            text-decoration: none; 
+            transition: 0.2s; 
+            user-select: none;
+            height: 20px;
+            box-sizing: border-box;
+        }
+        .nav-btn:hover { border-color: #00ff00; background: #122212; }
+        .nav-btn.active-mode { background: #00ff00; color: #000; border-color: #fff; }
+
+        .add-main-btn { 
+            background: #00ff0011; 
+            border: 1px solid #00ff00; 
+            color: #00ff00; 
+            padding: 3px 6px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 10px; 
+            font-weight: bold; 
+            height: 20px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .add-main-btn:hover { background: #00ff0022; }
+
+        /* زر التبديل بين الحاويات الثلاث */
+        .container-switch-btn {
+            font-weight: bold;
+            min-width: 45px;
+            color: #00ff00;
+            border-color: #00ff00;
+        }
+
+        /* منطقة المحتوى */
+        .content-scroll { flex-grow: 1; overflow-y: auto; padding-right: 2px; margin-top: 2px; }
+        .content-scroll::-webkit-scrollbar { width: 3px; }
+        .content-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+        /* الأقسام */
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 2px; border-right: 3px solid #00ff00; padding-right: 5px; }
+        .section-label { font-size: 10px; color: #aaa; text-transform: uppercase; font-weight: bold; user-select: none; cursor: context-menu; }
+        .del-section { color: #ff4444; cursor: pointer; font-size: 12px; margin-left: 3px; user-select: none; }
+        
+        .section-sort-controls { display: none; gap: 4px; }
+        .sort-order-active .section-sort-controls { display: inline-flex; }
+        .sort-order-active .add-item-trigger { display: none; }
+        .sort-btn { color: #00ff00; cursor: pointer; font-size: 11px; font-weight: bold; padding: 0 2px; user-select: none; }
+
+        /* شبكة المربعات ومؤشر السحب المرئي */
+        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 4px; }
+        .chip { 
+            background: #222; 
+            padding: 9px 2px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: 1px solid #444; 
+            color: #fff; 
+            text-align: center; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            user-select: none;
+            transition: border-color 0.15s, background-color 0.15s, opacity 0.1s;
+        }
+        .chip:hover { border-color: #00ff00; background: #2a2a2a; }
+        .chip.dragging { opacity: 0.4; border: 1px dashed #444; }
+        .chip.drag-over { border-color: #00ff00; border-style: dashed; background: #122212; opacity: 0.8; }
+
+        /* الأزرار السفلية */
+        .backup-row { display: flex; gap: 4px; margin-top: auto; padding-top: 4px; border-top: 1px solid #333; flex-shrink: 0; }
+        .backup-btn { flex: 1; background: #111; border: 1px solid #444; color: #aaa; padding: 5px; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap; }
+
+        .status-container { display: flex; align-items: center; justify-content: center; margin-top: 3px; height: 14px; flex-shrink: 0; }
+        .status { font-size: 10px; color: #00ff00; font-weight: bold; text-align: center; }
+
+        /* المودالات */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 100; padding: 10px; }
+        .modal-content { background: #1a1a1a; padding: 10px; border-radius: 6px; width: 100%; max-width: 190px; border: 1px solid #00ff00; }
+        input, textarea { width: 100%; background: #000; color: #00ff00; border: 1px solid #444; border-radius: 4px; padding: 7px; font-size: 12px; box-sizing: border-box; margin-bottom: 6px; font-family: sans-serif; }
+        .modal-btns { display: flex; gap: 4px; }
+        .m-btn { flex: 1; padding: 7px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; font-weight: bold; }
+
+        /* نافذة تأكيد الحذف المدمجة */
+        .confirm-box { display: none; flex-direction: column; gap: 6px; padding: 8px; background: #222; border: 1px solid #ff4444; border-radius: 6px; position: absolute; bottom: 30px; left: 10px; right: 10px; z-index: 110; box-shadow: 0 4px 15px rgba(0,0,0,0.7); }
+        .confirm-txt { font-size: 11px; color: #fff; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header-row">
+        <!-- شريط البحث السريع المخفي افتراضياً -->
+        <div id="searchBar" class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="بحث سريع عن نوتة..." oninput="handleSearch()">
+            <span class="search-close" onclick="closeSearch()">×</span>
+        </div>
+
+        <div class="header-right">
+            <a href="/" class="nav-btn">🏠 <span id="homeTxt">الرئيسية</span></a>
+            <button class="nav-btn" onclick="openSearch()" title="بحث سريع">🔍</button>
+        </div>
+        <div class="header-left">
+            <button class="nav-btn" onclick="toggleSortMode()" id="sortModeBtn" title="ترتيب الأقسام" style="font-size: 12px; font-weight: bold; padding: 3px 6px;">⇅</button>
+            <button class="add-main-btn" onclick="openSectionModal()">+ قسم</button>
+            <button class="nav-btn container-switch-btn" onclick="switchContainer()" id="containerBtn">حاوية 1</button>
+        </div>
+    </div>
+
+    <div id="main-content" class="content-scroll"></div>
+
+    <div class="backup-row">
+        <button class="backup-btn" onclick="exportData()">💾 نسخة</button>
+        <button class="backup-btn" onclick="document.getElementById('importFile').click()">📂 استيراد</button>
+        <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importData(event)">
+    </div>
+
+    <div class="status-container">
+        <div id="status" class="status">جاهز..</div>
+    </div>
+
+    <!-- نقطة تنبيه الباك أب في الزاوية السفلية اليسرى -->
+    <div id="backupDot" class="backup-dot" data-tooltip=""></div>
+
+    <!-- نافذة تأكيد الحذف المدمجة داخل الحاوية -->
+    <div id="confirmBox" class="confirm-box">
+        <div id="confirmTxt" class="confirm-txt">هل أنت متأكد؟</div>
+        <div class="modal-btns">
+            <button class="m-btn" style="background:#ff4444;color:#fff;padding:4px;" id="confirmYesBtn">نعم</button>
+            <button class="m-btn" style="background:#444;color:#fff;padding:4px;" onclick="closeConfirmBox()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال التعديل -->
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <input type="text" id="itemName" placeholder="الاسم المختصر">
+        <textarea id="itemText" placeholder="النص الكامل..." rows="3"></textarea>
+        <div class="modal-btns">
+            <button class="m-btn" style="background:#00ff00;color:#000" onclick="saveItem()">حفظ</button>
+            <button class="m-btn" style="background:#333;color:#fff" onclick="closeModal()">إلغاء</button>
+        </div>
+        <button id="delItemBtn" style="background:none;border:none;color:#ff4444;width:100%;margin-top:6px;cursor:pointer;font-size:11px; display:none;" onclick="triggerDeleteItem()">حذف 🗑️</button>
+    </div>
+</div>
+
+<!-- مودال إضافة قسم -->
+<div class="modal" id="sectionModal">
+    <div class="modal-content">
+        <input type="text" id="sectionName" placeholder="اسم القسم الجديد">
+        <div class="modal-btns">
+            <button class="m-btn" style="background:#00ff00;color:#000" onclick="addSection()">إضافة</button>
+            <button class="m-btn" style="background:#333;color:#fff" onclick="closeModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تعديل اسم قسم موجود -->
+<div class="modal" id="editSectionModal">
+    <div class="modal-content">
+        <input type="text" id="editSectionName" placeholder="اسم القسم">
+        <div class="modal-btns">
+            <button class="m-btn" style="background:#00ff00;color:#000" onclick="saveSectionName()">تعديل</button>
+            <button class="m-btn" style="background:#333;color:#fff" onclick="closeModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // الحاويات الثلاث: c1, c2, c3
+    let currentContainer = 'c1'; 
+    let activeId = null, activeCat = null;
+    let isSortMode = false;
+    let draggedItem = null;
+    let dragTimeout = null;
+    let confirmCallback = null;
+    let searchQuery = '';
+
+    const defaultData = { 
+        c1: { "عام 1": [{ id: 1, l: 'ترحيب 1', t: 'أهلاً بك في الحاوية الأولى' }] }, 
+        c2: { "عام 2": [{ id: 2, l: 'ترحيب 2', t: 'أهلاً بك في الحاوية الثانية' }] }, 
+        c3: { "عام 3": [{ id: 3, l: 'ترحيب 3', t: 'أهلاً بك في الحاوية الثالثة' }] } 
+    };
+
+    let storageData = JSON.parse(localStorage.getItem('copyGridDataV6')) || defaultData;
+    let unbackedUpCount = parseInt(localStorage.getItem('unbackedUpCountV6'), 10) || 0;
+
+    function ensureContainerSafety(containerId) {
+        if (!storageData) storageData = {};
+        if (!storageData[containerId]) storageData[containerId] = {};
+    }
+
+    function render() {
+        const container = document.getElementById('main-content');
+        container.innerHTML = '';
+        document.documentElement.dir = 'rtl';
+        document.getElementById('homeTxt').innerText = 'الرئيسية';
+
+        // تحديث مسمى زر الحاوية الحالية
+        const btnLabels = { 'c1': 'حاوية 1', 'c2': 'حاوية 2', 'c3': 'حاوية 3' };
+        document.getElementById('containerBtn').innerText = btnLabels[currentContainer];
+
+        const sortBtn = document.getElementById('sortModeBtn');
+        if (isSortMode) {
+            sortBtn.classList.add('active-mode');
+            container.classList.add('sort-order-active');
+        } else {
+            sortBtn.classList.remove('active-mode');
+            container.classList.remove('sort-order-active');
+        }
+
+        ensureContainerSafety(currentContainer);
+        const sections = storageData[currentContainer];
+        
+        for (let cat in sections) {
+            // تصفية العناصر بناءً على البحث
+            const filteredItems = sections[cat].filter(item => 
+                item.l.toLowerCase().includes(searchQuery) || item.t.toLowerCase().includes(searchQuery)
+            );
+
+            // إذا كنا نبحث والقسم لا يحتوي على نتائج، نخفيه بالكامل
+            if (searchQuery && filteredItems.length === 0) continue;
+
+            const secHeader = document.createElement('div');
+            secHeader.className = 'section-header';
+            secHeader.innerHTML = `
+                <div>
+                    <span class="del-section" onclick="triggerDeleteSection('${cat}')">×</span> 
+                    <span class="section-label">${cat}</span>
+                </div>
+                <span class="section-sort-controls">
+                    <span class="sort-btn" onclick="moveSection('${cat}', -1)">▲</span>
+                    <span class="sort-btn" onclick="moveSection('${cat}', 1)">▼</span>
+                </span>
+                <span class="add-item-trigger" style="color:#00ff00;cursor:pointer;font-weight:bold;font-size:14px" onclick="openItemModal('${cat}')">+</span>
+            `;
+            container.appendChild(secHeader);
+
+            // تعديل اسم القسم كليك يمين أو إصبعين
+            const labelEl = secHeader.querySelector('.section-label');
+            labelEl.addEventListener('contextmenu', (e) => { e.preventDefault(); openEditSectionModal(cat); });
+            labelEl.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { e.preventDefault(); openEditSectionModal(cat); } });
+
+            const grid = document.createElement('div');
+            grid.className = 'grid-container';
+            grid.dataset.category = cat;
+
+            filteredItems.forEach((item) => {
+                // البحث عن الفهرس الحقيقي داخل المصفوفة الأصلية لضمان دقة الترتيب عند البحث
+                const realIdx = sections[cat].findIndex(x => x.id === item.id);
+
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.innerText = item.l;
+                chip.setAttribute('draggable', 'true');
+                chip.dataset.id = item.id;
+                chip.dataset.index = realIdx;
+                
+                chip.onclick = () => { 
+                    navigator.clipboard.writeText(item.t); 
+                    showStatus("تم النسخ! ✅"); 
+                };
+                
+                chip.oncontextmenu = (e) => { e.preventDefault(); openItemModal(cat, item); };
+
+                // أحداث السحب والترتيب مع المؤشر المرئي (Drop Indicator)
+                chip.addEventListener('dragstart', (e) => {
+                    draggedItem = chip;
+                    chip.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', realIdx);
+                });
+
+                chip.addEventListener('dragend', () => {
+                    chip.classList.remove('dragging');
+                    document.querySelectorAll('.chip').forEach(c => c.classList.remove('drag-over'));
+                    draggedItem = null;
+                });
+
+                chip.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (draggedItem && draggedItem !== chip && chip.parentNode === draggedItem.parentNode) {
+                        chip.classList.add('drag-over');
+                    }
+                });
+
+                chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
+
+                chip.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    chip.classList.remove('drag-over');
+                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                    const toIndex = parseInt(chip.dataset.index, 10);
+                    const targetCat = grid.dataset.category;
+
+                    if (!isNaN(fromIndex) && fromIndex !== toIndex && storageData[currentContainer][targetCat]) {
+                        const list = storageData[currentContainer][targetCat];
+                        const [movedItem] = list.splice(fromIndex, 1);
+                        list.splice(toIndex, 0, movedItem);
+                        saveAndRefresh();
+                    }
+                });
+
+                // اللمس المطول للموبايل مع المؤشر المرئي
+                chip.addEventListener('touchstart', (e) => {
+                    if(e.touches.length === 1) {
+                        dragTimeout = setTimeout(() => {
+                            draggedItem = chip;
+                            chip.classList.add('dragging');
+                        }, 500);
+                    }
+                });
+
+                chip.addEventListener('touchend', (e) => {
+                    clearTimeout(dragTimeout);
+                    document.querySelectorAll('.chip').forEach(c => c.classList.remove('drag-over'));
+                    if (draggedItem) {
+                        chip.classList.remove('dragging');
+                        const touch = e.changedTouches[0];
+                        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+                        const closestChip = targetEl ? targetEl.closest('.chip') : null;
+                        
+                        if (closestChip && closestChip !== chip && closestChip.parentNode === grid) {
+                            const fromIndex = parseInt(chip.dataset.index, 10);
+                            const toIndex = parseInt(closestChip.dataset.index, 10);
+                            const targetCat = grid.dataset.category;
+                            
+                            if (!isNaN(fromIndex) && !isNaN(toIndex)) {
+                                const list = storageData[currentContainer][targetCat];
+                                const [movedItem] = list.splice(fromIndex, 1);
+                                list.splice(toIndex, 0, movedItem);
+                                saveAndRefresh();
+                            }
+                        }
+                        draggedItem = null;
+                    }
+                });
+
+                chip.addEventListener('touchmove', (e) => {
+                    if (draggedItem) {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+                        const closestChip = targetEl ? targetEl.closest('.chip') : null;
+                        document.querySelectorAll('.chip').forEach(c => c.classList.remove('drag-over'));
+                        if (closestChip && closestChip !== chip && closestChip.parentNode === grid) {
+                            closestChip.classList.add('drag-over');
+                        }
+                    } else {
+                        clearTimeout(dragTimeout);
+                    }
+                });
+                
+                grid.appendChild(chip);
+            });
+            container.appendChild(grid);
+        }
+
+        checkBackupStatus();
+    }
+
+    /* التنقل الدائري بين الحاويات الثلاث */
+    function switchContainer() {
+        if (currentContainer === 'c1') currentContainer = 'c2';
+        else if (currentContainer === 'c2') currentContainer = 'c3';
+        else currentContainer = 'c1';
+        closeSearch();
+        render();
+    }
+
+    /* إدارة البحث السريع */
+    function openSearch() {
+        document.getElementById('searchBar').style.display = 'flex';
+        const input = document.getElementById('searchInput');
+        input.focus();
+    }
+    function closeSearch() {
+        document.getElementById('searchBar').style.display = 'none';
+        document.getElementById('searchInput').value = '';
+        searchQuery = '';
+        render();
+    }
+    function handleSearch() {
+        searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+        render();
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeSearch();
+            closeModal();
+            closeConfirmBox();
+        }
+    });
+
+    function toggleSortMode() { isSortMode = !isSortMode; render(); }
+
+    function moveSection(cat, direction) {
+        ensureContainerSafety(currentContainer);
+        const obj = storageData[currentContainer];
+        const keys = Object.keys(obj);
+        const index = keys.indexOf(cat);
+        if (index === -1) return;
+
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= keys.length) return;
+
+        const temp = keys[index];
+        keys[index] = keys[newIndex];
+        keys[newIndex] = temp;
+
+        const newObj = {};
+        keys.forEach(k => { newObj[k] = obj[k]; });
+        storageData[currentContainer] = newObj;
+        saveAndRefresh();
+    }
+
+    function openEditSectionModal(cat) {
+        activeCat = cat;
+        document.getElementById('editSectionName').value = cat;
+        document.getElementById('editSectionModal').style.display = 'flex';
+    }
+
+    function saveSectionName() {
+        const newName = document.getElementById('editSectionName').value.trim();
+        if (newName && newName !== activeCat) {
+            ensureContainerSafety(currentContainer);
+            if (!storageData[currentContainer][newName]) {
+                const obj = storageData[currentContainer];
+                const newObj = {};
+                Object.keys(obj).forEach(k => {
+                    if (k === activeCat) newObj[newName] = obj[activeCat];
+                    else newObj[k] = obj[k];
+                });
+                storageData[currentContainer] = newObj;
+                saveAndRefresh();
+            }
+        }
+        closeModal();
+    }
+
+    /* تحديث حالة التلميح الذكي للنقطة الصفراء */
+    function checkBackupStatus() {
+        const dotEl = document.getElementById('backupDot');
+        if (unbackedUpCount > 0) {
+            dotEl.style.display = 'block';
+            dotEl.setAttribute('data-tooltip', `تحتاج نسخة لـ ${unbackedUpCount} نوتات`);
+        } else {
+            dotEl.style.display = 'none';
+        }
+    }
+
+    function showCustomConfirm(message, callback) {
+        const box = document.getElementById('confirmBox');
+        document.getElementById('confirmTxt').innerText = message;
+        box.style.display = 'flex';
+        confirmCallback = callback;
+    }
+
+    function closeConfirmBox() {
+        document.getElementById('confirmBox').style.display = 'none';
+        confirmCallback = null;
+    }
+
+    document.getElementById('confirmYesBtn').onclick = function() {
+        if (confirmCallback) confirmCallback();
+        closeConfirmBox();
+    };
+
+    function triggerDeleteSection(cat) {
+        showCustomConfirm(`حذف قسم "${cat}"؟`, () => {
+            ensureContainerSafety(currentContainer);
+            delete storageData[currentContainer][cat];
+            saveAndRefresh();
+        });
+    }
+
+    function triggerDeleteItem() {
+        const catToDelete = activeCat;
+        const idToDelete = activeId;
+        closeModal(); 
+        showCustomConfirm('حذف هذا الاختصار؟', () => {
+            ensureContainerSafety(currentContainer);
+            storageData[currentContainer][catToDelete] = storageData[currentContainer][catToDelete].filter(x => x.id !== idToDelete); 
+            saveAndRefresh();
+        });
+    }
+
+    function importData(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (x) => {
+            try {
+                const imported = JSON.parse(x.target.result);
+                if (!imported || typeof imported !== 'object') throw new Error();
+                ['c1', 'c2', 'c3'].forEach(cId => {
+                    if (imported[cId]) {
+                        ensureContainerSafety(cId);
+                        for (let cat in imported[cId]) {
+                            if (!storageData[cId][cat]) storageData[cId][cat] = [];
+                            let existing = storageData[cId][cat].map(i => i.l);
+                            imported[cId][cat].forEach(newItem => {
+                                let finalLabel = newItem.l;
+                                let c = 1;
+                                while (existing.includes(finalLabel)) {
+                                    finalLabel = `${newItem.l} (نسخة ${c})`;
+                                    c++;
+                                }
+                                storageData[cId][cat].push({ id: Date.now() + Math.random(), l: finalLabel, t: newItem.t });
+                                existing.push(finalLabel);
+                            });
+                        }
+                    }
+                });
+                saveAndRefresh();
+                showStatus("تم الدمج! 📂");
+            } catch (err) { showStatus("خطأ بالملف! ❌"); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    }
+
+    function showStatus(msg) {
+        const s = document.getElementById('status');
+        s.innerText = msg;
+        setTimeout(() => s.innerText = "جاهز..", 1500);
+    }
+
+    function openSectionModal() { 
+        document.getElementById('sectionName').value = '';
+        document.getElementById('sectionModal').style.display = 'flex'; 
+    }
+    
+    function addSection() {
+        const name = document.getElementById('sectionName').value.trim();
+        if (name) { 
+            ensureContainerSafety(currentContainer);
+            if (!storageData[currentContainer][name]) {
+                storageData[currentContainer][name] = []; 
+                saveAndRefresh(); 
+            }
+            closeModal(); 
+        }
+    }
+
+    function openItemModal(cat, item = null) {
+        activeCat = cat; 
+        activeId = item ? item.id : null;
+        document.getElementById('itemName').value = item ? item.l : '';
+        document.getElementById('itemText').value = item ? item.t : '';
+        document.getElementById('delItemBtn').style.display = item ? 'block' : 'none';
+        document.getElementById('editModal').style.display = 'flex';
+    }
+    
+    function saveItem() {
+        const l = document.getElementById('itemName').value.trim(), t = document.getElementById('itemText').value.trim();
+        if (!l || !t) return;
+        ensureContainerSafety(currentContainer);
+        
+        if (activeId) { 
+            let i = storageData[currentContainer][activeCat].find(x => x.id === activeId); 
+            if(i) { i.l = l; i.t = t; }
+        } else { 
+            storageData[currentContainer][activeCat].push({ id: Date.now() + Math.random(), l, t }); 
+            unbackedUpCount++;
+            localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
+        }
+        saveAndRefresh(); closeModal();
+    }
+
+    function closeModal() { 
+        document.querySelectorAll('.modal').forEach(m => m.style.display='none'); 
+        activeCat = null;
+        activeId = null;
+    }
+    
+    function saveAndRefresh() { 
+        localStorage.setItem('copyGridDataV6', JSON.stringify(storageData)); 
+        render(); 
+    }
+    
+    function exportData() {
+        const blob = new Blob([JSON.stringify(storageData, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `backup_${Date.now()}.json`;
+        a.click();
+        
+        unbackedUpCount = 0;
+        localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
+        render();
+    }
+
+    render();
+</script>
+</body>
+</html>
