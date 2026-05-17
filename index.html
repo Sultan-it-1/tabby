@@ -128,7 +128,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 3px;
+            gap: 4px;
+            /* تم إضافة السطرين بالأسفل لإجبار النص الإنجليزي على الترتيب السليم */
+            direction: ltr; 
+            font-family: Arial, sans-serif;
         }
         
         .pulse-emoji {
@@ -216,7 +219,7 @@
         // طباعة العبارة داخل الفوتر مع الحفاظ على حركة النبض للإيموجي وثبات الاسم
         document.getElementById('dynamic-footer').innerHTML = `
             <span class="pulse-emoji">${randomQuote.emoji}</span> 
-            ${randomQuote.text} — by <b>Sultan</b>
+            <span>${randomQuote.text} — by <b>Sultan</b></span>
         `;
     </script>
 </body>
