@@ -61,6 +61,7 @@
         .expand-btn:hover { background: #333; }
 
         .clear-btn { background: var(--danger-red); color: white; border: none; padding: 2px 4px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: bold; }
+        .delete-card-btn { background: transparent; color: var(--danger-red); border: none; padding: 0 4px; cursor: pointer; font-size: 9px; font-weight: bold; }
 
         .scan-zone { border: 1px dashed #00ff0044; padding: 10px 5px; border-radius: 6px; margin-bottom: 4px; cursor: default; background: #1a1a1a; flex-shrink: 0; }
         .scan-zone p { margin: 0; font-size: 11px; color: #888; font-weight: bold; }
@@ -75,7 +76,9 @@
         .card-header-left { display: flex; align-items: center; gap: 4px; direction: ltr; }
         
         .label { font-size: 8px; color: #aaa; }
-        .char-counter { font-size: 8px; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: #111; direction: ltr; }
+        
+        /* تم تعديل العداد هنا ليجبر النص العربي والإنجليزي على الظهور بالترتيب الصحيح */
+        .char-counter { font-size: 8px; font-weight: bold; padding: 1px 4px; border-radius: 3px; background: #111; direction: ltr; display: inline-block; }
         .counter-valid { color: var(--accent-green); border: 1px solid rgba(0, 255, 0, 0.2); }
         .counter-invalid { color: var(--danger-red); border: 1px solid rgba(255, 51, 51, 0.2); }
 
@@ -93,7 +96,6 @@
 
         .final-list { overflow-y: auto; direction: ltr; flex-grow: 1; min-height: 50px; max-height: 140px; }
         
-        /* التنسيق بعد إزالة كلمة نسخ ليكون متزناً بالكامل */
         .final-card { background: #111; border: 1px solid #222; border-radius: 4px; padding: 5px 8px; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--accent-green); transition: all 0.2s ease; cursor: pointer; }
         .final-value { font-family: 'Courier New', monospace; color: var(--accent-green); font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; display: flex; align-items: center; justify-content: space-between; gap: 4px; pointer-events: none; }
         
@@ -286,7 +288,7 @@
                 const payload = {
                     contents: [{
                         parts: [
-                            { text: "Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting." },
+                            { text: "Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting." },
                             { inlineData: { mimeType: file.type, data: base64String } }
                         ]
                     }]
@@ -325,6 +327,7 @@
     function extractAccounts(rawText) {
         resultsArea.innerHTML = '';
         let found = [];
+        
         let cleanText = rawText.replace(/[ \t]+/g, '');
         const regex = /[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}|[A-Z0-9]{20,36}/g;
         let matches = cleanText.match(regex);
@@ -339,13 +342,29 @@
         }
 
         if (found.length === 0) {
-            let lines = rawText.split('\n').map(l => l.replace(/[^A-Z0-9-]/g, ''));
+            let ultraCleanText = rawText.replace(/[^A-Z0-9-]/g, ''); 
+            let ultraMatches = ultraCleanText.match(/[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}/g);
+            if (ultraMatches) {
+                ultraMatches.forEach(acc => {
+                    if (!found.includes(acc)) {
+                        found.push(acc);
+                        addReviewCard(acc);
+                    }
+                });
+            }
+        }
+
+        if (found.length === 0) {
+            let lines = rawText.split('\n').map(l => l.replace(/[^A-Z0-9-]/g, '')).filter(l => l.length > 0);
             for(let i=0; i<lines.length-1; i++) {
                 let combined = lines[i] + lines[i+1];
-                if (combined.length >= 30 && combined.length <= 40) {
-                    addReviewCard(combined);
-                    found.push(combined);
-                    break; 
+                if (combined.length >= 30 && combined.length <= 42) {
+                    let cleanedCombined = combined.replace(/-+/g, '-').replace(/-$/, ''); 
+                    if(cleanedCombined.length === 36 || cleanedCombined.length === 20) {
+                        addReviewCard(cleanedCombined);
+                        found.push(cleanedCombined);
+                        break; 
+                    }
                 }
             }
         }
@@ -377,6 +396,7 @@
         window.speechSynthesis.speak(utterance);
     }
 
+    // تعديل الدالة لتعكس النص وتجعله يظهر (القيمة الرقمية أولاً ثم كلمة خانة)
     function updateCounter(cardId) {
         const inputEl = document.getElementById(`i_${cardId}`);
         const counterEl = document.getElementById(`count_${cardId}`);
@@ -399,7 +419,8 @@
         div.innerHTML = `
             <div class="card-header">
                 <div class="card-header-right">
-                    <span class="label">تأكيد الحساب</span>
+                    <button class="delete-card-btn" onclick="removeCard('${cardId}')" title="حذف وإلغاء هذه البطاقة">✕ حذف</button>
+                    <span class="label">| تأكيد الحساب</span>
                     <span id="count_${cardId}" class="char-counter">0 خانة</span>
                 </div>
                 <div class="card-header-left">
@@ -414,6 +435,15 @@
         resultsArea.appendChild(div);
         
         updateCounter(cardId);
+    }
+
+    function removeCard(cardId) {
+        document.getElementById(cardId).remove();
+        window.speechSynthesis.cancel();
+        if (resultsArea.children.length === 0) {
+            resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>';
+            statusDiv.innerText = "جاهز لسحب الحسابات";
+        }
     }
 
     function approve(cardId) {
