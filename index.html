@@ -118,33 +118,36 @@
             text-overflow: ellipsis;
         }
 
-        /* تنسيق الحقوق الجديد */
+        /* تنسيق الحقوق الجديد والتفاعل */
         .footer {
             margin-top: 5px;
             font-size: 8px;
-            color: #444;
+            color: #666;
             border-top: 1px solid #1a1a1a;
             padding-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
         }
         
-        .heart {
-            color: #ff3333;
+        .pulse-emoji {
             display: inline-block;
             animation: pulse 1.4s infinite ease-in-out;
         }
 
-        .container:hover .heart {
+        .container:hover .pulse-emoji {
             animation-duration: 0.8s;
         }
 
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
-            30% { transform: scale(1.15); }
+            30% { transform: scale(1.2); }
             60% { transform: scale(1.05); }
         }
 
         .footer b {
-            color: #666;
+            color: #888;
         }
     </style>
 </head>
@@ -165,7 +168,6 @@
                 </div>
             </a>
        
-                
             <a href="simah.html" class="menu-item simah-tool">
                 <div class="icon">📊</div>
                 <div class="text-wrapper">
@@ -191,10 +193,31 @@
             </a>
         </div>
 
-        <div class="footer">
-            Built with <span class="heart">❤️</span> by <b>Sultan Alkharmani</b>
+        <!-- الجزء الخاص بالحقوق المتغيرة -->
+        <div class="footer" id="dynamic-footer">
+            <!-- سيتم توليد المحتوى هنا تلقائياً بواسطة الجافاسكريبت -->
         </div>
     </div>
 
+    <script>
+        // مصفوفة الجمل والإيموجيات الخاصة بك
+        const quotes = [
+            { emoji: "❤️", text: "Crafted to make your work easier" },
+            { emoji: "✨", text: "Made to fit your needs perfectly" },
+            { emoji: "🌿", text: "Your productivity, our mission" },
+            { emoji: "🪄", text: "Crafted as if it were made only for you" },
+            { emoji: "💎", text: "Built to match your ambitions" },
+            { emoji: "🤍", text: "Made specially for you" }
+        ];
+
+        // اختيار جملة عشوائية عند تحميل الصفحة
+        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+        // طباعة العبارة داخل الفوتر مع الحفاظ على حركة النبض للإيموجي وثبات الاسم
+        document.getElementById('dynamic-footer').innerHTML = `
+            <span class="pulse-emoji">${randomQuote.emoji}</span> 
+            ${randomQuote.text} — by <b>Sultan</b>
+        `;
+    </script>
 </body>
 </html>
