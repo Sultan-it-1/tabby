@@ -904,7 +904,14 @@
 
             if (activeId) {
                 let i = storageData[targetCId][activeCat].find(x => x.id === activeId);
-                if (i) { i.l = l; i.t = t; }
+                if (i) {
+                    if (i.l !== l || i.t !== t) {
+                        i.l = l;
+                        i.t = t;
+                        unbackedUpCount++;
+                        localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
+                    }
+                }
             } else {
                 storageData[targetCId][activeCat].push({ id: Date.now() + Math.random(), l, t });
                 unbackedUpCount++;
