@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الإعدادات - FAST TOOLKIT</title>
+    <script src="settings.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 0;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+        
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            color: var(--accent-green);
+        }
+
+        .settings-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            text-align: right;
+            padding-right: 2px;
+        }
+
+        .settings-content::-webkit-scrollbar { width: 3px; }
+        .settings-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .setting-group {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 6px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        /* Toggle switch */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 16px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .3s;
+            border-radius: 16px;
+            border: 1px solid #444;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "🌙";
+            font-size: 9px;
+            height: 12px; width: 12px;
+            left: 2px; bottom: 1px;
+            transition: .3s;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        input:checked + .slider { background-color: #eee; border-color: #ccc; }
+        input:checked + .slider:before {
+            content: "☀️";
+            transform: translateX(12px);
+            color: #f39c12;
+        }
+
+        /* Range Sliders */
+        .range-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        .range-wrapper span {
+            font-size: 10px;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+        }
+        .range-wrapper b {
+            color: var(--accent-green);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            cursor: pointer;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+
+        /* Colors */
+        .color-options {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 4px;
+        }
+
+        .color-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .color-btn.active {
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        .footer-btns {
+            margin-top: auto;
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-reset {
+            background: #dc3545;
+            color: #fff;
+        }
+        .btn-reset:hover { background: #c82333; }
+        
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-btn">🔙 رجوع</a>
+            <h1>الإعدادات ⚙️</h1>
+        </div>
+
+        <div class="settings-content">
+            
+            <div class="setting-group">
+                <div class="switch-container">
+                    <label style="margin:0;">الوضع العام</label>
+                    <label class="switch">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label>اللون الأساسي</label>
+                <div class="color-options">
+                    <div class="color-btn" style="background:#00ff00" data-color="#00ff00" title="أخضر"></div>
+                    <div class="color-btn" style="background:#ff3399" data-color="#ff3399" title="وردي"></div>
+                    <div class="color-btn" style="background:#00e5ff" data-color="#00e5ff" title="تركوازي"></div>
+                    <div class="color-btn" style="background:#ff9f43" data-color="#ff9f43" title="برتقالي"></div>
+                    <div class="color-btn" style="background:#3399ff" data-color="#3399ff" title="أزرق"></div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label>حجم الحاوية (اسحب للتعديل)</label>
+                <div class="range-wrapper">
+                    <span>↔️ العرض: <b id="widthVal">230</b>px</span>
+                    <input type="range" id="widthInput" min="200" max="800" value="230" step="10">
+                </div>
+                <div class="range-wrapper" style="margin-top: 6px;">
+                    <span>↕️ الطول: <b id="heightVal">300</b>px</span>
+                    <input type="range" id="heightInput" min="200" max="800" value="300" step="10">
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer-btns">
+            <button class="action-btn btn-reset" id="resetBtn">استعادة الافتراضي 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentSettings = window.fastToolkitSettings;
+            
+            const modeToggle = document.getElementById('modeToggle');
+            const widthInput = document.getElementById('widthInput');
+            const heightInput = document.getElementById('heightInput');
+            const widthVal = document.getElementById('widthVal');
+            const heightVal = document.getElementById('heightVal');
+            const colorBtns = document.querySelectorAll('.color-btn');
+            const resetBtn = document.getElementById('resetBtn');
+
+            let selectedColor = currentSettings.themeColor;
+
+            // Load values to UI
+            modeToggle.checked = (currentSettings.mode === 'light');
+            widthInput.value = currentSettings.width;
+            heightInput.value = currentSettings.height;
+            widthVal.innerText = currentSettings.width;
+            heightVal.innerText = currentSettings.height;
+
+            function updateColorSelection() {
+                colorBtns.forEach(btn => {
+                    if (btn.dataset.color.toLowerCase() === selectedColor.toLowerCase()) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+            updateColorSelection();
+
+            const autoSave = () => {
+                const newSettings = {
+                    mode: modeToggle.checked ? 'light' : 'dark',
+                    width: parseInt(widthInput.value) || 230,
+                    height: parseInt(heightInput.value) || 300,
+                    themeColor: selectedColor
+                };
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(newSettings));
+                window.location.reload(); 
+            };
+
+            // Event Listeners for auto-save
+            modeToggle.addEventListener('change', autoSave);
+            
+            colorBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedColor = btn.dataset.color;
+                    autoSave();
+                });
+            });
+            
+            // Live text update
+            widthInput.addEventListener('input', () => { widthVal.innerText = widthInput.value; });
+            heightInput.addEventListener('input', () => { heightVal.innerText = heightInput.value; });
+
+            // Save on release
+            widthInput.addEventListener('change', autoSave);
+            heightInput.addEventListener('change', autoSave);
+
+            // Reset settings
+            resetBtn.addEventListener('click', () => {
+                localStorage.removeItem('fastToolkitSettings');
+                window.location.reload();
+            });
+        });
+    </script>
+</body>
+</html>

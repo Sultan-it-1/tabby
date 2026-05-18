@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FAST TOOLKIT - مجموعة أدوات ذكية وسريعة">
+    <meta name="theme-color" content="#0f0f0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>بوابة الأدوات الذكية - الرئيسية</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --accent-blue: #00d4ff;
+            --accent-yellow: #ffcc00;
+            --accent-orange: #ff9f43;
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 2px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .header p {
+            color: #666;
+            font-size: 9px;
+            margin: 0 0 8px 0;
+        }
+
+        .menu-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 2px;
+        }
+
+        .menu-grid::-webkit-scrollbar { width: 3px; }
+        .menu-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .menu-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            text-decoration: none;
+            color: var(--text);
+            transition: 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: right;
+        }
+
+        .menu-item:hover {
+            transform: translateX(-2px);
+            border-color: var(--accent-green);
+            background: #1f1f1f;
+        }
+
+        .menu-item.simah-tool:hover { border-color: var(--accent-yellow); }
+        .menu-item.card-tool:hover { border-color: var(--accent-blue); }
+        .menu-item.sticky-tool:hover { border-color: var(--accent-orange); }
+
+        .icon { font-size: 16px; flex-shrink: 0; }
+        .text-wrapper { display: flex; flex-direction: column; overflow: hidden; }
+
+        .title {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .desc {
+            font-size: 8px;
+            color: #666;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* تنسيق الحقوق الجديد والتفاعل */
+        .footer {
+            margin-top: 5px;
+            font-size: 8px;
+            color: #666;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            /* تم إضافة السطرين بالأسفل لإجبار النص الإنجليزي على الترتيب السليم */
+            direction: ltr; 
+            font-family: Arial, sans-serif;
+        }
+        
+        .pulse-emoji {
+            display: inline-block;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+
+        .container:hover .pulse-emoji {
+            animation-duration: 0.8s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            30% { transform: scale(1.2); }
+            60% { transform: scale(1.05); }
+        }
+
+        .footer b {
+            color: #888;
+        }
+    </style>
+    <script src="settings.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 style="margin: 0;">FAST TOOLKIT</h1>
+                <a href="settings.html" style="text-decoration: none; font-size: 14px; transition: transform 0.2s;" onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'" title="الإعدادات">⚙️</a>
+            </div>
+            <p style="margin-top: 4px;">اختر الأداة المطلوبة للبدء</p>
+        </div>
+
+        <div class="menu-grid">
+            <a href="note.html" class="menu-item">
+                <div class="icon">📝</div>
+                <div class="text-wrapper">
+                    <div class="title">نسخ سريع</div>
+                    <div class="desc">إدارة ونسخ نصوص واختصارات العملاء بضغطة.</div>
+                </div>
+            </a>
+       
+            <a href="simah.html" class="menu-item simah-tool">
+                <div class="icon">📊</div>
+                <div class="text-wrapper">
+                    <div class="title">سمة</div>
+                    <div class="desc">استخراج وتدقيق الحسابات.</div>
+                </div>
+            </a>
+
+            <a href="card.html" class="menu-item card-tool">
+                <div class="icon">🔍</div>
+                <div class="text-wrapper">
+                    <div class="title">Card Scan</div>
+                    <div class="desc">استخراج بيانات البطاقات والمبالغ من الصور تلقائياً.</div>
+                </div>
+            </a>
+
+            <a href="sticky.html" class="menu-item sticky-tool">
+                <div class="icon">📌</div>
+                <div class="text-wrapper">
+                    <div class="title">Sticky Notes</div>
+                    <div class="desc">تدوين الملاحظات السريعة والمهمة.</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- الجزء الخاص بالحقوق المتغيرة -->
+        <div class="footer" id="dynamic-footer">
+            <!-- سيتم توليد المحتوى هنا تلقائياً بواسطة الجافاسكريبت -->
+        </div>
+    </div>
+
+    <script>
+        // مصفوفة الجمل والإيموجيات الخاصة بك
+        const quotes = [
+            { emoji: "❤️", text: "Crafted to make your work easier" },
+            { emoji: "✨", text: "Made to fit your needs perfectly" },
+            { emoji: "🌿", text: "Your productivity, our mission" },
+            { emoji: "🪄", text: "Crafted as if it were made only for you" },
+            { emoji: "💎", text: "Built to match your ambitions" },
+            { emoji: "🤍", text: "Made specially for you" }
+        ];
+
+        // اختيار جملة عشوائية عند تحميل الصفحة
+        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+        // طباعة العبارة داخل الفوتر مع الحفاظ على حركة النبض للإيموجي وثبات الاسم
+        document.getElementById('dynamic-footer').innerHTML = `
+            <span class="pulse-emoji">${randomQuote.emoji}</span> 
+            <span>${randomQuote.text} — by <b>Sultan</b></span>
+        `;
+    </script>
+</body>
+</html>

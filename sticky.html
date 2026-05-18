@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>النوتات - الملاحظات السريعة</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --accent-red: #ff3333;
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+            text-align: center;
+            flex-grow: 1;
+            padding-left: 20px; /* Offset to perfectly center visually */
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--accent-green);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #122212;
+            border-color: var(--accent-green);
+        }
+
+        .note-area {
+            flex-grow: 1;
+            margin: 8px 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            color: var(--text);
+            font-size: 11px;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            line-height: 1.4;
+            
+            /* التعديل السحري لحل مشكلة اتجاه المؤشر والنصوص بشكل ديناميكي كامل */
+            text-align: start;
+            unicode-bidi: plaintext;
+        }
+
+        .note-area:focus {
+            border-color: var(--accent-green);
+        }
+
+        /* تنسيق شريط التمرير للنوتة */
+        .note-area::-webkit-scrollbar { width: 3px; }
+        .note-area::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .btn-clear {
+            border-color: rgba(255, 51, 51, 0.3);
+        }
+
+        .btn-clear:hover {
+            background: #251515;
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .btn-copy:hover {
+            background: #152515;
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .footer {
+            margin-top: 5px;
+            font-size: 8px;
+            color: #555;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
+            text-align: center;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+    </style>
+    <script src="settings.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+            <h1>Sticky Notes</h1>
+        </div>
+
+        <!-- ساحة كتابة الملاحظات مع دعم الاتجاه التلقائي للمؤشر والنص -->
+        <textarea id="stickyNote" class="note-area" dir="auto" placeholder="اكتب ملاحظاتك هنا... سيتم حفظها تلقائياً"></textarea>
+
+        <!-- أزرار التحكم -->
+        <div class="actions">
+            <button onclick="clearNote()" class="btn btn-clear">
+                <span>🗑️</span> مسح
+            </button>
+            <button onclick="copyNote()" class="btn btn-copy">
+                <span>📋</span> نسخ
+            </button>
+        </div>
+
+        <!-- هنا تظهر العبارات المتغيرة -->
+        <div id="dynamicFooter" class="footer">
+             Toolkit
+        </div>
+    </div>
+
+    <script>
+        const noteArea = document.getElementById('stickyNote');
+        const footerElement = document.getElementById('dynamicFooter');
+
+        // قائمة العبارات التحفيزية
+        const phrases = [
+            "Keep it up 👏", "Great job 🔥", "Excellent work 🚀", 
+            "You’re doing great 💯", "Well done 👌", "Nice progress 📈", 
+            "Outstanding 👏", "Impressive work ⭐", "Keep pushing 💪", 
+            "You nailed it ✅", "Smooth work 😎", "Solid effort 👌", 
+            "Keep grinding 🚀", "Big respect 👏", "That’s clean ✨", 
+            "Smart move 🧠", "Strong performance 💯", "Keep shining ⭐", 
+            "Leveling up 🚀"
+        ];
+
+        // عند تحميل الصفحة
+        window.onload = function() {
+            const savedNote = localStorage.getItem('quick_sticky_note');
+            if (savedNote) {
+                noteArea.value = savedNote;
+            }
+
+            const randomIndex = Math.floor(Math.random() * phrases.length);
+            footerElement.innerText = phrases[randomIndex];
+        };
+
+        // حفظ الملاحظة تلقائياً
+        noteArea.addEventListener('input', function() {
+            localStorage.setItem('quick_sticky_note', noteArea.value);
+        });
+
+        // وظيفة زر المسح
+        function clearNote() {
+            if (noteArea.value.trim() !== "") {
+                noteArea.value = "";
+                localStorage.removeItem('quick_sticky_note');
+                noteArea.focus();
+            }
+        }
+
+        // وظيفة زر النسخ
+        function copyNote() {
+            if (noteArea.value.trim() !== "") {
+                navigator.clipboard.writeText(noteArea.value);
+                
+                const copyBtn = document.querySelector('.btn-copy');
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = "✅ تم النسخ";
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, 1000);
+            }
+        }
+    </script>
+
+</body>
+</html>
