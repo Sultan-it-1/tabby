@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الإعدادات - FAST TOOLKIT</title>
@@ -37,7 +41,7 @@
             border-radius: 12px;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
         }
 
         .header {
@@ -55,7 +59,7 @@
             margin: 0;
             text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
         }
-        
+
         .nav-btn {
             background: #252525;
             border: 1px solid #444;
@@ -81,8 +85,14 @@
             padding-right: 2px;
         }
 
-        .settings-content::-webkit-scrollbar { width: 3px; }
-        .settings-content::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .settings-content::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .settings-content::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
 
         .setting-group {
             background: var(--card-bg);
@@ -114,12 +124,19 @@
             height: 16px;
         }
 
-        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
 
         .slider {
             position: absolute;
             cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: #333;
             transition: .3s;
             border-radius: 16px;
@@ -130,14 +147,22 @@
             position: absolute;
             content: "🌙";
             font-size: 9px;
-            height: 12px; width: 12px;
-            left: 2px; bottom: 1px;
+            height: 12px;
+            width: 12px;
+            left: 2px;
+            bottom: 1px;
             transition: .3s;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        input:checked + .slider { background-color: #eee; border-color: #ccc; }
-        input:checked + .slider:before {
+        input:checked+.slider {
+            background-color: #eee;
+            border-color: #ccc;
+        }
+
+        input:checked+.slider:before {
             content: "☀️";
             transform: translateX(12px);
             color: #f39c12;
@@ -150,15 +175,18 @@
             gap: 4px;
             margin-bottom: 6px;
         }
+
         .range-wrapper span {
             font-size: 10px;
             color: var(--text);
             display: flex;
             justify-content: space-between;
         }
+
         .range-wrapper b {
             color: var(--accent-green);
         }
+
         input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
@@ -167,6 +195,7 @@
             border-radius: 4px;
             outline: none;
         }
+
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
@@ -175,7 +204,7 @@
             border-radius: 50%;
             background: var(--accent-green);
             cursor: pointer;
-            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
         }
 
         /* Colors */
@@ -221,10 +250,13 @@
             background: #dc3545;
             color: #fff;
         }
-        .btn-reset:hover { background: #c82333; }
-        
+
+        .btn-reset:hover {
+            background: #c82333;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="container">
@@ -234,7 +266,7 @@
         </div>
 
         <div class="settings-content">
-            
+
             <div class="setting-group">
                 <div class="switch-container">
                     <label style="margin:0;">الوضع العام</label>
@@ -278,7 +310,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const currentSettings = window.fastToolkitSettings;
-            
+
             const modeToggle = document.getElementById('modeToggle');
             const widthInput = document.getElementById('widthInput');
             const heightInput = document.getElementById('heightInput');
@@ -315,19 +347,19 @@
                     themeColor: selectedColor
                 };
                 localStorage.setItem('fastToolkitSettings', JSON.stringify(newSettings));
-                window.location.reload(); 
+                window.location.reload();
             };
 
             // Event Listeners for auto-save
             modeToggle.addEventListener('change', autoSave);
-            
+
             colorBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     selectedColor = btn.dataset.color;
                     autoSave();
                 });
             });
-            
+
             // Live text update
             widthInput.addEventListener('input', () => { widthVal.innerText = widthInput.value; });
             heightInput.addEventListener('input', () => { heightVal.innerText = heightInput.value; });
@@ -350,4 +382,5 @@
         });
     </script>
 </body>
+
 </html>
