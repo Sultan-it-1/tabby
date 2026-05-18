@@ -78,12 +78,14 @@
             background: ${containerBg} !important;
             border-color: ${containerBorder} !important;
             color: ${textColor} !important;
-            transition: width 0.3s ease, height 0.3s ease;
             position: relative !important;
         }
         .container.expanded, .app-container.expanded {
             width: 320px !important;
             height: 480px !important;
+        }
+        .container.ready, .app-container.ready {
+            transition: width 0.3s ease, height 0.3s ease !important;
         }
 
         /* === Expanded state: scale up all content === */
@@ -263,10 +265,19 @@
 
     // Apply immediately when DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => { applyExpand(); injectExpandButton(); });
+        document.addEventListener('DOMContentLoaded', () => { 
+            applyExpand(); 
+            injectExpandButton(); 
+            setTimeout(() => {
+                document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
+            }, 50);
+        });
     } else {
         applyExpand();
         injectExpandButton();
+        setTimeout(() => {
+            document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
+        }, 50);
     }
 
     // Global toggle function available to all pages

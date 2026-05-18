@@ -1,2 +1,2 @@
 // Centralized Site Version (Single Source of Truth)
-const APP_VERSION = "1.0.2";
+const APP_VERSION = "1.0.0";
