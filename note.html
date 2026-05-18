@@ -932,10 +932,20 @@
         }
 
         function exportData() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            const filename = `backup_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.json`;
+
             const blob = new Blob([JSON.stringify(storageData, null, 2)], { type: "application/json" });
             const a = document.createElement("a");
             a.href = URL.createObjectURL(blob);
-            a.download = `backup_${Date.now()}.json`;
+            a.download = filename;
             a.click();
 
             unbackedUpCount = 0;
