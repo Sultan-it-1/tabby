@@ -1,4 +1,12 @@
 (function () {
+    // Apply expanded state to document element instantly to prevent page transition flickering
+    const isInitiallyExpanded = localStorage.getItem('fastToolkitExpanded') === 'true';
+    if (isInitiallyExpanded) {
+        document.documentElement.classList.add('expanded');
+    } else {
+        document.documentElement.classList.remove('expanded');
+    }
+
     const defaultSettings = {
         mode: 'light',
         themeColor: '#007aff'
@@ -80,11 +88,13 @@
             color: ${textColor} !important;
             position: relative !important;
         }
-        .container.expanded, .app-container.expanded {
+        .container.expanded, .app-container.expanded,
+        .expanded .container, .expanded .app-container {
             width: 320px !important;
             height: 480px !important;
         }
-        .container.ready, .app-container.ready {
+        .container.ready, .app-container.ready,
+        .ready .container, .ready .app-container {
             transition: width 0.3s ease, height 0.3s ease !important;
         }
 
@@ -230,6 +240,11 @@
     const shrinkSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>';
 
     function applyExpand() {
+        if (isExpanded) {
+            document.documentElement.classList.add('expanded');
+        } else {
+            document.documentElement.classList.remove('expanded');
+        }
         document.querySelectorAll('.container, .app-container').forEach(el => {
             if (isExpanded) {
                 el.classList.add('expanded');
@@ -269,6 +284,7 @@
             applyExpand(); 
             injectExpandButton(); 
             setTimeout(() => {
+                document.documentElement.classList.add('ready');
                 document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
             }, 50);
         });
@@ -276,6 +292,7 @@
         applyExpand();
         injectExpandButton();
         setTimeout(() => {
+            document.documentElement.classList.add('ready');
             document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
         }, 50);
     }
@@ -290,7 +307,13 @@
 
     window.fastToolkitSetExpand = function (shouldExpand) {
         localStorage.setItem('fastToolkitExpanded', shouldExpand);
+        if (shouldExpand) {
+            document.documentElement.classList.add('expanded');
+        } else {
+            document.documentElement.classList.remove('expanded');
+        }
         document.querySelectorAll('.container, .app-container').forEach(el => {
+            el.classList.add('ready');
             if (shouldExpand) {
                 el.classList.add('expanded');
             } else {
