@@ -288,17 +288,7 @@
                 </div>
             </div>
 
-            <div class="setting-group">
-                <label>حجم الحاوية (اسحب للتعديل)</label>
-                <div class="range-wrapper">
-                    <span>↔️ العرض: <b id="widthVal">230</b>px</span>
-                    <input type="range" id="widthInput" min="200" max="800" value="230" step="10">
-                </div>
-                <div class="range-wrapper" style="margin-top: 6px;">
-                    <span>↕️ الطول: <b id="heightVal">300</b>px</span>
-                    <input type="range" id="heightInput" min="200" max="800" value="300" step="10">
-                </div>
-            </div>
+
 
         </div>
 
@@ -312,21 +302,11 @@
             const currentSettings = window.fastToolkitSettings;
 
             const modeToggle = document.getElementById('modeToggle');
-            const widthInput = document.getElementById('widthInput');
-            const heightInput = document.getElementById('heightInput');
-            const widthVal = document.getElementById('widthVal');
-            const heightVal = document.getElementById('heightVal');
             const colorBtns = document.querySelectorAll('.color-btn');
             const resetBtn = document.getElementById('resetBtn');
 
             let selectedColor = currentSettings.themeColor;
-
-            // Load values to UI
             modeToggle.checked = (currentSettings.mode === 'light');
-            widthInput.value = currentSettings.width;
-            heightInput.value = currentSettings.height;
-            widthVal.innerText = currentSettings.width;
-            heightVal.innerText = currentSettings.height;
 
             function updateColorSelection() {
                 colorBtns.forEach(btn => {
@@ -342,8 +322,6 @@
             const autoSave = () => {
                 const newSettings = {
                     mode: modeToggle.checked ? 'light' : 'dark',
-                    width: parseInt(widthInput.value) || 230,
-                    height: parseInt(heightInput.value) || 300,
                     themeColor: selectedColor
                 };
                 localStorage.setItem('fastToolkitSettings', JSON.stringify(newSettings));
@@ -360,23 +338,15 @@
                 });
             });
 
-            // Live text update
-            widthInput.addEventListener('input', () => { widthVal.innerText = widthInput.value; });
-            heightInput.addEventListener('input', () => { heightVal.innerText = heightInput.value; });
 
-            // Save on release
-            widthInput.addEventListener('change', autoSave);
-            heightInput.addEventListener('change', autoSave);
 
-            // Reset settings
             resetBtn.addEventListener('click', () => {
                 const newDefaults = {
                     mode: 'light',
-                    width: 230,
-                    height: 300,
                     themeColor: '#007aff'
                 };
                 localStorage.setItem('fastToolkitSettings', JSON.stringify(newDefaults));
+                localStorage.removeItem('fastToolkitExpanded');
                 window.location.reload();
             });
         });
