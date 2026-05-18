@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,141 +10,152 @@
   <title>بوابة الأدوات الذكية - 404</title>
   <style>
     :root {
-        --bg: #0f0f0f;
-        --card-bg: #1a1a1a;
-        --accent-green: var(--accent-green);
-        --text: #eee;
-        --border: #333;
+      --bg: #0f0f0f;
+      --card-bg: #1a1a1a;
+      --accent-green: var(--accent-green);
+      --text: #eee;
+      --border: #333;
     }
 
     body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        margin: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
     }
 
     /* الحاوية متطابقة تماماً مع تصميم الصفحة الرئيسية */
     .container {
-        text-align: center;
-        width: 230px;
-        height: 300px;
-        box-sizing: border-box;
-        padding: 15px 10px;
-        background: #111;
-        border: 1px solid #222;
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+      text-align: center;
+      width: 230px;
+      height: 300px;
+      box-sizing: border-box;
+      padding: 15px 10px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
     }
 
     .header h1 {
-        font-size: 14px;
-        color: var(--accent-green);
-        margin: 2px 0;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+      font-size: 14px;
+      color: var(--accent-green);
+      margin: 2px 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
     }
 
     /* منطقة الـ Canvas المخصصة لتأثير الـ 404 */
     .canvas-wrapper {
-        flex-grow: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        overflow: hidden;
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      overflow: hidden;
     }
 
     canvas {
-        display: block;
-        max-width: 100%;
+      display: block;
+      max-width: 100%;
     }
 
     .message {
-        font-size: 10px;
-        color: #aaa;
-        line-height: 1.4;
-        margin: 5px 0;
-        padding: 0 5px;
+      font-size: 10px;
+      color: #aaa;
+      line-height: 1.4;
+      margin: 5px 0;
+      padding: 0 5px;
     }
 
     /* زر العودة متناسق مع ستايل الـ menu-item السابق */
     .btn {
-        background: var(--card-bg);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        padding: 6px 12px;
-        text-decoration: none;
-        color: var(--text);
-        font-size: 10px;
-        font-weight: bold;
-        transition: 0.2s ease;
-        display: inline-block;
-        width: 80%;
-        box-sizing: border-box;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 10px;
+      font-weight: bold;
+      transition: 0.2s ease;
+      display: inline-block;
+      width: 80%;
+      box-sizing: border-box;
     }
 
     .btn:hover {
-        transform: translateY(-1px);
-        border-color: var(--accent-green);
-        background: #1f1f1f;
-        box-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 10%, transparent);
+      transform: translateY(-1px);
+      border-color: var(--accent-green);
+      background: #1f1f1f;
+      box-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 10%, transparent);
     }
 
     /* حقوق الفوتر المتغيرة الثابتة */
     .footer {
-        width: 100%;
-        margin-top: 8px;
-        font-size: 8px;
-        color: #666;
-        border-top: 1px solid #1a1a1a;
-        padding-top: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 3px;
+      width: 100%;
+      margin-top: 8px;
+      font-size: 8px;
+      color: #666;
+      border-top: 1px solid #1a1a1a;
+      padding-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
     }
-    
+
     .pulse-emoji {
-        display: inline-block;
-        animation: pulse 1.4s infinite ease-in-out;
+      display: inline-block;
+      animation: pulse 1.4s infinite ease-in-out;
     }
 
     .container:hover .pulse-emoji {
-        animation-duration: 0.8s;
+      animation-duration: 0.8s;
     }
 
     @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        30% { transform: scale(1.2); }
-        60% { transform: scale(1.05); }
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      30% {
+        transform: scale(1.2);
+      }
+
+      60% {
+        transform: scale(1.05);
+      }
     }
 
     .footer b {
-        color: #888;
+      color: #888;
     }
   </style>
 </head>
+
 <body>
 
   <div class="container">
     <div class="header">
-        <h1>FAST TOOLKIT</h1>
+      <h1>FAST TOOLKIT</h1>
     </div>
 
     <!-- الـ Canvas بداخل مقاس محكوم ومناسب للنص المشوش -->
     <div class="canvas-wrapper">
-        <canvas id="fuzzyCanvas"></canvas>
+      <canvas id="fuzzyCanvas"></canvas>
     </div>
 
     <div class="message">
@@ -209,19 +221,20 @@
       if (enableHover) {
         // دعم التفاعل عند تمرير الماوس أو اللمس داخل نطاق الـ Container
         const container = document.querySelector('.container');
-        
+
         container.addEventListener('mouseenter', () => isHovering = true);
         container.addEventListener('mouseleave', () => isHovering = false);
-        
+
         container.addEventListener('touchstart', () => isHovering = true, { passive: true });
         container.addEventListener('touchend', () => isHovering = false, { passive: true });
       }
     }
 
 
-    
+
 
     window.addEventListener('load', init);
   </script>
 </body>
+
 </html>
