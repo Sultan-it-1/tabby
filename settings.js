@@ -1,9 +1,9 @@
 (function() {
     const defaultSettings = {
-        mode: 'dark',
+        mode: 'light',
         width: 230,
         height: 300,
-        themeColor: '#00ff00'
+        themeColor: '#007aff'
     };
 
     let savedSettings = null;
