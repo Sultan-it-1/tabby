@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="FAST TOOLKIT - مجموعة أدوات ذكية وسريعة">
@@ -43,7 +47,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
         }
 
         .header h1 {
@@ -70,8 +74,14 @@
             padding-right: 2px;
         }
 
-        .menu-grid::-webkit-scrollbar { width: 3px; }
-        .menu-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .menu-grid::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .menu-grid::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
 
         .menu-item {
             background: var(--card-bg);
@@ -93,12 +103,28 @@
             background: #1f1f1f;
         }
 
-        .menu-item.simah-tool:hover { border-color: var(--accent-yellow); }
-        .menu-item.card-tool:hover { border-color: var(--accent-blue); }
-        .menu-item.sticky-tool:hover { border-color: var(--accent-orange); }
+        .menu-item.simah-tool:hover {
+            border-color: var(--accent-yellow);
+        }
 
-        .icon { font-size: 16px; flex-shrink: 0; }
-        .text-wrapper { display: flex; flex-direction: column; overflow: hidden; }
+        .menu-item.card-tool:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .menu-item.sticky-tool:hover {
+            border-color: var(--accent-orange);
+        }
+
+        .icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .text-wrapper {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
         .title {
             font-size: 11px;
@@ -130,10 +156,10 @@
             justify-content: center;
             gap: 4px;
             /* تم إضافة السطرين بالأسفل لإجبار النص الإنجليزي على الترتيب السليم */
-            direction: ltr; 
+            direction: ltr;
             font-family: Arial, sans-serif;
         }
-        
+
         .pulse-emoji {
             display: inline-block;
             animation: pulse 1.4s infinite ease-in-out;
@@ -144,24 +170,37 @@
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            30% { transform: scale(1.2); }
-            60% { transform: scale(1.05); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            30% {
+                transform: scale(1.2);
+            }
+
+            60% {
+                transform: scale(1.05);
+            }
         }
 
         .footer b {
             color: #888;
         }
     </style>
-    <script src="settings.js"></script>
+    <script src="settings.js?v=2"></script>
 </head>
+
 <body>
 
     <div class="container">
         <div class="header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h1 style="margin: 0;">FAST TOOLKIT</h1>
-                <a href="settings.html" style="text-decoration: none; font-size: 14px; transition: transform 0.2s;" onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'" title="الإعدادات">⚙️</a>
+                <a href="settings.html" style="text-decoration: none; font-size: 14px; transition: transform 0.2s;"
+                    onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'"
+                    title="الإعدادات">⚙️</a>
             </div>
             <p style="margin-top: 4px;">اختر الأداة المطلوبة للبدء</p>
         </div>
@@ -174,7 +213,7 @@
                     <div class="desc">إدارة ونسخ نصوص واختصارات العملاء بضغطة.</div>
                 </div>
             </a>
-       
+
             <a href="simah.html" class="menu-item simah-tool">
                 <div class="icon">📊</div>
                 <div class="text-wrapper">
@@ -227,4 +266,5 @@
         `;
     </script>
 </body>
+
 </html>
