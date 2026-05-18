@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMAH - Exact Account Extractor</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --text: #eee;
+            --border: #333;
+            --danger-red: #ff3333;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            width: 230px;
+            height: 300px;
+            background: #111;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #222;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            justify-content: space-between;
+            position: relative;
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+            gap: 3px;
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--accent-green);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .ai-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: #888;
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .ai-btn.active {
+            background: var(--accent-green);
+            color: #000;
+            border-color: var(--accent-green);
+            box-shadow: 0 0 5px var(--accent-green);
+        }
+
+        .upload-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .settings-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .expand-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--accent-green);
+            padding: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .expand-btn:hover {
+            background: #333;
+        }
+
+        .clear-btn {
+            background: var(--danger-red);
+            color: white;
+            border: none;
+            padding: 2px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .delete-card-btn {
+            background: transparent;
+            color: var(--danger-red);
+            border: none;
+            padding: 0 4px;
+            cursor: pointer;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .scan-zone {
+            border: 1px dashed color-mix(in srgb, var(--accent-green) 25%, transparent);
+            padding: 10px 5px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            cursor: default;
+            background: #1a1a1a;
+            flex-shrink: 0;
+        }
+
+        .scan-zone p {
+            margin: 0;
+            font-size: 11px;
+            color: #888;
+            font-weight: bold;
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 9px;
+            color: #aaa;
+            margin: 4px 0 2px 0;
+            font-weight: bold;
+            border-bottom: 1px solid #222;
+            padding-bottom: 2px;
+            flex-shrink: 0;
+        }
+
+        .results {
+            overflow-y: auto;
+            text-align: left;
+            direction: ltr;
+            flex-grow: 1;
+            min-height: 60px;
+            max-height: 180px;
+            margin-bottom: 4px;
+        }
+
+        .card {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 6px;
+            margin-bottom: 4px;
+            border-left: 3px solid #ffcc00;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            direction: rtl;
+        }
+
+        .card-header-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            direction: ltr;
+        }
+
+        .label {
+            font-size: 8px;
+            color: #aaa;
+        }
+
+        /* تم تعديل العداد هنا ليجبر النص العربي والإنجليزي على الظهور بالترتيب الصحيح */
+        .char-counter {
+            font-size: 8px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 3px;
+            background: #111;
+            direction: ltr;
+            display: inline-block;
+        }
+
+        .counter-valid {
+            color: var(--accent-green);
+            border: 1px solid color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .counter-invalid {
+            color: var(--danger-red);
+            border: 1px solid rgba(255, 51, 51, 0.2);
+        }
+
+        .play-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0;
+            transition: transform 0.1s;
+        }
+
+        .play-btn:active {
+            transform: scale(0.9);
+        }
+
+        .speed-toggle-btn {
+            background: #222;
+            color: #ccc;
+            border: 1px solid #444;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 1px 4px;
+            cursor: pointer;
+            user-select: none;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .speed-toggle-btn:hover {
+            background: #333;
+            color: var(--text);
+        }
+
+        .visual-check {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--accent-green);
+            word-break: break-all;
+            margin-bottom: 4px;
+            font-weight: bold;
+            background: #111;
+            padding: 2px;
+            border-radius: 4px;
+            text-align: left;
+            line-height: 1.2;
+        }
+
+        .highlight {
+            color: #ffcc00;
+            background: #443300;
+            padding: 0 1px;
+            border-radius: 2px;
+        }
+
+        .edit-input {
+            width: 100%;
+            background: #222;
+            border: 1px solid #444;
+            color: var(--text);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 4px;
+            box-sizing: border-box;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        .action-btn {
+            background: var(--accent-green);
+            color: #000;
+            border: none;
+            width: 100%;
+            padding: 4px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        .final-list {
+            overflow-y: auto;
+            direction: ltr;
+            flex-grow: 1;
+            min-height: 50px;
+            max-height: 140px;
+        }
+
+        .final-card {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 4px;
+            padding: 5px 8px;
+            margin-bottom: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid var(--accent-green);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .final-value {
+            font-family: 'Courier New', monospace;
+            color: var(--accent-green);
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            pointer-events: none;
+        }
+
+        .check-mark {
+            display: none;
+            color: #555;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: auto;
+        }
+
+        .final-card.copied {
+            background: #1e1e1e !important;
+            border-color: #2d2d2d !important;
+            border-left: 3px solid #444444 !important;
+        }
+
+        .final-card.copied .final-value {
+            color: #555555 !important;
+            text-decoration: line-through;
+        }
+
+        .final-card.copied .check-mark {
+            display: inline;
+        }
+
+        .status-bar {
+            font-size: 9px;
+            color: var(--accent-green);
+            font-weight: bold;
+            min-height: 12px;
+            border-top: 1px solid #222;
+            padding-top: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .settings-modal {
+            position: absolute;
+            top: 35px;
+            left: 8px;
+            right: 8px;
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 8px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+        }
+
+        .settings-modal input {
+            width: 100%;
+            background: #000;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 4px;
+            font-size: 10px;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 6px;
+            text-align: left;
+        }
+
+        .provider-tabs {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 6px;
+        }
+
+        .provider-tab {
+            flex: 1;
+            padding: 4px;
+            font-size: 9px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #444;
+            background: #222;
+            color: #888;
+            text-align: center;
+            transition: 0.2s;
+        }
+
+        .provider-tab.active {
+            background: var(--accent-green);
+            color: #000;
+            border-color: var(--accent-green);
+        }
+
+        .provider-section {
+            display: none;
+        }
+
+        .provider-section.active {
+            display: block;
+        }
+
+        .settings-modal-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .settings-modal-btns button {
+            flex: 1;
+            padding: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .save-key-btn {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .close-key-btn {
+            background: #333;
+            color: var(--text);
+        }
+
+        .usage-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: #888;
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .usage-btn:hover {
+            background: #333;
+            color: var(--text);
+        }
+
+        .usage-modal {
+            position: absolute;
+            top: 35px;
+            left: 8px;
+            right: 8px;
+            bottom: 30px;
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 6px;
+            display: none;
+            z-index: 101;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+            direction: rtl;
+            overflow-y: auto;
+        }
+
+        .usage-title {
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--accent-green);
+            margin-bottom: 4px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 3px;
+        }
+
+        .usage-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px;
+            margin-bottom: 4px;
+        }
+
+        .usage-card {
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 5px;
+            padding: 4px;
+            text-align: center;
+        }
+
+        .usage-card-label {
+            font-size: 8px;
+            color: #666;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .usage-card-value {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--accent-green);
+            font-family: 'Courier New', monospace;
+        }
+
+        .usage-card-sub {
+            font-size: 7px;
+            color: #555;
+            margin-top: 2px;
+        }
+
+        .usage-section-title {
+            font-size: 8px;
+            color: #888;
+            font-weight: bold;
+            margin: 6px 0 4px 0;
+            text-align: center;
+        }
+
+        .usage-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 6px;
+            font-size: 9px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .usage-row-label {
+            color: #888;
+        }
+
+        .usage-row-value {
+            color: var(--text);
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+        }
+
+        .usage-bar-container {
+            grid-column: span 2;
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 5px;
+            padding: 4px 5px;
+        }
+
+        .usage-bar-track {
+            width: 100%;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .usage-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        .usage-close-btn {
+            width: 100%;
+            padding: 3px;
+            background: #222;
+            color: #888;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 3px;
+        }
+
+        .usage-close-btn:hover {
+            background: #333;
+            color: var(--text);
+        }
+
+        .results::-webkit-scrollbar,
+        .final-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .results::-webkit-scrollbar-thumb,
+        .final-list::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+    </style>
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</head>
+
+<body>
+
+    <div class="app-container" id="appContainer">
+        <div class="header">
+            <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <button id="expandBtn" class="expand-btn" onclick="toggleExpand()" title="توسيع الواجهة">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
+            </button>
+            <button id="aiBtn" class="ai-btn" onclick="toggleAI()">AI</button>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()"
+                title="رفع صورة من الجهاز">📁</button>
+            <button class="settings-btn" onclick="openSettings()" title="إعدادات API Key">⚙️</button>
+            <button class="usage-btn" onclick="toggleUsageModal()" title="استخدام API">📊</button>
+            <span style="font-size: 9px; color: var(--text); font-weight: bold; margin-right: auto;">SIMAH</span>
+        </div>
+
+        <div id="settingsModal" class="settings-modal">
+            <div class="provider-tabs">
+                <div class="provider-tab active" id="tabGemini" onclick="switchProvider('gemini')">Gemini</div>
+                <div class="provider-tab" id="tabGroq" onclick="switchProvider('groq')">Groq</div>
+            </div>
+            <div id="sectionGemini" class="provider-section active">
+                <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
+                    مفتاح
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                        style="color: var(--accent-green); text-decoration: underline;">Gemini API</a>:
+                </div>
+                <input type="password" id="geminiKeyInput" placeholder="Gemini Key...">
+            </div>
+            <div id="sectionGroq" class="provider-section">
+                <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
+                    مفتاح
+                    <a href="https://console.groq.com/keys" target="_blank"
+                        style="color: var(--accent-green); text-decoration: underline;">Groq API</a>:
+                </div>
+                <input type="password" id="groqKeyInput" placeholder="Groq Key...">
+            </div>
+            <div class="settings-modal-btns">
+                <button class="save-key-btn" onclick="saveApiKey()">حفظ</button>
+                <button class="close-key-btn" onclick="closeSettings()">إلغاء</button>
+            </div>
+        </div>
+
+        <div id="usageModal" class="usage-modal">
+            <div class="usage-title" id="usageProviderTitle">📊 استهلاك الباقة</div>
+
+            <!-- طلبات اليوم -->
+            <div class="usage-bar-container" id="reqSection">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="usage-card-label">طلبات اليوم</span>
+                    <span style="font-size:7px; color:#555;" id="reqResetTime"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:2px;">
+                    <div><span class="usage-card-value" id="reqUsed">—</span> <span
+                            style="font-size:7px; color:#666;">مستخدم</span></div>
+                    <div style="font-size:8px; color:#888;">من <span class="usage-row-value" id="reqMax">—</span></div>
+                </div>
+                <div class="usage-bar-track" style="margin-top:3px;">
+                    <div class="usage-bar-fill" id="reqBarFill" style="width:0%; background: var(--accent-green);">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                    <span style="font-size:7px; color:var(--accent-green);" id="reqRemaining"></span>
+                    <span style="font-size:7px; color:#555;" id="reqPercent"></span>
+                </div>
+            </div>
+
+            <!-- طلبات الساعة -->
+            <div class="usage-bar-container" id="tokenSection" style="margin-top:3px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="usage-card-label">طلبات الساعة</span>
+                    <span style="font-size:7px; color:#555;" id="tokenResetTime"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:2px;">
+                    <div><span class="usage-card-value" id="tokenUsed">—</span> <span
+                            style="font-size:7px; color:#666;">مستخدم</span></div>
+                    <div style="font-size:8px; color:#888;">من <span class="usage-row-value" id="tokenMax">—</span>
+                    </div>
+                </div>
+                <div class="usage-bar-track" style="margin-top:3px;">
+                    <div class="usage-bar-fill" id="tokenBarFill" style="width:0%; background: var(--accent-green);">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                    <span style="font-size:7px; color:var(--accent-green);" id="tokenRemaining"></span>
+                    <span style="font-size:7px; color:#555;" id="tokenPercent"></span>
+                </div>
+            </div>
+
+            <!-- إحصائيات -->
+            <div class="usage-grid" style="margin-top:4px;">
+                <div class="usage-card">
+                    <div class="usage-card-label">طلباتك اليوم</div>
+                    <div class="usage-card-value" id="usageDay">0</div>
+                </div>
+                <div class="usage-card">
+                    <div class="usage-card-label">إجمالي الكل</div>
+                    <div class="usage-card-value" id="usageTotal">0</div>
+                </div>
+            </div>
+
+            <div id="usageNoData" style="display:none; text-align:center; padding:6px; font-size:8px; color:#666;">⚡
+                استخدم AI مرة لعرض بيانات الباقة</div>
+            <div style="font-size:7px; color:#444; text-align:center; margin-top:3px;" id="usageLastUpdate"></div>
+            <button class="usage-close-btn" onclick="toggleUsageModal()">إغلاق</button>
+        </div>
+
+        <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileUpload(event)">
+
+        <div class="scan-zone" id="dropZone">
+            <p>الصق الصورة هنا مباشرة (Ctrl + V)</p>
+        </div>
+
+        <div class="section-title">
+            <span>التدقيق الفوري</span>
+        </div>
+        <div id="results" class="results">
+            <div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>
+        </div>
+
+        <div class="section-title">
+            <span>القائمة المعتمدة <span id="listCounter" style="color: var(--accent-green);">(0)</span></span>
+            <button class="clear-btn" onclick="clearFinalList()">مسح</button>
+        </div>
+        <div id="finalList" class="final-list"></div>
+
+        <div id="status" class="status-bar">جاهز لسحب الحسابات</div>
+    </div>
+
+    <script>
+        const appContainer = document.getElementById('appContainer');
+        const expandBtn = document.getElementById('expandBtn');
+        const resultsArea = document.getElementById('results');
+        const finalListArea = document.getElementById('finalList');
+        const listCounter = document.getElementById('listCounter');
+        const statusDiv = document.getElementById('status');
+        const aiBtn = document.getElementById('aiBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const geminiKeyInput = document.getElementById('geminiKeyInput');
+        const groqKeyInput = document.getElementById('groqKeyInput');
+
+        let savedAccountsList = [];
+        let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
+        let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
+        let lastRateLimitInfo = {};
+        if (isAIActive) aiBtn.className = 'ai-btn active';
+
+        const iconExpand = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
+        const iconShrink = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>`;
+
+        // تحديث أيقونة الزر حسب الحالة الحالية
+        if (localStorage.getItem('fastToolkitExpanded') === 'true') {
+            expandBtn.innerHTML = iconShrink;
+            expandBtn.title = "تقليص الواجهة";
+        }
+
+        function toggleExpand() {
+            const isNowExpanded = window.fastToolkitToggleExpand();
+            expandBtn.innerHTML = isNowExpanded ? iconShrink : iconExpand;
+            expandBtn.title = isNowExpanded ? "تقليص الواجهة" : "توسيع الواجهة";
+        }
+
+        const speechDictionary = {
+            '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
+            '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine',
+            '-': ' dash '
+        };
+
+        function toggleSpeed(cardId) {
+            const btn = document.getElementById(`sp_${cardId}`);
+            const speeds = ['1', '1.5', '2', '0.25', '0.5'];
+            const currentSpeed = btn.getAttribute('data-speed');
+
+            let currentIndex = speeds.indexOf(currentSpeed);
+            let nextIndex = (currentIndex + 1) % speeds.length;
+            let nextSpeed = speeds[nextIndex];
+
+            btn.setAttribute('data-speed', nextSpeed);
+            btn.innerText = `×${nextSpeed}`;
+        }
+
+        function toggleAI() {
+            isAIActive = !isAIActive;
+            aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
+            localStorage.setItem('simah_ai_pref', isAIActive);
+            localStorage.setItem('simah_ai_provider', currentProvider);
+        }
+
+        function switchProvider(provider) {
+            currentProvider = provider;
+            document.getElementById('tabGemini').className = provider === 'gemini' ? 'provider-tab active' : 'provider-tab';
+            document.getElementById('tabGroq').className = provider === 'groq' ? 'provider-tab active' : 'provider-tab';
+            document.getElementById('sectionGemini').className = provider === 'gemini' ? 'provider-section active' : 'provider-section';
+            document.getElementById('sectionGroq').className = provider === 'groq' ? 'provider-section active' : 'provider-section';
+        }
+
+        function openSettings() {
+            if (typeof window.fastToolkitSetExpand === 'function') {
+                window.fastToolkitSetExpand(true);
+            }
+            geminiKeyInput.value = localStorage.getItem('simah_ai_key') || '';
+            groqKeyInput.value = localStorage.getItem('simah_groq_key') || '';
+            switchProvider(currentProvider);
+            settingsModal.style.display = 'block';
+        }
+
+        function closeSettings() {
+            settingsModal.style.display = 'none';
+        }
+
+        function saveApiKey() {
+            const geminiKey = geminiKeyInput.value.trim();
+            const groqKey = groqKeyInput.value.trim();
+            localStorage.setItem('simah_ai_key', geminiKey);
+            localStorage.setItem('simah_groq_key', groqKey);
+            localStorage.setItem('simah_ai_provider', currentProvider);
+            closeSettings();
+
+            const providerName = currentProvider === 'groq' ? 'Groq' : 'Gemini';
+            statusDiv.innerText = `تم الحفظ — المزود: ${providerName} ✅`;
+            setTimeout(() => statusDiv.innerText = "جاهز لسحب الحسابات", 2000);
+        }
+
+        // ======== نظام تتبع الاستخدام ========
+        function getUsageData() {
+            try {
+                return JSON.parse(localStorage.getItem('simah_usage') || '{}');
+            } catch { return {}; }
+        }
+
+        function saveUsageData(data) {
+            localStorage.setItem('simah_usage', JSON.stringify(data));
+        }
+
+        function recordUsage(provider) {
+            const now = new Date();
+            const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
+            const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+            const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+
+            let data = getUsageData();
+            if (!data[provider]) data[provider] = {};
+            let p = data[provider];
+
+            // ساعة
+            if (p._hourKey !== hourKey) { p.hour = 0; p._hourKey = hourKey; }
+            p.hour = (p.hour || 0) + 1;
+
+            // يوم
+            if (p._dayKey !== dayKey) { p.day = 0; p._dayKey = dayKey; }
+            p.day = (p.day || 0) + 1;
+
+            // شهر
+            if (p._monthKey !== monthKey) { p.month = 0; p._monthKey = monthKey; }
+            p.month = (p.month || 0) + 1;
+
+            // إجمالي
+            p.total = (p.total || 0) + 1;
+
+            p.lastUsed = now.toISOString();
+            data[provider] = p;
+            saveUsageData(data);
+        }
+
+        // الحدود المعروفة رسمياً لكل مزود (Free Tier)
+        const PROVIDER_LIMITS = {
+            groq: { rpmLimit: 30, rpdLimit: 1000, label: 'Groq' },
+            gemini: { rpmLimit: 10, rpdLimit: 1500, label: 'Gemini' }
+        };
+
+        function toggleUsageModal() {
+            const modal = document.getElementById('usageModal');
+            if (modal.style.display === 'block') {
+                modal.style.display = 'none';
+                return;
+            }
+            if (typeof window.fastToolkitSetExpand === 'function') {
+                window.fastToolkitSetExpand(true);
+            }
+            refreshUsageModal();
+            modal.style.display = 'block';
+        }
+
+        function refreshUsageModal() {
+            const data = getUsageData();
+            const provider = currentProvider;
+            const p = data[provider] || {};
+            const limits = PROVIDER_LIMITS[provider] || PROVIDER_LIMITS.groq;
+            const now = new Date();
+            const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+            const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
+            const minKey = `${dayKey}-${now.getHours()}-${now.getMinutes()}`;
+
+            const dayCount = p._dayKey === dayKey ? (p.day || 0) : 0;
+            const hourCount = p._hourKey === hourKey ? (p.hour || 0) : 0;
+            const totalCount = p.total || 0;
+
+            document.getElementById('usageProviderTitle').innerText = `📊 استهلاك ${limits.label}`;
+            document.getElementById('usageDay').innerText = dayCount;
+            document.getElementById('usageTotal').innerText = totalCount;
+
+            // === بار الطلبات اليومية ===
+            const reqSection = document.getElementById('reqSection');
+            const noData = document.getElementById('usageNoData');
+            reqSection.style.display = 'block';
+
+            const rpdMax = limits.rpdLimit;
+            const rpdUsed = dayCount;
+            const rpdRemaining = Math.max(0, rpdMax - rpdUsed);
+            const rpdPct = rpdMax > 0 ? Math.round((rpdUsed / rpdMax) * 100) : 0;
+
+            document.getElementById('reqUsed').innerText = rpdUsed;
+            document.getElementById('reqMax').innerText = rpdMax;
+            document.getElementById('reqRemaining').innerText = `${rpdRemaining} متبقي`;
+            document.getElementById('reqPercent').innerText = `${rpdPct}% مستهلك`;
+            document.getElementById('reqResetTime').innerText = `يتجدد كل يوم`;
+
+            const reqBar = document.getElementById('reqBarFill');
+            reqBar.style.width = Math.min(rpdPct, 100) + '%';
+            reqBar.style.background = rpdPct < 50 ? 'var(--accent-green)' : rpdPct < 80 ? '#ffcc00' : '#ff3333';
+
+            // === بار طلبات الدقيقة ===
+            const tokenSection = document.getElementById('tokenSection');
+            tokenSection.style.display = 'block';
+
+            const rpmMax = limits.rpmLimit;
+            const rpmUsed = hourCount;
+            const rpmRemaining = Math.max(0, rpmMax - rpmUsed);
+            const rpmPct = rpmMax > 0 ? Math.round((rpmUsed / rpmMax) * 100) : 0;
+
+            document.getElementById('tokenUsed').innerText = rpmUsed;
+            document.getElementById('tokenMax').innerText = rpmMax;
+            document.getElementById('tokenRemaining').innerText = `${rpmRemaining} متبقي`;
+            document.getElementById('tokenPercent').innerText = `${rpmPct}% مستهلك`;
+            document.getElementById('tokenResetTime').innerText = `يتجدد كل ساعة`;
+
+            const tokenBar = document.getElementById('tokenBarFill');
+            tokenBar.style.width = Math.min(rpmPct, 100) + '%';
+            tokenBar.style.background = rpmPct < 50 ? 'var(--accent-green)' : rpmPct < 80 ? '#ffcc00' : '#ff3333';
+
+            noData.style.display = 'none';
+
+            // Last update time
+            const lastUpdate = document.getElementById('usageLastUpdate');
+            if (p.lastUsed) {
+                const t = new Date(p.lastUsed);
+                lastUpdate.innerText = `آخر استخدام: ${t.toLocaleTimeString('ar-SA')}`;
+            } else {
+                lastUpdate.innerText = 'لم يتم الاستخدام بعد';
+            }
+        }
+
+        document.addEventListener('paste', e => {
+            const item = e.clipboardData.items[0];
+            if (item && item.type.indexOf('image') !== -1) processImage(item.getAsFile());
+        });
+
+        function handleFileUpload(e) {
+            if (e.target.files && e.target.files[0]) {
+                processImage(e.target.files[0]);
+                e.target.value = '';
+            }
+        }
+
+        async function processImage(file) {
+            resultsArea.innerHTML = '';
+
+            if (isAIActive) {
+                if (currentProvider === 'groq') {
+                    statusDiv.innerText = "جاري الاستخراج عبر Groq... 🧠";
+                    const groqKey = localStorage.getItem('simah_groq_key');
+                    if (!groqKey) {
+                        statusDiv.innerText = "مفتاح Groq مفقود ❌";
+                        return;
+                    }
+                    await extractWithGroq(file, groqKey);
+                } else {
+                    statusDiv.innerText = "جاري الاستخراج عبر Gemini... 🧠";
+                    const apiKey = localStorage.getItem('simah_ai_key');
+                    if (!apiKey) {
+                        statusDiv.innerText = "مفتاح Gemini مفقود ❌";
+                        return;
+                    }
+                    await extractWithAI(file, apiKey);
+                }
+            } else {
+                statusDiv.innerText = "جاري استخراج البيانات... ⏳";
+                await extractWithTesseract(file);
+            }
+        }
+
+        async function extractWithAI(file, apiKey) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const base64String = reader.result.split(',')[1];
+                    const payload = {
+                        contents: [{
+                            parts: [
+                                { text: "Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting." },
+                                { inlineData: { mimeType: file.type, data: base64String } }
+                            ]
+                        }]
+                    };
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error('API Error');
+
+                    recordUsage('gemini');
+
+                    const data = await response.json();
+                    if (data.candidates && data.candidates[0].content.parts[0].text) {
+                        extractAccounts(data.candidates[0].content.parts[0].text);
+                    } else {
+                        extractAccounts('');
+                    }
+                } catch (err) {
+                    statusDiv.innerText = "خطأ في المفتاح أو الـ AI ❌";
+                }
+            };
+        }
+
+        async function extractWithGroq(file, groqKey) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const base64Url = reader.result;
+                    const payload = {
+                        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                { type: 'text', text: 'Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting.' },
+                                { type: 'image_url', image_url: { url: base64Url } }
+                            ]
+                        }]
+                    };
+
+                    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${groqKey}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error('Groq API Error');
+
+                    recordUsage('groq');
+
+                    const data = await response.json();
+                    if (data.choices && data.choices[0].message.content) {
+                        extractAccounts(data.choices[0].message.content);
+                    } else {
+                        extractAccounts('');
+                    }
+                } catch (err) {
+                    statusDiv.innerText = "خطأ في مفتاح Groq أو الاتصال ❌";
+                }
+            };
+        }
+
+        async function extractWithTesseract(file) {
+            try {
+                const worker = await Tesseract.createWorker('eng');
+                await worker.setParameters({ tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' });
+                const { data: { text } } = await worker.recognize(file);
+                await worker.terminate();
+                extractAccounts(text);
+            } catch (err) { statusDiv.innerText = "فشل في القراءة ❌"; }
+        }
+
+        function extractAccounts(rawText) {
+            resultsArea.innerHTML = '';
+            let found = [];
+
+            let cleanText = rawText.replace(/[ \t]+/g, '');
+            const regex = /[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}|[A-Z0-9]{20,36}/g;
+            let matches = cleanText.match(regex);
+
+            if (matches) {
+                matches.forEach(acc => {
+                    if (!found.includes(acc)) {
+                        found.push(acc);
+                        addReviewCard(acc);
+                    }
+                });
+            }
+
+            if (found.length === 0) {
+                let ultraCleanText = rawText.replace(/[^A-Z0-9-]/g, '');
+                let ultraMatches = ultraCleanText.match(/[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}/g);
+                if (ultraMatches) {
+                    ultraMatches.forEach(acc => {
+                        if (!found.includes(acc)) {
+                            found.push(acc);
+                            addReviewCard(acc);
+                        }
+                    });
+                }
+            }
+
+            if (found.length === 0) {
+                let lines = rawText.split('\n').map(l => l.replace(/[^A-Z0-9-]/g, '')).filter(l => l.length > 0);
+                for (let i = 0; i < lines.length - 1; i++) {
+                    let combined = lines[i] + lines[i + 1];
+                    if (combined.length >= 30 && combined.length <= 42) {
+                        let cleanedCombined = combined.replace(/-+/g, '-').replace(/-$/, '');
+                        if (cleanedCombined.length === 36 || cleanedCombined.length === 20) {
+                            addReviewCard(cleanedCombined);
+                            found.push(cleanedCombined);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            statusDiv.innerText = found.length > 0 ? `وجد ${found.length} حسابات` : "لم يتم العثور على حسابات ❌";
+        }
+
+        function highlightSuspectCharacters(text) {
+            return text.replace(/[0DO8BIL15S]/g, m => `<span class="highlight">${m}</span>`);
+        }
+
+        function speakAccount(inputId, cardId) {
+            if (!('speechSynthesis' in window)) return;
+
+            window.speechSynthesis.cancel();
+
+            const textToRead = document.getElementById(inputId).value.trim().toLowerCase();
+            const speedValue = parseFloat(document.getElementById(`sp_${cardId}`).getAttribute('data-speed'));
+
+            let verbalizedText = textToRead.split('').map(char => {
+                return speechDictionary[char] || ` ${char} `;
+            }).join(' ');
+
+            const utterance = new SpeechSynthesisUtterance(verbalizedText);
+            utterance.lang = 'en-US';
+            utterance.rate = speedValue;
+            utterance.pitch = 1;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // تعديل الدالة لتعكس النص وتجعله يظهر (القيمة الرقمية أولاً ثم كلمة خانة)
+        function updateCounter(cardId) {
+            const inputEl = document.getElementById(`i_${cardId}`);
+            const counterEl = document.getElementById(`count_${cardId}`);
+            const len = inputEl.value.trim().length;
+
+            counterEl.innerText = len + " خانة";
+
+            if (len === 20 || len === 36) {
+                counterEl.className = 'char-counter counter-valid';
+            } else {
+                counterEl.className = 'char-counter counter-invalid';
+            }
+        }
+
+        function addReviewCard(value) {
+            const cardId = 'c_' + Math.random().toString(36).substr(2, 5);
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.id = cardId;
+            div.innerHTML = `
+            <div class="card-header">
+                <div class="card-header-right">
+                    <button class="delete-card-btn" onclick="removeCard('${cardId}')" title="حذف وإلغاء هذه البطاقة">✕ حذف</button>
+                    <span class="label">| تأكيد الحساب</span>
+                    <span id="count_${cardId}" class="char-counter">0 خانة</span>
+                </div>
+                <div class="card-header-left">
+                    <div id="sp_${cardId}" class="speed-toggle-btn" data-speed="1" onclick="toggleSpeed('${cardId}')">×1</div>
+                    <button class="play-btn" onclick="speakAccount('i_${cardId}', '${cardId}')" title="استماع للحساب">🔊</button>
+                </div>
+            </div>
+            <div class="visual-check" id="v_${cardId}">${highlightSuspectCharacters(value)}</div>
+            <input type="text" class="edit-input" id="i_${cardId}" value="${value}" oninput="updateCounter('${cardId}')">
+            <button class="action-btn" onclick="approve('${cardId}')">إعتماد للحفظ</button>
+        `;
+            resultsArea.appendChild(div);
+
+            updateCounter(cardId);
+        }
+
+        function removeCard(cardId) {
+            document.getElementById(cardId).remove();
+            window.speechSynthesis.cancel();
+            if (resultsArea.children.length === 0) {
+                resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>';
+                statusDiv.innerText = "جاهز لسحب الحسابات";
+            }
+        }
+
+        function approve(cardId) {
+            const val = document.getElementById('i_' + cardId).value.trim().toUpperCase();
+            if (val && !savedAccountsList.includes(val)) {
+                savedAccountsList.push(val);
+                renderList();
+            }
+            document.getElementById(cardId).remove();
+            window.speechSynthesis.cancel();
+        }
+
+        function renderList() {
+            listCounter.innerText = `(${savedAccountsList.length})`;
+            finalListArea.innerHTML = savedAccountsList.map((acc, index) => `
+            <div class="final-card" id="fc_${index}" onclick="copy('${acc}', ${index})">
+                <div class="final-value">
+                    <span>${acc}</span>
+                    <span class="check-mark">✔</span>
+                </div>
+            </div>
+        `).join('');
+        }
+
+        function copy(val, index) {
+            const proceedWithVisuals = () => {
+                statusDiv.innerText = "تم النسخ! 📋";
+                const cardEl = document.getElementById(`fc_${index}`);
+                if (cardEl && !cardEl.classList.contains('copied')) {
+                    cardEl.classList.add('copied');
+                }
+                setTimeout(() => statusDiv.innerText = "جاهز..", 1000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(val).then(proceedWithVisuals).catch(() => fallbackCopy(val, proceedWithVisuals));
+            } else {
+                fallbackCopy(val, proceedWithVisuals);
+            }
+        }
+
+        function fallbackCopy(text, callback) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                callback();
+            } catch (err) {
+                statusDiv.innerText = "فشل النسخ ❌";
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function clearFinalList() {
+            savedAccountsList = [];
+            renderList();
+            window.speechSynthesis.cancel();
+            statusDiv.innerText = "تم مسح القائمة 🗑️";
+            setTimeout(() => statusDiv.innerText = "جاهز..", 1000);
+        }
+    </script>
+</body>
+
+</html>
