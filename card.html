@@ -193,6 +193,13 @@
             color: #fff;
         }
 
+        .chip[contenteditable="true"] {
+            cursor: text;
+            background: #1a2a1a;
+            border: 1px dashed var(--accent-green);
+            outline: none;
+        }
+
         .gateway-chip {
             background: #1e1e1e;
             color: var(--accent-blue);
@@ -371,6 +378,33 @@
             }
         });
 
+        outputEdit.addEventListener('input', () => {
+            const parts = outputEdit.value.split('//').map(p => p.trim());
+            document.getElementById('chip-card').innerText = parts[0] !== undefined ? parts[0] : "";
+            document.getElementById('chip-amount').innerText = parts[1] !== undefined ? parts[1] : "";
+            document.getElementById('chip-time').innerText = parts[2] !== undefined ? parts[2] : "";
+            document.getElementById('chip-date').innerText = parts[3] !== undefined ? parts[3] : "";
+        });
+
+        function syncFromChips() {
+            if (!isEditMode) return;
+            const c = document.getElementById('chip-card').innerText.trim();
+            const a = document.getElementById('chip-amount').innerText.trim();
+            const t = document.getElementById('chip-time').innerText.trim();
+            const d = document.getElementById('chip-date').innerText.trim();
+            outputEdit.value = `${c} // ${a} // ${t} // ${d}`;
+        }
+
+        document.querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('input', syncFromChips);
+            chip.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    chip.blur();
+                }
+            });
+        });
+
         async function secureCopy(text) {
             try {
                 await navigator.clipboard.writeText(text);
@@ -519,6 +553,7 @@
         function toggleEditMode() {
             if (!isEditMode) {
                 isEditMode = true;
+                document.querySelectorAll('.chip').forEach(chip => chip.contentEditable = "true");
 
                 // إذا كان النص هو النص الافتراضي، اجعل حقل الإدخال فارغاً للكتابة المباشرة
                 if (outputDiv.innerText.includes("البيانات ستظهر هنا")) {
@@ -526,6 +561,7 @@
                 } else {
                     outputEdit.value = outputDiv.innerText;
                 }
+                outputEdit.dispatchEvent(new Event('input'));
 
                 outputDiv.style.display = 'none';
                 outputEdit.style.display = 'block';
@@ -533,6 +569,7 @@
                 outputEdit.focus();
             } else {
                 isEditMode = false;
+                document.querySelectorAll('.chip').forEach(chip => chip.contentEditable = "false");
                 const updatedText = outputEdit.value.trim();
                 outputDiv.style.display = 'block';
                 outputEdit.style.display = 'none';
@@ -575,6 +612,7 @@
             
             if (isEditMode) {
                 isEditMode = false;
+                document.querySelectorAll('.chip').forEach(chip => chip.contentEditable = "false");
                 outputDiv.style.display = 'block';
                 outputEdit.style.display = 'none';
                 editBtn.innerText = '✏️';
@@ -594,6 +632,7 @@
         }
 
         function copyMe(element) {
+            if (isEditMode) return;
             if (element.innerText === "-") return;
             secureCopy(element.innerText).then(() => {
                 statusDiv.innerText = `نسخ: ${element.innerText}`;
