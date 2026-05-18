@@ -1,4 +1,4 @@
-(function() {
+(function () {
     const defaultSettings = {
         mode: 'light',
         width: 230,
@@ -12,7 +12,7 @@
         if (stored) {
             savedSettings = JSON.parse(stored);
         }
-    } catch(e) {}
+    } catch (e) { }
 
     const settings = { ...defaultSettings, ...savedSettings };
 
@@ -27,7 +27,7 @@
 
     const root = document.documentElement;
     const rgb = hexToRgb(settings.themeColor);
-    
+
     let containerBg, containerBorder, textColor, itemBg, itemBorder;
 
     if (settings.mode === 'light') {
@@ -72,7 +72,7 @@
             });
         }
     }
-    
+
     let styleRules = `
         .container:not(.expanded), .app-container:not(.expanded) {
             width: ${settings.width}px !important;
