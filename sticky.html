@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>النوتات - الملاحظات السريعة</title>
@@ -37,7 +41,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
         }
 
         .header {
@@ -57,7 +61,8 @@
             text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
             text-align: center;
             flex-grow: 1;
-            padding-left: 20px; /* Offset to perfectly center visually */
+            padding-left: 20px;
+            /* Offset to perfectly center visually */
         }
 
         .nav-btn {
@@ -94,7 +99,7 @@
             outline: none;
             font-family: inherit;
             line-height: 1.4;
-            
+
             /* التعديل السحري لحل مشكلة اتجاه المؤشر والنصوص بشكل ديناميكي كامل */
             text-align: start;
             unicode-bidi: plaintext;
@@ -105,8 +110,14 @@
         }
 
         /* تنسيق شريط التمرير للنوتة */
-        .note-area::-webkit-scrollbar { width: 3px; }
-        .note-area::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .note-area::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .note-area::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
 
         .actions {
             display: flex;
@@ -157,20 +168,26 @@
             letter-spacing: 0.5px;
         }
     </style>
-    <script src="settings.js"></script>
+    <script src="settings.js?v=2"></script>
 </head>
+
 <body>
 
     <div class="container">
         <div class="header">
             <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-        </a>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
             <h1>Sticky Notes</h1>
         </div>
 
         <!-- ساحة كتابة الملاحظات مع دعم الاتجاه التلقائي للمؤشر والنص -->
-        <textarea id="stickyNote" class="note-area" dir="auto" placeholder="اكتب ملاحظاتك هنا... سيتم حفظها تلقائياً"></textarea>
+        <textarea id="stickyNote" class="note-area" dir="auto"
+            placeholder="اكتب ملاحظاتك هنا... سيتم حفظها تلقائياً"></textarea>
 
         <!-- أزرار التحكم -->
         <div class="actions">
@@ -184,7 +201,7 @@
 
         <!-- هنا تظهر العبارات المتغيرة -->
         <div id="dynamicFooter" class="footer">
-             Toolkit
+            Toolkit
         </div>
     </div>
 
@@ -194,17 +211,17 @@
 
         // قائمة العبارات التحفيزية
         const phrases = [
-            "Keep it up 👏", "Great job 🔥", "Excellent work 🚀", 
-            "You’re doing great 💯", "Well done 👌", "Nice progress 📈", 
-            "Outstanding 👏", "Impressive work ⭐", "Keep pushing 💪", 
-            "You nailed it ✅", "Smooth work 😎", "Solid effort 👌", 
-            "Keep grinding 🚀", "Big respect 👏", "That’s clean ✨", 
-            "Smart move 🧠", "Strong performance 💯", "Keep shining ⭐", 
+            "Keep it up 👏", "Great job 🔥", "Excellent work 🚀",
+            "You’re doing great 💯", "Well done 👌", "Nice progress 📈",
+            "Outstanding 👏", "Impressive work ⭐", "Keep pushing 💪",
+            "You nailed it ✅", "Smooth work 😎", "Solid effort 👌",
+            "Keep grinding 🚀", "Big respect 👏", "That’s clean ✨",
+            "Smart move 🧠", "Strong performance 💯", "Keep shining ⭐",
             "Leveling up 🚀"
         ];
 
         // عند تحميل الصفحة
-        window.onload = function() {
+        window.onload = function () {
             const savedNote = localStorage.getItem('quick_sticky_note');
             if (savedNote) {
                 noteArea.value = savedNote;
@@ -215,7 +232,7 @@
         };
 
         // حفظ الملاحظة تلقائياً
-        noteArea.addEventListener('input', function() {
+        noteArea.addEventListener('input', function () {
             localStorage.setItem('quick_sticky_note', noteArea.value);
         });
 
@@ -232,7 +249,7 @@
         function copyNote() {
             if (noteArea.value.trim() !== "") {
                 navigator.clipboard.writeText(noteArea.value);
-                
+
                 const copyBtn = document.querySelector('.btn-copy');
                 const originalText = copyBtn.innerHTML;
                 copyBtn.innerHTML = "✅ تم النسخ";
@@ -244,4 +261,5 @@
     </script>
 
 </body>
+
 </html>
