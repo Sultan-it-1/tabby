@@ -338,7 +338,13 @@
 
             // Reset settings
             resetBtn.addEventListener('click', () => {
-                localStorage.removeItem('fastToolkitSettings');
+                const newDefaults = {
+                    mode: 'light',
+                    width: 230,
+                    height: 300,
+                    themeColor: '#007aff'
+                };
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(newDefaults));
                 window.location.reload();
             });
         });
