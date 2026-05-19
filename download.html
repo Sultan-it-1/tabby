@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FAST TOOLKIT - تحميل الإضافة العائمة">
+    <meta name="theme-color" content="#0f0f0f">
+    <title>تثبيت إضافة Royal Family العائمة</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --accent-blue: #00d4ff;
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+        }
+
+        .header {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 13px;
+            color: var(--accent-green);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .back-btn {
+            position: absolute;
+            right: 0;
+            top: -2px;
+            text-decoration: none;
+            font-size: 12px;
+            color: #888;
+            transition: 0.2s;
+        }
+
+        .back-btn:hover {
+            color: var(--accent-green);
+            transform: translateX(2px);
+        }
+
+        .content-scroll {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 2px;
+            margin-bottom: 5px;
+        }
+
+        .content-scroll::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .content-scroll::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        /* Download Button Card */
+        .download-card {
+            background: rgba(0, 255, 0, 0.03);
+            border: 1px dashed var(--accent-green);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .download-btn {
+            background: var(--accent-green);
+            color: #0b0c10;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-green) 25%, transparent);
+            width: calc(100% - 10px);
+            justify-content: center;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-green) 40%, transparent);
+            filter: brightness(1.1);
+        }
+
+        .download-card-desc {
+            font-size: 8px;
+            color: #888;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        /* Setup Steps */
+        .step-title-section {
+            font-size: 9px;
+            font-weight: 700;
+            color: #888;
+            text-align: right;
+            margin: 8px 0 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .steps-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: right;
+        }
+
+        .step-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 8px;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            transition: 0.2s;
+        }
+
+        .step-item:hover {
+            border-color: var(--accent-blue);
+            background: #1f1f1f;
+        }
+
+        .step-num {
+            background: #2a2a2a;
+            color: var(--accent-blue);
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            font-size: 9px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .step-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .step-head {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .step-desc {
+            font-size: 8px;
+            color: #777;
+            line-height: 1.3;
+            margin-top: 1px;
+        }
+
+        .footer {
+            margin-top: 5px;
+            font-size: 8px;
+            color: #666;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            direction: ltr;
+            font-family: Arial, sans-serif;
+        }
+
+        .pulse-emoji {
+            display: inline-block;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            30% { transform: scale(1.2); }
+            60% { transform: scale(1.05); }
+        }
+    </style>
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-btn" title="الرجوع للرئيسية">🔙</a>
+            <h1>تحميل وإعداد الإضافة</h1>
+        </div>
+
+        <div class="content-scroll">
+            <!-- Download Button Card -->
+            <div class="download-card">
+                <a href="royal-family-extension.zip" download class="download-btn">
+                    <span>تحميل الإضافة العائمة (ZIP)</span>
+                    <span style="font-size: 11px;">📥</span>
+                </a>
+                <span class="download-card-desc">تنزيل حزمة الإضافة بصيغة مضغوطة لتثبيتها يدوياً بضغطة واحدة.</span>
+            </div>
+
+            <!-- Steps Section -->
+            <div class="step-title-section">
+                <span>🛠️ خطوات التثبيت السريعة:</span>
+            </div>
+
+            <div class="steps-container">
+                <div class="step-item">
+                    <span class="step-num">1</span>
+                    <div class="step-text">
+                        <span class="step-head">فك ضغط الملف</span>
+                        <span class="step-desc">استخرج المجلد الناتج (chrome-extension) من الملف المضروب.</span>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <span class="step-num">2</span>
+                    <div class="step-text">
+                        <span class="step-head">افتح صفحة الإضافات</span>
+                        <span class="step-desc">اذهب إلى الرابط <b>chrome://extensions</b> في متصفحك.</span>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <span class="step-num">3</span>
+                    <div class="step-text">
+                        <span class="step-head">فعّل وضع المطور</span>
+                        <span class="step-desc">قم بتشغيل مفتاح <b>Developer Mode</b> أعلى الشاشة.</span>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <span class="step-num">4</span>
+                    <div class="step-text">
+                        <span class="step-head">تحميل المجلد</span>
+                        <span class="step-desc">اضغط على <b>Load unpacked</b> واختر مجلد الإضافة المفكوك.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <span class="pulse-emoji">👑</span>
+            <span>Royal Family — always ready to serve you</span>
+        </div>
+    </div>
+
+</body>
+
+</html>
