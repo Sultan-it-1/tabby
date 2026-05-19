@@ -10,11 +10,12 @@
     <style>
         :root {
             --bg: #0f0f0f;
-            --card-bg: #1a1a1a;
-            --accent-green: var(--accent-green);
+            --card-bg: #161616;
+            --accent-green: #00e676;
             --accent-blue: #00d4ff;
             --text: #eee;
-            --border: #333;
+            --border: #262626;
+            --gold: #ffcc00;
         }
 
         body {
@@ -42,6 +43,7 @@
             flex-direction: column;
             justify-content: space-between;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            position: relative;
         }
 
         .header {
@@ -50,8 +52,8 @@
             flex-direction: column;
             align-items: center;
             border-bottom: 1px solid var(--border);
-            padding-bottom: 5px;
-            margin-bottom: 5px;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
         }
 
         .header h1 {
@@ -68,9 +70,12 @@
             right: 0;
             top: -2px;
             text-decoration: none;
-            font-size: 12px;
+            font-size: 11px;
             color: #888;
             transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 2px;
         }
 
         .back-btn:hover {
@@ -78,11 +83,24 @@
             transform: translateX(2px);
         }
 
+        .shortcut-hint {
+            font-size: 8px;
+            color: #555;
+            background: #1f1f1f;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 0px 4px;
+            margin-left: 4px;
+        }
+
         .content-scroll {
             flex-grow: 1;
             overflow-y: auto;
             padding-right: 2px;
             margin-bottom: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .content-scroll::-webkit-scrollbar {
@@ -94,117 +112,611 @@
             border-radius: 10px;
         }
 
-        /* Download Button Card */
-        .download-card {
-            background: rgba(0, 255, 0, 0.03);
-            border: 1px dashed var(--accent-green);
+        /* Progress Steps Tracker */
+        .progress-tracker {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
+            gap: 5px;
+        }
+
+        .progress-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 9px;
+            color: #aaa;
+        }
+
+        .progress-title-highlight {
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .steps-indicators {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2px;
+            padding: 0 4px;
+        }
+
+        .indicator-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #222;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .indicator-dot.active {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            box-shadow: 0 0 5px rgba(0, 212, 255, 0.3);
+        }
+
+        .indicator-dot.completed {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: #111;
+        }
+
+        /* Action Cards */
+        .step-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: right;
+            transition: all 0.2s ease;
+        }
+
+        .step-card.active {
+            border-color: rgba(0, 230, 118, 0.4);
+            box-shadow: 0 0 10px rgba(0, 230, 118, 0.05);
+        }
+
+        .card-header-row {
+            display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .download-btn {
+        .card-badge {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            background: rgba(0, 230, 118, 0.1);
+            color: var(--accent-green);
+            font-size: 8px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #eee;
+        }
+
+        .card-desc {
+            font-size: 8px;
+            color: #888;
+            line-height: 1.3;
+        }
+
+        /* Custom Interactive Download Button */
+        .interactive-download-btn {
             background: var(--accent-green);
             color: #0b0c10;
             border: none;
             border-radius: 6px;
-            padding: 8px 14px;
-            font-size: 11px;
+            padding: 8px 10px;
+            font-size: 10px;
             font-weight: 700;
             cursor: pointer;
             text-decoration: none;
-            transition: 0.2s;
-            display: inline-flex;
+            transition: all 0.2s ease;
+            display: flex;
             align-items: center;
-            gap: 6px;
-            box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-green) 25%, transparent);
-            width: calc(100% - 10px);
             justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 10px rgba(0, 230, 118, 0.2);
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        .download-btn:hover {
+        .interactive-download-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-green) 40%, transparent);
+            box-shadow: 0 6px 15px rgba(0, 230, 118, 0.3);
             filter: brightness(1.1);
         }
 
-        .download-card-desc {
-            font-size: 8px;
-            color: #888;
-            text-align: center;
-            line-height: 1.3;
+        .interactive-download-btn .progress-fill {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 0%;
+            background: rgba(0, 0, 0, 0.15);
+            transition: width 0.1s linear;
         }
 
-        /* Setup Steps */
-        .step-title-section {
-            font-size: 9px;
-            font-weight: 700;
+        .interactive-download-btn.downloading {
+            background: #1a3c22;
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .interactive-download-btn.success {
+            background: #115c2a;
+            color: #fff;
+            border: 1px solid var(--accent-green);
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* Link Copy Utility */
+        .link-copy-box {
+            display: flex;
+            align-items: center;
+            background: #0b0c10;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 3px 6px;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .link-input {
+            background: transparent;
+            border: none;
             color: #888;
-            text-align: right;
-            margin: 8px 0 4px 0;
+            font-size: 8px;
+            font-family: monospace;
+            flex-grow: 1;
+            outline: none;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .copy-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: var(--accent-blue);
+            font-size: 8px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-blue);
+            color: #000;
+            border-color: var(--accent-blue);
+        }
+
+        .copy-btn.copied {
+            background: var(--accent-green);
+            color: #000;
+            border-color: var(--accent-green);
+        }
+
+        /* Interactive Chrome Extension Simulator */
+        .mock-chrome {
+            background: #121212;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 6px;
+            direction: ltr;
+            text-align: left;
+            margin-top: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            position: relative; /* Added relative positioning to anchor tooltips correctly */
+        }
+
+        /* Mock Header bar */
+        .mock-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #1a1a1a;
+            padding: 3px 6px;
+            border-radius: 6px 6px 0 0;
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        .mock-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .mock-dot.red { background: #ff5f56; }
+        .mock-dot.yellow { background: #ffbd2e; }
+        .mock-dot.green { background: #27c93f; }
+
+        .mock-address {
+            background: #2a2a2a;
+            color: #999;
+            font-size: 7px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            flex-grow: 1;
+            margin-left: 10px;
+            max-width: 110px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        /* Mock Subbar with toggles */
+        .mock-subbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px;
+            background: #1e1e1e;
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        .mock-subbar-title {
+            font-size: 8px;
+            font-weight: bold;
+            color: #ddd;
+        }
+
+        .dev-mode-wrapper {
             display: flex;
             align-items: center;
             gap: 4px;
         }
 
-        .steps-container {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            text-align: right;
+        .dev-mode-label {
+            font-size: 7px;
+            color: #888;
         }
 
-        .step-item {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 6px 8px;
+        /* Mini toggle switches */
+        .switch-mini {
+            position: relative;
+            display: inline-block;
+            width: 20px;
+            height: 10px;
+            flex-shrink: 0;
+        }
+
+        .switch-mini input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-mini {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .2s;
+            border-radius: 10px;
+        }
+
+        .slider-mini:before {
+            position: absolute;
+            content: "";
+            height: 6px;
+            width: 6px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-mini {
+            background-color: var(--accent-green);
+        }
+
+        input:checked + .slider-mini:before {
+            transform: translateX(10px);
+        }
+
+        /* Mock actions subbar */
+        .mock-actions {
             display: flex;
-            gap: 8px;
-            align-items: flex-start;
+            gap: 4px;
+            background: #181818;
+            padding: 3px;
+            border-bottom: 1px solid #2d2d2d;
+            height: 0;
+            overflow: hidden;
+            transition: height 0.3s ease, padding 0.3s ease;
+        }
+
+        .mock-actions.active {
+            height: 16px;
+            padding: 3px;
+        }
+
+        .mock-action-btn {
+            background: #333;
+            border: 1px solid #444;
+            color: #ccc;
+            font-size: 7px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 2px;
             transition: 0.2s;
         }
 
-        .step-item:hover {
-            border-color: var(--accent-blue);
-            background: #1f1f1f;
+        .mock-action-btn:hover:not(:disabled) {
+            background: #444;
+            color: #fff;
         }
 
-        .step-num {
-            background: #2a2a2a;
-            color: var(--accent-blue);
-            border-radius: 50%;
-            width: 14px;
-            height: 14px;
-            font-size: 9px;
-            font-weight: 700;
+        .mock-action-btn.pulse-border {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 4px rgba(0, 212, 255, 0.4);
+            animation: pulse-border 1.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 2px rgba(0, 212, 255, 0.2); }
+            50% { box-shadow: 0 0 8px rgba(0, 212, 255, 0.8); }
+            100% { box-shadow: 0 0 2px rgba(0, 212, 255, 0.2); }
+        }
+
+        .mock-action-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Mock main content area */
+        .mock-content {
+            min-height: 50px;
+            padding: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
-            margin-top: 1px;
+            background: #121212;
+            position: relative;
         }
 
-        .step-text {
+        .mock-empty-state {
+            text-align: center;
+            color: #666;
+            transition: opacity 0.2s ease;
+        }
+
+        .mock-empty-state p {
+            font-size: 7px;
+            margin: 4px 0 0 0;
+            line-height: 1.3;
+        }
+
+        .mock-loader {
             display: flex;
             flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--accent-blue);
+            font-size: 7px;
         }
 
-        .step-head {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text);
+        .mock-spinner {
+            width: 10px;
+            height: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-top: 1px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
         }
 
-        .step-desc {
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mock Extension Card */
+        .mock-extension-card {
+            width: 100%;
+            background: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 6px;
+            box-sizing: border-box;
+            animation: slideIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            border-left: 2px solid var(--accent-green);
+        }
+
+        @keyframes slideIn {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .mock-card-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mock-ext-icon {
+            width: 12px;
+            height: 12px;
+            object-fit: contain;
+            border-radius: 3px;
+        }
+
+        .mock-ext-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .mock-ext-name {
             font-size: 8px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .mock-ext-ver {
+            font-size: 6px;
             color: #777;
+        }
+
+        .mock-ext-desc {
+            font-size: 7px;
+            color: #888;
+            margin: 4px 0;
             line-height: 1.3;
-            margin-top: 1px;
+        }
+
+        .mock-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #292929;
+            padding-top: 4px;
+            margin-top: 4px;
+        }
+
+        .mock-ext-id {
+            font-size: 6px;
+            color: #555;
+            font-family: monospace;
+        }
+
+        .mock-card-btn-mini {
+            background: #2a2a2a;
+            border: 1px solid #3d3d3d;
+            color: #aaa;
+            font-size: 6px;
+            padding: 1px 4px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        /* Simulator Tooltip instruction */
+        .simulator-tooltip {
+            position: absolute;
+            background: var(--accent-blue);
+            color: #000;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 7px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            animation: bounceTooltip 1s infinite alternate;
+            z-index: 10;
+            display: none;
+            direction: rtl;
+        }
+
+        .simulator-tooltip::after {
+            content: "";
+            position: absolute;
+            bottom: -3px;
+            right: 12px;
+            border-width: 3px 3px 0;
+            border-style: solid;
+            border-color: var(--accent-blue) transparent;
+        }
+
+        @keyframes bounceTooltip {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-3px); }
+        }
+
+        /* Success Message Overlay */
+        .simulation-success-banner {
+            background: rgba(0, 230, 118, 0.08);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .simulation-success-banner span {
+            display: block;
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+
+        .simulation-success-banner p {
+            font-size: 8px;
+            color: #aaa;
+            margin: 2px 0 0 0;
+            line-height: 1.3;
+        }
+
+        /* Confetti particle elements */
+        .confetti-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 999;
+            animation: fall 1.5s ease-out forwards;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(120px) rotate(360deg);
+                opacity: 0;
+            }
         }
 
         .footer {
@@ -245,56 +757,139 @@
 
     <div class="container">
         <div class="header">
-            <a href="index.html" class="back-btn" title="الرجوع للرئيسية">🔙</a>
+            <a href="index.html" class="back-btn" title="الرجوع للرئيسية">🔙 <span class="shortcut-hint">Esc</span></a>
             <h1>تحميل وإعداد الإضافة</h1>
         </div>
 
         <div class="content-scroll">
-            <!-- Download Button Card -->
-            <div class="download-card">
-                <a href="royal-family-extension.zip" download class="download-btn">
-                    <span>تحميل الإضافة العائمة (ZIP)</span>
-                    <span style="font-size: 11px;">📥</span>
-                </a>
-                <span class="download-card-desc">تنزيل حزمة الإضافة بصيغة مضغوطة لتثبيتها يدوياً بضغطة واحدة.</span>
+            
+            <!-- Progress Tracker -->
+            <div class="progress-tracker">
+                <div class="progress-header-row">
+                    <span>جاهزية التثبيت: <span class="progress-title-highlight" id="progress-percent">0%</span></span>
+                    <span style="font-size: 8px;" id="progress-status-text">قم بتحميل الإضافة أولاً</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="overall-progress-bar"></div>
+                </div>
+                <div class="steps-indicators">
+                    <div class="indicator-dot active" id="dot-1" title="تحميل الإضافة">📥</div>
+                    <div class="indicator-dot" id="dot-2" title="نسخ الرابط">📋</div>
+                    <div class="indicator-dot" id="dot-3" title="المحاكاة والتفعيل">⚙️</div>
+                </div>
             </div>
 
-            <!-- Steps Section -->
-            <div class="step-title-section">
-                <span>🛠️ خطوات التثبيت السريعة:</span>
+            <!-- STEP 1: Download Button Card -->
+            <div class="step-card active" id="card-step-1">
+                <div class="card-header-row">
+                    <span class="card-badge">1</span>
+                    <span class="card-title">تحميل حزمة الإضافة</span>
+                </div>
+                <span class="card-desc">اضغط للتحميل التفاعلي السريع لحزمة الإضافة المضغوطة.</span>
+                
+                <button id="download-trigger-btn" class="interactive-download-btn">
+                    <span class="progress-fill" id="btn-progress-fill"></span>
+                    <span id="btn-icon">📥</span>
+                    <span id="btn-text">تحميل الإضافة العائمة (ZIP)</span>
+                </button>
             </div>
 
-            <div class="steps-container">
-                <div class="step-item">
-                    <span class="step-num">1</span>
-                    <div class="step-text">
-                        <span class="step-head">فك ضغط الملف</span>
-                        <span class="step-desc">استخرج المجلد الناتج (chrome-extension) من الملف المضروب.</span>
+            <!-- STEP 2: Copy link box -->
+            <div class="step-card" id="card-step-2">
+                <div class="card-header-row">
+                    <span class="card-badge">2</span>
+                    <span class="card-title">فتح صفحة إضافات كروم</span>
+                </div>
+                <span class="card-desc">انسخ الرابط بالأسفل، ثم قم بلصقه وافتحه في علامة تبويب جديدة:</span>
+                
+                <div class="link-copy-box">
+                    <input type="text" class="link-input" value="chrome://extensions" readonly onclick="this.select()">
+                    <button class="copy-btn" id="copy-link-btn">نسخ الرابط 📋</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: Extensions Simulator -->
+            <div class="step-card" id="card-step-3">
+                <div class="card-header-row">
+                    <span class="card-badge">3</span>
+                    <span class="card-title">محاكاة طريقة التثبيت</span>
+                </div>
+                <span class="card-desc">جرب خطوات التثبيت هنا تفاعلياً لتتعلم الطريقة الحقيقية:</span>
+
+                <!-- Simulator widget -->
+                <div class="mock-chrome">
+                    <div class="simulator-tooltip" id="sim-tooltip">اضغط لتفعيل وضع المطور! 💡</div>
+                    <div class="simulator-tooltip" id="load-tooltip" style="background: var(--accent-green); color: #000; top: 18px; left: 10px; right: auto;">اضغط على "تحميل إضافة تم فك حزمتها" 📂</div>
+                    
+                    <!-- Address header -->
+                    <div class="mock-header">
+                        <span class="mock-dot red"></span>
+                        <span class="mock-dot yellow"></span>
+                        <span class="mock-dot green"></span>
+                        <div class="mock-address">chrome://extensions</div>
+                    </div>
+                    
+                    <!-- Actions sub header -->
+                    <div class="mock-subbar">
+                        <span class="mock-subbar-title">الإضافات</span>
+                        <div class="dev-mode-wrapper">
+                            <span class="dev-mode-label">وضع المطور</span>
+                            <label class="switch-mini">
+                                <input type="checkbox" id="mock-dev-toggle">
+                                <span class="slider-mini"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Load Unpacked button panel -->
+                    <div class="mock-actions" id="mock-actions-bar">
+                        <button class="mock-action-btn" id="mock-load-btn" disabled>
+                            <span>تحميل إضافة تم فك حزمتها</span>
+                            <span style="font-size: 7px;">📂</span>
+                        </button>
+                        <button class="mock-action-btn" disabled>حزمة مضغوطة</button>
+                        <button class="mock-action-btn" disabled>تحديث</button>
+                    </div>
+                    
+                    <!-- Simulator content area -->
+                    <div class="mock-content" id="mock-content-area">
+                        <div class="mock-empty-state" id="mock-empty">
+                            <span style="font-size: 14px;">🛠️</span>
+                            <p>يرجى تفعيل "وضع المطور" (Developer Mode) في الأعلى لبدء المحاكاة.</p>
+                        </div>
+                        
+                        <!-- Simulated Loader -->
+                        <div class="mock-loader" id="mock-loader" style="display: none;">
+                            <div class="mock-spinner"></div>
+                            <span>جاري استخراج المجلد (chrome-extension)...</span>
+                        </div>
+
+                        <!-- Simulated Extension Card -->
+                        <div class="mock-extension-card" id="mock-extension-card" style="display: none;">
+                            <div class="mock-card-header">
+                                <img src="Apple.png" class="mock-ext-icon" alt="Royal" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%2300e676%22><path d=%22M12 2L2 22h20L12 2z%22/></svg>'">
+                                <div class="mock-ext-info">
+                                    <span class="mock-ext-name">Royal Family</span>
+                                    <span class="mock-ext-ver">1.0.0</span>
+                                </div>
+                                <label class="switch-mini">
+                                    <input type="checkbox" checked disabled>
+                                    <span class="slider-mini"></span>
+                                </label>
+                            </div>
+                            <p class="mock-ext-desc">مجموعة أدوات عائمة في المقدمة دائماً (PiP) لمساعدتك.</p>
+                            <div class="mock-card-footer">
+                                <span class="mock-ext-id">ID: royal-family-pip</span>
+                                <button class="mock-card-btn-mini">التفاصيل</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="step-item">
-                    <span class="step-num">2</span>
-                    <div class="step-text">
-                        <span class="step-head">افتح صفحة الإضافات</span>
-                        <span class="step-desc">اذهب إلى الرابط <b>chrome://extensions</b> في متصفحك.</span>
-                    </div>
-                </div>
-
-                <div class="step-item">
-                    <span class="step-num">3</span>
-                    <div class="step-text">
-                        <span class="step-head">فعّل وضع المطور</span>
-                        <span class="step-desc">قم بتشغيل مفتاح <b>Developer Mode</b> أعلى الشاشة.</span>
-                    </div>
-                </div>
-
-                <div class="step-item">
-                    <span class="step-num">4</span>
-                    <div class="step-text">
-                        <span class="step-head">تحميل المجلد</span>
-                        <span class="step-desc">اضغط على <b>Load unpacked</b> واختر مجلد الإضافة المفكوك.</span>
-                    </div>
+                <!-- Simulation Success Banner -->
+                <div class="simulation-success-banner" id="sim-success-banner">
+                    <span>مبروك! لقد تعلمت الطريقة بنجاح 🎉</span>
+                    <p>الآن، قم بتطبيق نفس الخطوات الحقيقية في صفحة الإضافات المثبتة لديك.</p>
                 </div>
             </div>
         </div>
@@ -305,6 +900,239 @@
         </div>
     </div>
 
+    <!-- Interactive script logic -->
+    <script>
+        // Progress scores and elements
+        let isDownloaded = false;
+        let isCopied = false;
+        let isSimulated = false;
+
+        const overallProgressBar = document.getElementById('overall-progress-bar');
+        const progressPercentText = document.getElementById('progress-percent');
+        const progressStatusText = document.getElementById('progress-status-text');
+        
+        const dot1 = document.getElementById('dot-1');
+        const dot2 = document.getElementById('dot-2');
+        const dot3 = document.getElementById('dot-3');
+
+        const cardStep1 = document.getElementById('card-step-1');
+        const cardStep2 = document.getElementById('card-step-2');
+        const cardStep3 = document.getElementById('card-step-3');
+
+        // Confetti effect helper
+        function launchConfetti() {
+            const container = document.querySelector('.container');
+            const colors = ['#00e676', '#00d4ff', '#ffcc00', '#ff9f43', '#e040fb'];
+            
+            for (let i = 0; i < 35; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti-particle';
+                
+                // Random position & color
+                particle.style.left = Math.random() * 95 + '%';
+                particle.style.top = Math.random() * 20 + 20 + '%';
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Random size
+                const size = Math.random() * 5 + 3;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Random animation delay & duration
+                particle.style.animationDuration = Math.random() * 1 + 1 + 's';
+                
+                container.appendChild(particle);
+                
+                // Cleanup
+                setTimeout(() => {
+                    particle.remove();
+                }, 2000);
+            }
+        }
+
+        // Global progress updater
+        function updateOverallProgress() {
+            let percentage = 0;
+            if (isDownloaded) percentage += 33;
+            if (isCopied) percentage += 33;
+            if (isSimulated) percentage += 34;
+
+            overallProgressBar.style.width = percentage + '%';
+            progressPercentText.textContent = percentage + '%';
+
+            if (percentage === 0) {
+                progressStatusText.textContent = "قم بتحميل الإضافة أولاً";
+            } else if (percentage === 33) {
+                progressStatusText.textContent = "تم التحميل! انسخ الرابط الآن";
+                dot1.className = "indicator-dot completed";
+                dot1.textContent = "✓";
+                dot2.className = "indicator-dot active";
+                cardStep1.classList.remove('active');
+                cardStep2.classList.add('active');
+            } else if (percentage === 66) {
+                progressStatusText.textContent = "رائع! جرب المحاكي بالأسفل";
+                dot2.className = "indicator-dot completed";
+                dot2.textContent = "✓";
+                dot3.className = "indicator-dot active";
+                cardStep2.classList.remove('active');
+                cardStep3.classList.add('active');
+                
+                // Show tooltip helper in simulator
+                setTimeout(() => {
+                    if (!document.getElementById('mock-dev-toggle').checked) {
+                        document.getElementById('sim-tooltip').style.display = 'block';
+                    }
+                }, 300);
+            } else if (percentage === 100) {
+                progressStatusText.textContent = "مكتمل بالكامل! جاهز للتثبيت 👑";
+                dot3.className = "indicator-dot completed";
+                dot3.textContent = "✓";
+                cardStep3.classList.add('active');
+            }
+        }
+
+        // === 1. Interactive Download Simulation ===
+        const downloadBtn = document.getElementById('download-trigger-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnProgress = document.getElementById('btn-progress-fill');
+
+        downloadBtn.addEventListener('click', () => {
+            if (isDownloaded) return;
+
+            downloadBtn.classList.add('downloading');
+            btnIcon.textContent = "⏳";
+            btnText.textContent = "جاري التحميل... 0%";
+
+            let currentProgress = 0;
+            const interval = setInterval(() => {
+                currentProgress += 5;
+                btnProgress.style.width = currentProgress + '%';
+                btnText.textContent = "جاري التحميل... " + currentProgress + "%";
+
+                if (currentProgress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Success state
+                    downloadBtn.classList.remove('downloading');
+                    downloadBtn.classList.add('success');
+                    btnIcon.textContent = "🎉";
+                    btnText.textContent = "تم التحميل بنجاح!";
+                    
+                    isDownloaded = true;
+                    updateOverallProgress();
+                    launchConfetti();
+
+                    // Actually trigger file download
+                    const hiddenAnchor = document.createElement('a');
+                    hiddenAnchor.href = "royal-family-extension.zip";
+                    hiddenAnchor.download = "royal-family-extension.zip";
+                    document.body.appendChild(hiddenAnchor);
+                    hiddenAnchor.click();
+                    document.body.removeChild(hiddenAnchor);
+                }
+            }, 80);
+        });
+
+        // === 2. Copy URL Action ===
+        const copyBtn = document.getElementById('copy-link-btn');
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText('chrome://extensions').then(() => {
+                copyBtn.textContent = "تم النسخ! 🚀";
+                copyBtn.classList.add('copied');
+                
+                isCopied = true;
+                updateOverallProgress();
+
+                setTimeout(() => {
+                    copyBtn.textContent = "نسخ الرابط 📋";
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                // Fallback selection copy
+                const input = document.querySelector('.link-input');
+                input.select();
+                document.execCommand('copy');
+                
+                copyBtn.textContent = "تم النسخ! 🚀";
+                copyBtn.classList.add('copied');
+                isCopied = true;
+                updateOverallProgress();
+                
+                setTimeout(() => {
+                    copyBtn.textContent = "نسخ الرابط 📋";
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            });
+        });
+
+        // === 3. Google Chrome Extension Simulator ===
+        const mockDevToggle = document.getElementById('mock-dev-toggle');
+        const mockActionsBar = document.getElementById('mock-actions-bar');
+        const mockLoadBtn = document.getElementById('mock-load-btn');
+        const mockEmpty = document.getElementById('mock-empty');
+        const mockLoader = document.getElementById('mock-loader');
+        const mockExtensionCard = document.getElementById('mock-extension-card');
+        const simTooltip = document.getElementById('sim-tooltip');
+        const loadTooltip = document.getElementById('load-tooltip');
+        const simSuccessBanner = document.getElementById('sim-success-banner');
+
+        mockDevToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                // Dev mode ON
+                mockActionsBar.classList.add('active');
+                mockLoadBtn.removeAttribute('disabled');
+                mockLoadBtn.classList.add('pulse-border');
+                simTooltip.style.display = 'none';
+
+                // If step 2 was done, display next tooltip
+                if (isCopied && !isSimulated) {
+                    loadTooltip.style.display = 'block';
+                }
+            } else {
+                // Dev mode OFF
+                mockActionsBar.classList.remove('active');
+                mockLoadBtn.setAttribute('disabled', 'true');
+                mockLoadBtn.classList.remove('pulse-border');
+                loadTooltip.style.display = 'none';
+                
+                // Hide extension card if Dev mode is off
+                mockExtensionCard.style.display = 'none';
+                mockEmpty.style.display = 'block';
+            }
+        });
+
+        mockLoadBtn.addEventListener('click', () => {
+            if (isSimulated) return;
+
+            loadTooltip.style.display = 'none';
+            mockLoadBtn.classList.remove('pulse-border');
+            mockEmpty.style.display = 'none';
+            mockLoader.style.display = 'flex';
+
+            // Simulate loading unpacked folder
+            setTimeout(() => {
+                mockLoader.style.display = 'none';
+                mockExtensionCard.style.display = 'block';
+                
+                // Success banner reveals
+                simSuccessBanner.style.display = 'block';
+
+                isSimulated = true;
+                updateOverallProgress();
+                launchConfetti();
+            }, 1200);
+        });
+
+        // Keyboard navigation (Esc to return)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
 </body>
 
 </html>
+
