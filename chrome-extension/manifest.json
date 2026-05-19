@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Fast Toolkit Floating Window (Always on Top)",
+  "name": "Royal Family",
   "version": "1.0.0",
-  "description": "تشغيل مجموعة أدوات Fast Toolkit الذكية في نافذة عائمة دائماً في المقدمة (Picture-in-Picture).",
+  "description": "صنعت لك خصيصا",
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "افتح نافذة Tabby العائمة"
+    "default_title": "افتح نافذة Royal Family العائمة"
   },
   "permissions": [
     "declarativeNetRequest"
