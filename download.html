@@ -518,13 +518,14 @@
 
         /* Mock main content area */
         .mock-content {
-            min-height: 50px;
+            height: 115px; /* Fixed height to accommodate simulated explorer and extension card perfectly */
             padding: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #121212;
             position: relative;
+            box-sizing: border-box;
         }
 
         .mock-empty-state {
@@ -743,6 +744,212 @@
             30% { transform: scale(1.2); }
             60% { transform: scale(1.05); }
         }
+
+        /* Simulated File Explorer styles */
+        .mock-explorer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #1f1f1f;
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            z-index: 20;
+            border: 1px solid #444;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .explorer-header {
+            background: #2b2b2b;
+            padding: 3px 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ddd;
+            font-size: 8px;
+            border-bottom: 1px solid #383838;
+            font-weight: bold;
+        }
+
+        .explorer-close {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0 4px;
+        }
+
+        .explorer-close:hover {
+            color: #ff4d4d;
+        }
+
+        .explorer-address {
+            background: #202020;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border-bottom: 1px solid #333;
+        }
+
+        .explorer-nav-arrow {
+            color: #777;
+            font-size: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .explorer-nav-arrow:hover {
+            color: #fff;
+        }
+
+        .explorer-path {
+            background: #151515;
+            border: 1px solid #333;
+            color: #aaa;
+            font-size: 7px;
+            padding: 2px 6px;
+            flex-grow: 1;
+            border-radius: 3px;
+            text-align: left;
+            direction: ltr;
+            font-family: monospace;
+        }
+
+        .explorer-body {
+            flex-grow: 1;
+            background: #181818;
+            padding: 3px;
+            overflow-y: auto;
+        }
+
+        .explorer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .explorer-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: right;
+            direction: rtl;
+            border: 1px solid transparent;
+        }
+
+        .explorer-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .explorer-item.selected {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+
+        .explorer-icon {
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .explorer-name {
+            font-size: 8px;
+            color: #eee;
+            flex-grow: 1;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .explorer-date, .explorer-type {
+            font-size: 7px;
+            color: #555;
+            flex-shrink: 0;
+        }
+
+        .explorer-date {
+            width: 70px;
+            text-align: left;
+            direction: ltr;
+        }
+
+        .explorer-type {
+            width: 45px;
+            text-align: right;
+        }
+
+        .explorer-footer {
+            background: #202020;
+            padding: 3px 6px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 6px;
+            border-top: 1px solid #333;
+        }
+
+        .explorer-btn {
+            padding: 2px 6px;
+            font-size: 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            border: 1px solid #444;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .explorer-btn.select-btn {
+            background: #333;
+            color: #aaa;
+        }
+
+        .explorer-btn.select-btn.active {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(0, 230, 118, 0.3);
+        }
+
+        .explorer-btn.cancel-btn {
+            background: #1b1b1b;
+            color: #888;
+        }
+
+        .explorer-btn.cancel-btn:hover {
+            color: #fff;
+            background: #252525;
+        }
+
+        .explorer-error {
+            color: #ff4d4d;
+            font-size: 7px;
+            flex-grow: 1;
+            text-align: right;
+            display: none;
+            animation: shake 0.3s ease;
+            font-weight: bold;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
     </style>
     <!-- Centralized Cache Busting Loader -->
     <script>
@@ -816,6 +1023,15 @@
                 </div>
                 <span class="card-desc">جرب خطوات التثبيت هنا تفاعلياً لتتعلم الطريقة الحقيقية:</span>
 
+                <!-- تنبيه اختيار المجلد الصحيح -->
+                <div style="background: #fff3cd; border: 1px solid #ffe69c; border-radius: 6px; padding: 6px; font-size: 8px; color: #664d03; line-height: 1.4; display: flex; gap: 6px; align-items: flex-start; margin-top: 4px; text-align: right;">
+                    <span style="font-size: 10px; color: #664d03; flex-shrink: 0; margin-top: 1px;">⚠️</span>
+                    <div>
+                        <strong style="color: #664d03;">ملاحظة هامة جداً للتثبيت:</strong>
+                        عندما تضغط على <span style="color: #157347; font-weight: bold;">"تحميل إضافة تم فك حزمتها"</span> وتفتح لك نافذة اختيار الملفات، تأكد من الدخول إلى مجلد الحزمة المستخرج أولاً، واختيار المجلد الداخلي المسمى <strong style="color: #0b5ed7; text-decoration: underline; font-family: monospace; font-weight: bold;">chrome-extension</strong> الذي يحتوي مباشرة على ملفات الإضافة لتجنب الأخطاء.
+                    </div>
+                </div>
+
                 <!-- Simulator widget -->
                 <div class="mock-chrome">
                     <div class="simulator-tooltip" id="sim-tooltip">اضغط لتفعيل وضع المطور! 💡</div>
@@ -857,17 +1073,58 @@
                             <span style="font-size: 14px;">🛠️</span>
                             <p>يرجى تفعيل "وضع المطور" (Developer Mode) في الأعلى لبدء المحاكاة.</p>
                         </div>
+
+                        <!-- Simulated File Explorer Window -->
+                        <div class="mock-explorer" id="mock-explorer">
+                            <div class="explorer-header">
+                                <span>تحديد دليل الإضافة</span>
+                                <button class="explorer-close" id="explorer-close-btn">×</button>
+                            </div>
+                            <div class="explorer-address">
+                                <span class="explorer-nav-arrow" id="explorer-back-arrow">⬅</span>
+                                <div class="explorer-path" id="explorer-path-text">Downloads &gt; royal-family-extension</div>
+                            </div>
+                            <div class="explorer-body">
+                                <div class="explorer-list">
+                                    <!-- Inner Folder option -->
+                                    <div class="explorer-item" id="explorer-folder-item">
+                                        <span class="explorer-icon">📁</span>
+                                        <span class="explorer-name">chrome-extension</span>
+                                        <span class="explorer-date">19/05/2026 19:41</span>
+                                        <span class="explorer-type">مجلد ملفات</span>
+                                    </div>
+                                    <!-- Inner Files (Visible only when folder is entered) -->
+                                    <div class="explorer-item" id="explorer-file-manifest" style="display: none; pointer-events: none;">
+                                        <span class="explorer-icon">📄</span>
+                                        <span class="explorer-name">manifest.json</span>
+                                        <span class="explorer-date">19/05/2026 19:41</span>
+                                        <span class="explorer-type">ملف JSON</span>
+                                    </div>
+                                    <div class="explorer-item" id="explorer-file-content" style="display: none; pointer-events: none;">
+                                        <span class="explorer-icon">📄</span>
+                                        <span class="explorer-name">content.js</span>
+                                        <span class="explorer-date">19/05/2026 19:41</span>
+                                        <span class="explorer-type">ملف JavaScript</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="explorer-footer">
+                                <span id="explorer-error-msg" class="explorer-error">⚠️ ادخل لمجلد chrome-extension أولاً!</span>
+                                <button class="explorer-btn select-btn" id="explorer-select-btn">اختيار المجلد</button>
+                                <button class="explorer-btn cancel-btn" id="explorer-cancel-btn">إلغاء</button>
+                            </div>
+                        </div>
                         
                         <!-- Simulated Loader -->
                         <div class="mock-loader" id="mock-loader" style="display: none;">
                             <div class="mock-spinner"></div>
-                            <span>جاري استخراج المجلد (chrome-extension)...</span>
+                            <span>جاري تثبيت الإضافة من المجلد...</span>
                         </div>
 
                         <!-- Simulated Extension Card -->
                         <div class="mock-extension-card" id="mock-extension-card" style="display: none;">
                             <div class="mock-card-header">
-                                <img src="icon.png" class="mock-ext-icon" alt="Royal" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%2300e676%22><path d=%22M12 2L2 22h20L12 2z%22/></svg>'">
+                                <img src="Apple.png" class="mock-ext-icon" alt="Royal" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%2300e676%22><path d=%22M12 2L2 22h20L12 2z%22/></svg>'">
                                 <div class="mock-ext-info">
                                     <span class="mock-ext-name">Royal Family</span>
                                     <span class="mock-ext-ver">1.0.0</span>
@@ -1103,26 +1360,118 @@
             }
         });
 
+        // Simulated Explorer variables
+        const mockExplorer = document.getElementById('mock-explorer');
+        const explorerFolderItem = document.getElementById('explorer-folder-item');
+        const explorerFileManifest = document.getElementById('explorer-file-manifest');
+        const explorerFileContent = document.getElementById('explorer-file-content');
+        const explorerPathText = document.getElementById('explorer-path-text');
+        const explorerSelectBtn = document.getElementById('explorer-select-btn');
+        const explorerCancelBtn = document.getElementById('explorer-cancel-btn');
+        const explorerCloseBtn = document.getElementById('explorer-close-btn');
+        const explorerBackArrow = document.getElementById('explorer-back-arrow');
+        const explorerErrorMsg = document.getElementById('explorer-error-msg');
+        
+        let explorerState = 'parent'; // 'parent' or 'inner'
+        let folderSelected = false;
+
         mockLoadBtn.addEventListener('click', () => {
             if (isSimulated) return;
 
             loadTooltip.style.display = 'none';
             mockLoadBtn.classList.remove('pulse-border');
             mockEmpty.style.display = 'none';
-            mockLoader.style.display = 'flex';
+            
+            // Reset explorer state
+            mockExplorer.style.display = 'flex';
+            explorerState = 'parent';
+            folderSelected = false;
+            explorerPathText.textContent = "Downloads > royal-family-extension";
+            explorerFolderItem.style.display = 'flex';
+            explorerFolderItem.classList.remove('selected');
+            explorerFileManifest.style.display = 'none';
+            explorerFileContent.style.display = 'none';
+            explorerSelectBtn.classList.remove('active');
+            explorerErrorMsg.style.display = 'none';
+        });
 
-            // Simulate loading unpacked folder
-            setTimeout(() => {
-                mockLoader.style.display = 'none';
-                mockExtensionCard.style.display = 'block';
-                
-                // Success banner reveals
-                simSuccessBanner.style.display = 'block';
+        // Folder selection/entering logic
+        explorerFolderItem.addEventListener('click', () => {
+            if (explorerState === 'parent') {
+                if (!folderSelected) {
+                    folderSelected = true;
+                    explorerFolderItem.classList.add('selected');
+                    explorerErrorMsg.style.display = 'none';
+                } else {
+                    enterChromeExtensionFolder();
+                }
+            }
+        });
 
-                isSimulated = true;
-                updateOverallProgress();
-                launchConfetti();
-            }, 1200);
+        explorerFolderItem.addEventListener('dblclick', () => {
+            if (explorerState === 'parent') {
+                enterChromeExtensionFolder();
+            }
+        });
+
+        function enterChromeExtensionFolder() {
+            explorerState = 'inner';
+            explorerPathText.textContent = "Downloads > royal-family-extension > chrome-extension";
+            explorerFolderItem.style.display = 'none';
+            explorerFileManifest.style.display = 'flex';
+            explorerFileContent.style.display = 'flex';
+            explorerSelectBtn.classList.add('active');
+            explorerErrorMsg.style.display = 'none';
+        }
+
+        // Back arrow logic
+        explorerBackArrow.addEventListener('click', () => {
+            if (explorerState === 'inner') {
+                explorerState = 'parent';
+                folderSelected = false;
+                explorerPathText.textContent = "Downloads > royal-family-extension";
+                explorerFolderItem.style.display = 'flex';
+                explorerFolderItem.classList.remove('selected');
+                explorerFileManifest.style.display = 'none';
+                explorerFileContent.style.display = 'none';
+                explorerSelectBtn.classList.remove('active');
+            }
+        });
+
+        // Cancel and Close logic
+        const closeExplorer = () => {
+            mockExplorer.style.display = 'none';
+            if (!isSimulated) {
+                mockEmpty.style.display = 'block';
+            }
+        };
+
+        explorerCancelBtn.addEventListener('click', closeExplorer);
+        explorerCloseBtn.addEventListener('click', closeExplorer);
+
+        // Folder selection confirm
+        explorerSelectBtn.addEventListener('click', () => {
+            if (explorerState === 'parent') {
+                // Show error!
+                explorerErrorMsg.style.display = 'block';
+                explorerErrorMsg.style.animation = 'none';
+                explorerErrorMsg.offsetHeight; // trigger reflow
+                explorerErrorMsg.style.animation = 'shake 0.3s ease';
+            } else if (explorerState === 'inner') {
+                // Success! Close explorer and load card
+                mockExplorer.style.display = 'none';
+                mockLoader.style.display = 'flex';
+
+                setTimeout(() => {
+                    mockLoader.style.display = 'none';
+                    mockExtensionCard.style.display = 'block';
+                    simSuccessBanner.style.display = 'block';
+
+                    isSimulated = true;
+                    updateOverallProgress();
+                    launchConfetti();
+                }, 1200);
+            }
         });
 
         // Keyboard navigation (Esc to return)
