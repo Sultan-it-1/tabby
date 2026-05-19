@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Fast Toolkit Floating Window (Always on Top)",
+  "version": "1.0.0",
+  "description": "تشغيل مجموعة أدوات Fast Toolkit الذكية في نافذة عائمة دائماً في المقدمة (Picture-in-Picture).",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "افتح نافذة Tabby العائمة"
+  },
+  "permissions": [
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*.sultanops.com/*"
+  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.sultanops.com/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ]
+}
