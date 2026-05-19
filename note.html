@@ -145,10 +145,18 @@
             background: #122212;
         }
 
+        @keyframes sort-pulse {
+            0%   { box-shadow: 0 0 0px #ffaa00; }
+            50%  { box-shadow: 0 0 7px 2px #ffaa00; }
+            100% { box-shadow: 0 0 0px #ffaa00; }
+        }
+
         .nav-btn.active-mode {
-            background: var(--accent-green);
+            background: #ffaa00;
             color: #000;
-            border-color: #fff;
+            border-color: #ffaa00;
+            font-weight: bold;
+            animation: sort-pulse 1.2s ease-in-out infinite;
         }
 
         .add-main-btn {
@@ -220,11 +228,6 @@
             user-select: none;
         }
 
-        .section-sort-controls {
-            display: none;
-            gap: 4px;
-        }
-
         .sort-order-active .section-sort-controls {
             display: inline-flex;
         }
@@ -240,6 +243,33 @@
             font-weight: bold;
             padding: 0 2px;
             user-select: none;
+        }
+
+        .move-tab-btn {
+            color: #888;
+            cursor: pointer;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border: 1px solid #444;
+            border-radius: 3px;
+            background: #1a1a1a;
+            user-select: none;
+            transition: 0.15s;
+            white-space: nowrap;
+        }
+
+        .move-tab-btn:hover {
+            border-color: #b07fff;
+            color: #b07fff;
+            background: #1a0f2e;
+        }
+
+        .section-sort-controls {
+            display: none;
+            gap: 3px;
+            align-items: center;
+            flex-wrap: nowrap;
         }
 
         .grid-container {
@@ -303,6 +333,7 @@
             cursor: pointer;
             white-space: nowrap;
         }
+
 
         .status-container {
             display: flex;
@@ -490,6 +521,7 @@
         </div>
     </div>
 
+
     <script>
         function escapeJS(str) { return str ? str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : ''; }
         function escapeHTML(str) {
@@ -504,9 +536,9 @@
         let confirmCallback = null, searchQuery = '';
 
         const defaultData = {
-            c1: { "عام 1": [{ id: 1, l: 'ترحيب 1', t: 'أهلاً بك في Tab 1' }] },
-            c2: { "عام 2": [{ id: 2, l: 'ترحيب 2', t: 'أهلاً بك في Tab 2' }] },
-            c3: { "عام 3": [{ id: 3, l: 'ترحيب 3', t: 'أهلاً بك في Tab 3' }] }
+            c1: {},
+            c2: {},
+            c3: {}
         };
 
         let storageData = JSON.parse(localStorage.getItem('copyGridDataV6')) || defaultData;
@@ -568,6 +600,9 @@
                     <span class="section-sort-controls">
                         <span class="sort-btn" onclick="moveSection('${safeCatJS}', -1)">▲</span>
                         <span class="sort-btn" onclick="moveSection('${safeCatJS}', 1)">▼</span>
+                        ${currentContainer !== 'c1' ? `<span class="move-tab-btn" onclick="moveSectionToTab('${safeCatJS}', 'c1')">→T1</span>` : ''}
+                        ${currentContainer !== 'c2' ? `<span class="move-tab-btn" onclick="moveSectionToTab('${safeCatJS}', 'c2')">→T2</span>` : ''}
+                        ${currentContainer !== 'c3' ? `<span class="move-tab-btn" onclick="moveSectionToTab('${safeCatJS}', 'c3')">→T3</span>` : ''}
                     </span>
                     <span class="add-item-trigger" style="color:var(--accent-green);cursor:pointer;font-weight:bold;font-size:14px" onclick="openItemModal('${cId}', '${safeCatJS}')">+</span>
                     ` : ''}
@@ -583,6 +618,25 @@
                     const grid = document.createElement('div');
                     grid.className = 'grid-container';
                     grid.dataset.category = cat;
+                    grid.dataset.container = cId;
+
+                    // allow drop on empty grid area for cross-section move
+                    grid.addEventListener('dragover', (e) => { e.preventDefault(); });
+                    grid.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        if (!draggedItem) return;
+                        const srcInfo = JSON.parse(e.dataTransfer.getData('application/json') || 'null');
+                        if (!srcInfo) return;
+                        const targetCat = grid.dataset.category;
+                        const targetCId = grid.dataset.container;
+                        if (srcInfo.cat === targetCat && srcInfo.cId === targetCId) return;
+                        ensureContainerSafety(targetCId);
+                        if (!storageData[targetCId][targetCat]) storageData[targetCId][targetCat] = [];
+                        const srcList = storageData[srcInfo.cId][srcInfo.cat];
+                        const [movedItem] = srcList.splice(srcInfo.index, 1);
+                        storageData[targetCId][targetCat].push(movedItem);
+                        saveAndRefresh();
+                    });
 
                     filteredItems.forEach((item) => {
                         const realIdx = sections[cat].findIndex(x => x.id === item.id);
@@ -607,6 +661,7 @@
                                 draggedItem = chip;
                                 chip.classList.add('dragging');
                                 e.dataTransfer.setData('text/plain', realIdx);
+                                e.dataTransfer.setData('application/json', JSON.stringify({ index: realIdx, cat, cId }));
                             });
 
                             chip.addEventListener('dragend', () => {
@@ -617,7 +672,7 @@
 
                             chip.addEventListener('dragover', (e) => {
                                 e.preventDefault();
-                                if (draggedItem && draggedItem !== chip && chip.parentNode === draggedItem.parentNode) {
+                                if (draggedItem && draggedItem !== chip) {
                                     chip.classList.add('drag-over');
                                 }
                             });
@@ -627,14 +682,28 @@
                             chip.addEventListener('drop', (e) => {
                                 e.preventDefault();
                                 chip.classList.remove('drag-over');
-                                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                                const srcInfo = JSON.parse(e.dataTransfer.getData('application/json') || 'null');
+                                if (!srcInfo) return;
                                 const toIndex = parseInt(chip.dataset.index, 10);
                                 const targetCat = grid.dataset.category;
+                                const targetCId = grid.dataset.container;
 
-                                if (!isNaN(fromIndex) && fromIndex !== toIndex && storageData[currentContainer][targetCat]) {
-                                    const list = storageData[currentContainer][targetCat];
-                                    const [movedItem] = list.splice(fromIndex, 1);
-                                    list.splice(toIndex, 0, movedItem);
+                                ensureContainerSafety(targetCId);
+                                if (!storageData[targetCId][targetCat]) storageData[targetCId][targetCat] = [];
+
+                                if (srcInfo.cat === targetCat && srcInfo.cId === targetCId) {
+                                    // same section reorder
+                                    if (!isNaN(srcInfo.index) && srcInfo.index !== toIndex) {
+                                        const list = storageData[targetCId][targetCat];
+                                        const [movedItem] = list.splice(srcInfo.index, 1);
+                                        list.splice(toIndex, 0, movedItem);
+                                        saveAndRefresh();
+                                    }
+                                } else {
+                                    // cross-section move
+                                    const srcList = storageData[srcInfo.cId][srcInfo.cat];
+                                    const [movedItem] = srcList.splice(srcInfo.index, 1);
+                                    storageData[targetCId][targetCat].splice(toIndex, 0, movedItem);
                                     saveAndRefresh();
                                 }
                             });
@@ -657,15 +726,22 @@
                                     const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
                                     const closestChip = targetEl ? targetEl.closest('.chip') : null;
 
-                                    if (closestChip && closestChip !== chip && closestChip.parentNode === grid) {
+                                    if (closestChip && closestChip !== chip) {
                                         const fromIndex = parseInt(chip.dataset.index, 10);
                                         const toIndex = parseInt(closestChip.dataset.index, 10);
-                                        const targetCat = grid.dataset.category;
+                                        const srcCat = grid.dataset.category;
+                                        const srcCId = grid.dataset.container;
+                                        const targetGrid = closestChip.parentNode;
+                                        const targetCat = targetGrid.dataset.category;
+                                        const targetCId = targetGrid.dataset.container;
+
+                                        ensureContainerSafety(targetCId);
+                                        if (!storageData[targetCId][targetCat]) storageData[targetCId][targetCat] = [];
 
                                         if (!isNaN(fromIndex) && !isNaN(toIndex)) {
-                                            const list = storageData[currentContainer][targetCat];
-                                            const [movedItem] = list.splice(fromIndex, 1);
-                                            list.splice(toIndex, 0, movedItem);
+                                            const srcList = storageData[srcCId][srcCat];
+                                            const [movedItem] = srcList.splice(fromIndex, 1);
+                                            storageData[targetCId][targetCat].splice(toIndex, 0, movedItem);
                                             saveAndRefresh();
                                         }
                                     }
@@ -680,7 +756,7 @@
                                     const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
                                     const closestChip = targetEl ? targetEl.closest('.chip') : null;
                                     document.querySelectorAll('.chip').forEach(c => c.classList.remove('drag-over'));
-                                    if (closestChip && closestChip !== chip && closestChip.parentNode === grid) {
+                                    if (closestChip && closestChip !== chip) {
                                         closestChip.classList.add('drag-over');
                                     }
                                 } else {
@@ -752,6 +828,22 @@
             keys.forEach(k => { newObj[k] = obj[k]; });
             storageData[currentContainer] = newObj;
             saveAndRefresh();
+        }
+
+        function moveSectionToTab(cat, targetCId) {
+            if (targetCId === currentContainer) return;
+            ensureContainerSafety(targetCId);
+            const items = storageData[currentContainer][cat];
+            // if name conflicts in target, rename
+            let finalName = cat;
+            let c = 1;
+            while (storageData[targetCId][finalName] !== undefined) {
+                finalName = `${cat} (${c++})`;
+            }
+            storageData[targetCId][finalName] = items;
+            delete storageData[currentContainer][cat];
+            saveAndRefresh();
+            showStatus(`✅ نُقل "${cat}" إلى Tab ${targetCId.replace('c','')}`);
         }
 
         function openEditSectionModal(cat) {
@@ -954,6 +1046,7 @@
         }
 
         render();
+
     </script>
 </body>
 
