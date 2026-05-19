@@ -656,12 +656,7 @@
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
             </a>
-            <button id="expandBtn" class="expand-btn" onclick="toggleExpand()" title="توسيع الواجهة">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                </svg>
-            </button>
+
             <button id="aiBtn" class="ai-btn" onclick="toggleAI()">AI</button>
             <button class="upload-btn" onclick="document.getElementById('fileInput').click()"
                 title="رفع صورة من الجهاز">📁</button>
@@ -785,7 +780,6 @@
 
     <script>
         const appContainer = document.getElementById('appContainer');
-        const expandBtn = document.getElementById('expandBtn');
         const resultsArea = document.getElementById('results');
         const finalListArea = document.getElementById('finalList');
         const listCounter = document.getElementById('listCounter');
@@ -801,20 +795,7 @@
         let lastRateLimitInfo = {};
         if (isAIActive) aiBtn.className = 'ai-btn active';
 
-        const iconExpand = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
-        const iconShrink = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>`;
 
-        // تحديث أيقونة الزر حسب الحالة الحالية
-        if (localStorage.getItem('fastToolkitExpanded') === 'true') {
-            expandBtn.innerHTML = iconShrink;
-            expandBtn.title = "تقليص الواجهة";
-        }
-
-        function toggleExpand() {
-            const isNowExpanded = window.fastToolkitToggleExpand();
-            expandBtn.innerHTML = isNowExpanded ? iconShrink : iconExpand;
-            expandBtn.title = isNowExpanded ? "تقليص الواجهة" : "توسيع الواجهة";
-        }
 
         const speechDictionary = {
             '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',

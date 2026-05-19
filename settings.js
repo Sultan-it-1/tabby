@@ -1,11 +1,6 @@
 (function () {
     // Apply expanded state to document element instantly to prevent page transition flickering
-    const isInitiallyExpanded = localStorage.getItem('fastToolkitExpanded') === 'true';
-    if (isInitiallyExpanded) {
-        document.documentElement.classList.add('expanded');
-    } else {
-        document.documentElement.classList.remove('expanded');
-    }
+    document.documentElement.classList.add('expanded');
 
     const defaultSettings = {
         mode: 'light',
@@ -235,54 +230,17 @@
     window.fastToolkitSettings = settings;
 
     // === Global Expand/Collapse ===
-    const isExpanded = localStorage.getItem('fastToolkitExpanded') === 'true';
-    const expandSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
-    const shrinkSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>';
-
     function applyExpand() {
-        if (isExpanded) {
-            document.documentElement.classList.add('expanded');
-        } else {
-            document.documentElement.classList.remove('expanded');
-        }
+        document.documentElement.classList.add('expanded');
         document.querySelectorAll('.container, .app-container').forEach(el => {
-            if (isExpanded) {
-                el.classList.add('expanded');
-            } else {
-                el.classList.remove('expanded');
-            }
+            el.classList.add('expanded');
         });
-    }
-
-    function injectExpandButton() {
-        // لا تضيف الزر إذا كان موجود مسبقاً (مثل simah.html)
-        if (document.getElementById('globalExpandBtn')) return;
-        if (document.getElementById('expandBtn')) return;
-
-        const header = document.querySelector('.header, .header-row, .home-row');
-        if (!header) return;
-
-        const btn = document.createElement('button');
-        btn.id = 'globalExpandBtn';
-        btn.title = isExpanded ? 'تقليص الواجهة' : 'توسيع الواجهة';
-        btn.innerHTML = isExpanded ? shrinkSvg : expandSvg;
-        btn.style.cssText = 'background:#252525;border:1px solid #444;color:var(--accent-green);padding:4px;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:0.2s;';
-        btn.addEventListener('mouseenter', () => { btn.style.borderColor = 'var(--accent-green)'; });
-        btn.addEventListener('mouseleave', () => { btn.style.borderColor = '#444'; });
-        btn.addEventListener('click', function () {
-            const next = window.fastToolkitToggleExpand();
-            btn.innerHTML = next ? shrinkSvg : expandSvg;
-            btn.title = next ? 'تقليص الواجهة' : 'توسيع الواجهة';
-        });
-
-        header.insertBefore(btn, header.firstChild);
     }
 
     // Apply immediately when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             applyExpand();
-            injectExpandButton();
             setTimeout(() => {
                 document.documentElement.classList.add('ready');
                 document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
@@ -290,7 +248,6 @@
         });
     } else {
         applyExpand();
-        injectExpandButton();
         setTimeout(() => {
             document.documentElement.classList.add('ready');
             document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
@@ -299,31 +256,14 @@
 
     // Global toggle function available to all pages
     window.fastToolkitToggleExpand = function () {
-        const current = localStorage.getItem('fastToolkitExpanded') === 'true';
-        const next = !current;
-        window.fastToolkitSetExpand(next);
-        return next;
+        return true;
     };
 
     window.fastToolkitSetExpand = function (shouldExpand) {
-        localStorage.setItem('fastToolkitExpanded', shouldExpand);
-        if (shouldExpand) {
-            document.documentElement.classList.add('expanded');
-        } else {
-            document.documentElement.classList.remove('expanded');
-        }
+        document.documentElement.classList.add('expanded');
         document.querySelectorAll('.container, .app-container').forEach(el => {
             el.classList.add('ready');
-            if (shouldExpand) {
-                el.classList.add('expanded');
-            } else {
-                el.classList.remove('expanded');
-            }
+            el.classList.add('expanded');
         });
-        const btn = document.getElementById('globalExpandBtn') || document.getElementById('expandBtn');
-        if (btn) {
-            btn.innerHTML = shouldExpand ? shrinkSvg : expandSvg;
-            btn.title = shouldExpand ? 'تقليص الواجهة' : 'توسيع الواجهة';
-        }
     };
 })();
