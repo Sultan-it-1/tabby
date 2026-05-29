@@ -1,4 +1,4 @@
-// Tabby Chrome Extension Content Script
+// Fast Toolkit Chrome Extension Content Script
 // Runs inside the iframe of sultanops.com to optimize layout for PiP mode
 
 (function () {
@@ -6,7 +6,7 @@
   if (window.self !== window.top) {
     // 1. We are framed! Let's inject layout adjustments to make it look like a seamless standalone app
     const style = document.createElement("style");
-    style.id = "tabby-pip-optimizer";
+    style.id = "pip-optimizer";
     style.textContent = `
       /* Force body to fit the PiP viewport exactly */
       html, body {
@@ -72,96 +72,130 @@
     }
 
     // 2. Intercept and bypass Document PiP download restriction
-    // Inject a script into the page context to monkey-patch HTMLAnchorElement.prototype.click
-    const patchScript = document.createElement("script");
-    patchScript.id = "tabby-download-bypass";
-    patchScript.textContent = `
-      (function() {
-        const originalClick = HTMLAnchorElement.prototype.click;
-        HTMLAnchorElement.prototype.click = function() {
-          if (this.download) {
-            // Intercept download anchors (like the export backup button)
-            const event = new CustomEvent("tabby-intercept-download", {
-              detail: {
-                url: this.href,
-                filename: this.download
-              }
-            });
-            window.dispatchEvent(event);
-            return; // Intercepted, cancel native click to avoid silent PiP block
-          }
-          return originalClick.apply(this, arguments);
-        };
-      })();
-    `;
-    
-    if (document.head) {
-      document.head.appendChild(patchScript);
-    } else {
-      document.documentElement.appendChild(patchScript);
-    }
-
-    // Listen to intercepted download event from the page context
-    window.addEventListener("tabby-intercept-download", async (e) => {
-      const { url, filename } = e.detail;
+    // ONLY activate inside a real Document PiP window (not regular iframes)
+    // We detect a PiP window by checking if the parent window has documentPictureInPicture
+    // and this window is its pipWindow.
+    const isInsidePiP = (() => {
       try {
-        // Retrieve download content from Blob URL
-        const response = await fetch(url);
-        const contentText = await response.text();
-
-        // Delegate the download to the extension launcher tab
-        chrome.runtime.sendMessage({
-          action: "performDownload",
-          filename: filename,
-          content: contentText
-        });
-      } catch (err) {
-        console.error("Fast Toolkit: Failed to process intercepted download:", err);
+        // In a Document PiP window, window.opener exists and points to the opener tab
+        // Also, documentPictureInPicture API will NOT exist inside the PiP window itself
+        // But the opener tab's documentPictureInPicture.window === this window
+        return window.opener !== null && typeof window.opener !== "undefined";
+      } catch (e) {
+        return false;
       }
-    });
+    })();
 
-    // 3. Dynamic Theme Synchronization with Outer Title Bar
-    function sendThemeToOuterWindow() {
-      const container = document.querySelector(".container, .app-container");
-      if (container) {
-        const computedStyle = window.getComputedStyle(container);
-        const bgColor = computedStyle.backgroundColor;
-        const borderColor = computedStyle.borderColor || computedStyle.borderBottomColor;
-        const textColor = computedStyle.color;
+    if (isInsidePiP) {
+      // Inject a script into the page context to monkey-patch HTMLAnchorElement.prototype.click
+      const patchScript = document.createElement("script");
+      patchScript.id = "download-bypass";
+      patchScript.textContent = `
+        (function() {
+          const originalClick = HTMLAnchorElement.prototype.click;
+          HTMLAnchorElement.prototype.click = function() {
+            if (this.download) {
+              // Intercept download anchors (like the export backup button)
+              const event = new CustomEvent("intercept-download", {
+                detail: {
+                  url: this.href,
+                  filename: this.download
+                }
+              });
+              window.dispatchEvent(event);
+              return; // Intercepted, cancel native click to avoid silent PiP block
+            }
+            return originalClick.apply(this, arguments);
+          };
 
-        chrome.runtime.sendMessage({
-          action: "syncTheme",
-          bgColor: bgColor,
-          borderColor: borderColor,
-          textColor: textColor
-        });
+          // Also intercept programmatic anchor clicks via addEventListener (for cases using click event)
+          document.addEventListener("click", function(e) {
+            const anchor = e.target.closest("a[download]");
+            if (anchor) {
+              e.preventDefault();
+              const event = new CustomEvent("intercept-download", {
+                detail: {
+                  url: anchor.href,
+                  filename: anchor.download
+                }
+              });
+              window.dispatchEvent(event);
+            }
+          }, true);
+        })();
+      `;
+      
+      if (document.head) {
+        document.head.appendChild(patchScript);
+      } else {
+        document.documentElement.appendChild(patchScript);
       }
-    }
 
-    // Run theme sync on initialization and at short delays to ensure DOM loads
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
-        sendThemeToOuterWindow();
-        setTimeout(sendThemeToOuterWindow, 300);
+      // Listen to intercepted download event from the page context
+      window.addEventListener("intercept-download", async (e) => {
+        const { url, filename } = e.detail;
+        try {
+          // Retrieve download content from Blob URL
+          const response = await fetch(url);
+          const contentText = await response.text();
+
+          // Delegate the download to the extension launcher tab
+          chrome.runtime.sendMessage({
+            action: "performDownload",
+            filename: filename,
+            content: contentText
+          });
+        } catch (err) {
+          console.error("Fast Toolkit: Failed to process intercepted download:", err);
+        }
       });
-    } else {
-      sendThemeToOuterWindow();
-      setTimeout(sendThemeToOuterWindow, 300);
+      // 3. Dynamic Theme Synchronization with Outer Title Bar
+      function sendThemeToOuterWindow() {
+        const container = document.querySelector(".container, .app-container");
+        if (container) {
+          const computedStyle = window.getComputedStyle(container);
+          const bgColor = computedStyle.backgroundColor;
+          const borderColor = computedStyle.borderColor || computedStyle.borderBottomColor;
+          const textColor = computedStyle.color;
+
+          chrome.runtime.sendMessage({
+            action: "syncTheme",
+            bgColor: bgColor,
+            borderColor: borderColor,
+            textColor: textColor
+          });
+        }
+      }
+
+      // Use MutationObserver to detect theme/class/style changes efficiently
+      // This replaces multiple setTimeouts and click listeners — fires only when needed
+      function startThemeObserver() {
+        const target = document.body || document.documentElement;
+        const observer = new MutationObserver(() => {
+          sendThemeToOuterWindow();
+        });
+        observer.observe(target, {
+          attributes: true,
+          attributeFilter: ["class", "style", "data-theme"],
+          subtree: false
+        });
+      }
+
+      // Run theme sync on init
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => {
+          sendThemeToOuterWindow();
+          startThemeObserver();
+        });
+      } else {
+        sendThemeToOuterWindow();
+        startThemeObserver();
+      }
+
+      // Also sync after full page load (dynamic CSS or settings.js may apply late)
+      window.addEventListener("load", () => {
+        sendThemeToOuterWindow();
+      });
     }
-
-    // Run theme sync once the full window (with settings.js and dynamic styles) has finished loading
-    window.addEventListener("load", () => {
-      sendThemeToOuterWindow();
-      setTimeout(sendThemeToOuterWindow, 300);
-      setTimeout(sendThemeToOuterWindow, 600);
-    });
-
-    // Run theme sync on clicks or interactions to capture light/dark theme switches immediately
-    window.addEventListener("click", () => {
-      setTimeout(sendThemeToOuterWindow, 100);
-    });
-    window.addEventListener("touchend", () => {
-      setTimeout(sendThemeToOuterWindow, 100);
-    });
   }
 })();

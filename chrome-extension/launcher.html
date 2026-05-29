@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مُطلق نافذة Tabby العائمة</title>
+    <title>مُطلق النافذة العائمة</title>
     <!-- Google Fonts: Cairo for Arabic, Inter for English/Numbers -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +24,9 @@
 
         * {
             box-sizing: border-box;
+        }
+
+        button, input, a, .launch-btn, .status-container, .pulse-dot, .container::before {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -289,7 +292,7 @@
         </button>
 
         <!-- Status Box -->
-        <div id="status-box" class="status-container status-active" style="margin-bottom: 20px;">
+        <div id="status-box" class="status-container status-active" style="display: none; margin-bottom: 20px;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span class="pulse-dot"></span>
                 <strong>النافذة العائمة نشطة حالياً دائماً في المقدمة!</strong>

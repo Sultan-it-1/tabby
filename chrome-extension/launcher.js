@@ -1,4 +1,4 @@
-// Tabby PiP Launcher JavaScript Controller
+// Fast Toolkit PiP Launcher JavaScript Controller
 
 // Global trackers accessible by all event listeners
 let activePipWindow = null;
@@ -12,6 +12,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const winHeightInput = document.getElementById("win-height");
   const statusBox = document.getElementById("status-box");
   const supportError = document.getElementById("support-error");
+
+  // Load saved PiP window dimensions from previous session
+  chrome.storage.local.get(["pipWidth", "pipHeight"], (result) => {
+    if (result.pipWidth) winWidthInput.value = result.pipWidth;
+    if (result.pipHeight) winHeightInput.value = result.pipHeight;
+  });
 
   // 1. Check browser compatibility for Document Picture-in-Picture API
   if (!("documentPictureInPicture" in window)) {
@@ -33,6 +39,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const width = parseInt(winWidthInput.value) || 320;
     const height = parseInt(winHeightInput.value) || 480;
 
+    // Save dimensions for next session
+    chrome.storage.local.set({ pipWidth: width, pipHeight: height });
+
     try {
       // Disable launcher button during activation
       btnLaunch.disabled = true;
@@ -49,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
       let isCollapsed = false;
 
       // Configure PiP Window Head Metadata
-      pipWindow.document.title = "Tabby Always-on-Top";
+      pipWindow.document.title = "Fast Toolkit Always-on-Top";
 
       // Configure PiP Window Body Styling (Flex Column)
       const body = pipWindow.document.body;
@@ -188,7 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
       body.appendChild(headerBar);
       body.appendChild(divider);
 
-      // Create and Configure the Iframe pointing to tabby.sultanops.com
+      // Create and Configure the Iframe pointing to sultanops.com
       const iframe = pipWindow.document.createElement("iframe");
       iframe.src = "https://tabby.sultanops.com";
       iframe.style.width = "100%";

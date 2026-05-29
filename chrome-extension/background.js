@@ -9,8 +9,7 @@ chrome.runtime.onInstalled.addListener(() => {
       action: {
         type: "modifyHeaders",
         responseHeaders: [
-          { header: "X-Frame-Options", operation: "remove" },
-          { header: "Content-Security-Policy", operation: "remove" }
+          { header: "X-Frame-Options", operation: "remove" }
         ]
       },
       condition: {

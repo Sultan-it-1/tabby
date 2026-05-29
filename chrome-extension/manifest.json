@@ -10,7 +10,8 @@
     "default_title": "افتح نافذة Royal Family العائمة"
   },
   "permissions": [
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "storage"
   ],
   "host_permissions": [
     "*://*.sultanops.com/*"
