@@ -570,9 +570,6 @@
             <button class="settings-btn" onclick="openSettings()" title="إعدادات API Key">⚙️</button>
             <button class="usage-btn" onclick="toggleUsageModal()" title="استخدام API">📊</button>
             <div id="cardIndicators" style="display: flex; gap: 4px; align-items: center; margin-right: auto;">
-                <span id="tabbyWarningBadge"
-                    style="display: none; background: #ffcc00; color: #000; font-size: 9px; font-weight: bold; padding: 2px 4px; border-radius: 4px; direction: rtl;">ليست
-                    تابي ⚠️</span>
                 <span id="declineBadge"
                     style="display: none; background: #ff3333; color: white; font-size: 9px; font-weight: bold; padding: 2px 4px; border-radius: 4px; direction: ltr;">DECLINED</span>
                 <span id="networkBadge"
@@ -835,16 +832,6 @@
             const lowerText = text.toLowerCase();
             const badge = document.getElementById('declineBadge');
             const networkBadge = document.getElementById('networkBadge');
-            const tabbyWarningBadge = document.getElementById('tabbyWarningBadge');
-
-            if (tabbyWarningBadge) {
-                if (lowerText.includes('tabby') || lowerText.includes('تابي')) {
-                    tabbyWarningBadge.style.display = 'none';
-                } else {
-                    tabbyWarningBadge.style.display = 'inline-flex';
-                }
-            }
-
             if (lowerText.includes('decline') || lowerText.includes('مرفوض') || lowerText.includes('declined')) {
                 badge.style.display = 'inline-flex';
             } else {
@@ -897,6 +884,9 @@
             const time = timeMatch ? timeMatch[0] : "00:00";
             const dateMatch = cleanText.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || cleanText.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
 
+            const currentYearStr = String(new Date().getFullYear());
+            const currentYearShort = currentYearStr.slice(-2); // "26"
+
             let date = "00-00";
             let foundYear = "";
             if (dateMatch) {
@@ -909,23 +899,72 @@
                 }
             }
 
-            const currentYearStr = String(new Date().getFullYear());
-            const currentYearShort = currentYearStr.slice(-2);
-            if (foundYear && foundYear !== currentYearStr && foundYear !== currentYearShort) {
+            // BUG FIX 1: أي رقم سنة مختصر يساوي "26" (السنة الحالية) = نفس العام، لا يُضاف للتاريخ
+            // إذا كانت السنة المكتشفة هي السنة الحالية (كاملة أو مختصرة)، لا تُضف السنة
+            const isCurrentYear = (foundYear === currentYearStr) || (foundYear === currentYearShort);
+            if (foundYear && !isCurrentYear) {
                 date = `${date}-${foundYear}`;
             }
 
+            // ====== قواعد استخراج رقم البطاقة ======
+            // 1. "عبر" دائماً = بطاقة
+            // 2. "عبر" + "من" معاً: بعد "عبر" = بطاقة، بعد "من" = حساب يُتجاهل
+            // 3. "من" وحدها (بدون "عبر" وبدون "حساب") = بطاقة
+            // 4. "من" + "حساب" = حساب يُتجاهل
             let card = "0000";
-            const cardKeywords = ["بطاقة", "card", "mada", "مدى"];
+            const accountDigits = new Set();
+
             for (let line of lines) {
-                if (cardKeywords.some(key => line.toLowerCase().includes(key))) {
-                    const match = line.match(/\d{4}/);
-                    if (match) { card = match[0]; break; }
+                const hasEbr = line.includes('عبر');
+                const hasMen = line.includes('من');
+                const hasHesab = line.includes('حساب');
+
+                if (hasEbr && hasMen) {
+                    // قاعدة 2: "عبر" + "من": الرقم بعد "عبر" = بطاقة
+                    const afterEbr = line.split('عبر')[1] || '';
+                    const ebrMatch = afterEbr.match(/\d{4}/);
+                    if (ebrMatch && card === "0000") card = ebrMatch[0];
+                    // الأرقام بعد "من" = حساب، تُتجاهل
+                    const afterMen = line.split('من').pop() || '';
+                    const menDigits = afterMen.match(/\d+/g) || [];
+                    menDigits.forEach(d => accountDigits.add(d));
+
+                } else if (hasEbr && !hasMen) {
+                    // قاعدة 1: "عبر" وحدها = بطاقة
+                    const afterEbr = line.split('عبر')[1] || '';
+                    const ebrMatch = afterEbr.match(/\d{4}/);
+                    if (ebrMatch && card === "0000") card = ebrMatch[0];
+
+                } else if (!hasEbr && hasMen && !hasHesab) {
+                    // قاعدة 3: "من" وحدها بدون "عبر" وبدون "حساب" = بطاقة
+                    const afterMen = line.split('من').pop() || '';
+                    const menMatch = afterMen.match(/\d{4}/);
+                    if (menMatch && card === "0000") card = menMatch[0];
+
+                } else if (!hasEbr && hasMen && hasHesab) {
+                    // قاعدة 4: "من" + "حساب" = أرقام حساب، تُتجاهل
+                    const digits = line.match(/\d+/g) || [];
+                    digits.forEach(d => accountDigits.add(d));
+                }
+            }
+
+            const cardKeywords = ["بطاقة", "card", "mada", "مدى"];
+            if (card === "0000") {
+                for (let line of lines) {
+                    if (cardKeywords.some(key => line.toLowerCase().includes(key))) {
+                        const match = line.match(/\d{4}/);
+                        if (match) { card = match[0]; break; }
+                    }
                 }
             }
             if (card === "0000") {
                 const allFourDigits = cleanText.match(/\d{4}/g) || [];
-                card = allFourDigits.find(d => d !== foundYear && !amount.includes(d) && d !== "2026" && d !== "2025") || "0000";
+                card = allFourDigits.find(d =>
+                    d !== foundYear &&
+                    !amount.includes(d) &&
+                    d !== "2026" && d !== "2025" &&
+                    !accountDigits.has(d)
+                ) || "0000";
             }
 
             const finalResult = `${card} // ${amount} // ${time} // ${date}`;
@@ -1013,9 +1052,6 @@
             updateUI("البيانات ستظهر هنا", "-", "-", "-", "-");
             document.getElementById('declineBadge').style.display = 'none';
             document.getElementById('networkBadge').style.display = 'none';
-            if (document.getElementById('tabbyWarningBadge')) {
-                document.getElementById('tabbyWarningBadge').style.display = 'none';
-            }
 
             if (isEditMode) {
                 isEditMode = false;
@@ -1238,7 +1274,7 @@
                     const payload = {
                         contents: [{
                             parts: [
-                                { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). If no card number is found, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. If the transaction year is NOT the current year (2026), return in D-M-YYYY format (e.g. 18-5-2025). If the transaction year is the current year (2026), return in D-M format (e.g. 18-5). 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). 6. The status of the transaction (e.g. declined or success). 7. If the word 'Tabby' (case-insensitive) or 'تابي' is present anywhere in the image text, return 'yes', otherwise return 'no'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS // TABBY_PRESENT. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success // yes" },
+                                { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR RULE: The current year is 2026. If you see the year written as '26' (short form, 2 digits) anywhere in the date — whether on the left or right side — it always means 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 18-5). If the transaction year is NOT the current year (a different year), return in D-M-YYYY format (e.g. 18-5-2025). 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). 6. The status of the transaction (e.g. declined or success). Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
                                 { inlineData: { mimeType: file.type, data: base64String } }
                             ]
                         }]
@@ -1277,7 +1313,7 @@
                         messages: [{
                             role: 'user',
                             content: [
-                                { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). If no card number is found, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. If the transaction year is NOT the current year (2026), return in D-M-YYYY format (e.g. 18-5-2025). If the transaction year is the current year (2026), return in D-M format (e.g. 18-5). 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). 6. The status of the transaction (e.g. declined or success). 7. If the word 'Tabby' (case-insensitive) or 'تابي' is present anywhere in the image text, return 'yes', otherwise return 'no'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS // TABBY_PRESENT. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success // yes" },
+                                { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR RULE: The current year is 2026. If you see the year written as '26' (short form, 2 digits) anywhere in the date — whether on the left or right side — it always means 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 18-5). If the transaction year is NOT the current year (a different year), return in D-M-YYYY format (e.g. 18-5-2025). 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). 6. The status of the transaction (e.g. declined or success). Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
                                 { type: 'image_url', image_url: { url: base64Url } }
                             ]
                         }]
@@ -1318,19 +1354,10 @@
             const date = parts[3] || "00-00";
             const network = parts[4] || "unknown";
             const status = parts[5] || "success";
-            const tabbyPresent = parts[6] || "yes";
 
             const finalResult = `${card} // ${amount} // ${time} // ${date}`;
             updateUI(finalResult, card, amount, time, date);
 
-            const tabbyWarningBadge = document.getElementById('tabbyWarningBadge');
-            if (tabbyWarningBadge) {
-                if (tabbyPresent.toLowerCase() === 'no') {
-                    tabbyWarningBadge.style.display = 'inline-flex';
-                } else {
-                    tabbyWarningBadge.style.display = 'none';
-                }
-            }
 
             const badge = document.getElementById('declineBadge');
             if (status.toLowerCase().includes('decline')) {

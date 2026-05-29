@@ -458,6 +458,7 @@
                 <button class="nav-btn container-switch-btn" onclick="switchContainer()" id="containerBtn">Tab
                     1</button>
             </div>
+            <div id="cardSyncBadge" style="display:none; font-size:8px; font-weight:bold; padding:2px 5px; border-radius:4px; background:#001a00; border:1px solid var(--accent-green); color:var(--accent-green); white-space:nowrap; cursor:default; direction:ltr; align-self:center;" title="بيانات البطاقة النشطة — xxxx و yyyy ستُستبدلان تلقائياً"></div>
         </div>
 
         <div id="main-content" class="content-scroll"></div>
@@ -648,7 +649,15 @@
                         chip.dataset.index = realIdx;
 
                         chip.onclick = () => {
-                            navigator.clipboard.writeText(item.t || '');
+                            // استبدال xxxx و yyyy ببيانات البطاقة النشطة (مؤقت، لا يحفظ)
+                            const cardData = getActiveCardData();
+                            let textToCopy = item.t || '';
+                            if (cardData) {
+                                textToCopy = textToCopy
+                                    .replace(/xxxx/gi, cardData.card)
+                                    .replace(/yyyy/gi, cardData.amount);
+                            }
+                            navigator.clipboard.writeText(textToCopy);
                             showStatus("تم النسخ! ✅");
                         };
 
@@ -1045,6 +1054,37 @@
             render();
         }
 
+        // ====== خاصية Sync البطاقة ======
+        function getActiveCardData() {
+            try {
+                const raw = localStorage.getItem('cardScannerData');
+                if (!raw) return null;
+                const d = JSON.parse(raw);
+                if (!d || !d.card || d.card === '-' || d.card === '0000') return null;
+                return d;
+            } catch { return null; }
+        }
+
+        function updateCardSyncBadge() {
+            const badge = document.getElementById('cardSyncBadge');
+            if (!badge) return;
+            const d = getActiveCardData();
+            if (d) {
+                badge.style.display = 'inline-block';
+                badge.textContent = `• ${d.card} | ${d.amount}`;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // استمع لتغييرات localStorage من تاب آخر (صفحة البطاقة)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'cardScannerData') {
+                updateCardSyncBadge();
+            }
+        });
+
+        updateCardSyncBadge();
         render();
 
     </script>
