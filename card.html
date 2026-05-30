@@ -675,6 +675,7 @@
                 <div id="output" onclick="copyFull()">البيانات ستظهر هنا</div>
                 <input type="text" id="output-edit">
                 <button class="action-btn" id="editBtn" onclick="toggleEditMode()" title="تعديل">✏️</button>
+                <button class="action-btn" id="summaryBtn" onclick="copyFriendlySummary()" title="نسخ تقرير ملخص">📋</button>
                 <button class="action-btn" id="clearBtn" onclick="clearData()" title="مسح الكل">🗑️</button>
             </div>
 
@@ -784,6 +785,11 @@
             }
         }
 
+        function formatAmount(amount) {
+            const amountNum = parseFloat(amount);
+            return isNaN(amountNum) ? "0" : (amountNum % 1 === 0 ? amountNum.toString() : amountNum.toFixed(2));
+        }
+
         document.addEventListener('paste', async (e) => {
             const items = e.clipboardData.items;
             for (let i = 0; i < items.length; i++) {
@@ -832,20 +838,41 @@
             const lowerText = text.toLowerCase();
             const badge = document.getElementById('declineBadge');
             const networkBadge = document.getElementById('networkBadge');
-            if (lowerText.includes('decline') || lowerText.includes('مرفوض') || lowerText.includes('declined')) {
+            if (
+                lowerText.includes('decline') || 
+                lowerText.includes('declined') || 
+                lowerText.includes('failed') || 
+                lowerText.includes('مرفوض') || 
+                lowerText.includes('مرفوضة') || 
+                lowerText.includes('مرفوضه') || 
+                lowerText.includes('فشل') || 
+                lowerText.includes('فشلت') || 
+                lowerText.includes('غير كافي') || 
+                lowerText.includes('غير كاف')
+            ) {
                 badge.style.display = 'inline-flex';
             } else {
                 badge.style.display = 'none';
             }
 
             networkBadge.style.display = 'none';
-            // Apple Pay Priority
-            if (lowerText.includes('apple pay') || lowerText.includes('applepay') || lowerText.includes('ابل باي') || lowerText.includes('أبل باي')) {
+            // Apple Pay Priority (أولوية لـ Apple Pay في حال وجود شعارين معاً)
+            if (
+                lowerText.includes('apple') ||
+                lowerText.includes('applepay') ||
+                lowerText.includes('apple pay') ||
+                lowerText.includes('ابل') ||
+                lowerText.includes('أبل') ||
+                lowerText.includes('ابل باي') ||
+                lowerText.includes('أبل باي') ||
+                lowerText.includes('ابل باى') ||
+                lowerText.includes('أبل باى')
+            ) {
                 networkBadge.style.background = '#fff';
                 networkBadge.style.color = '#000';
                 networkBadge.style.border = '1px solid #ccc';
                 networkBadge.innerHTML = `<img src="Apple.png?v=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0'}" height="12" style="display: block;">`;
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'normal';
                 networkBadge.setAttribute('dir', 'ltr');
             } else if (lowerText.includes('mada') || lowerText.includes('مدى')) {
@@ -853,7 +880,7 @@
                 networkBadge.style.color = '#fff';
                 networkBadge.style.border = 'none';
                 networkBadge.innerHTML = 'mada';
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'normal';
                 networkBadge.setAttribute('dir', 'ltr');
             } else if (lowerText.includes('visa') || lowerText.includes('فيزا')) {
@@ -861,7 +888,7 @@
                 networkBadge.style.color = '#fff';
                 networkBadge.style.border = 'none';
                 networkBadge.innerHTML = 'VISA';
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'italic';
                 networkBadge.setAttribute('dir', 'ltr');
             } else if (lowerText.includes('mastercard') || lowerText.includes('ماستركارد')) {
@@ -869,7 +896,7 @@
                 networkBadge.style.color = '#fff';
                 networkBadge.style.border = 'none';
                 networkBadge.innerHTML = 'MasterCard';
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'normal';
                 networkBadge.setAttribute('dir', 'ltr');
             }
@@ -882,21 +909,45 @@
             const amount = amountMatch ? amountMatch[0] : "0.00";
             const timeMatch = cleanText.match(/\d{2}:\d{2}/);
             const time = timeMatch ? timeMatch[0] : "00:00";
-            const dateMatch = cleanText.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/) || cleanText.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
-
-            const currentYearStr = String(new Date().getFullYear());
+            const currentYearStr = String(new Date().getFullYear()); // "2026"
             const currentYearShort = currentYearStr.slice(-2); // "26"
 
             let date = "00-00";
             let foundYear = "";
+
+            // Matches patterns like YYYY-MM-DD or DD-MM-YYYY or YY-MM-DD or DD-MM-YY
+            const dateMatch = cleanText.match(/(\d{2,4})[-\/](\d{1,2})[-\/](\d{2,4})/);
             if (dateMatch) {
-                if (dateMatch[1].length === 4) {
-                    foundYear = dateMatch[1];
-                    date = `${parseInt(dateMatch[3])}-${parseInt(dateMatch[2])}`;
+                const part1 = dateMatch[1];
+                const part2 = dateMatch[2];
+                const part3 = dateMatch[3];
+
+                let day = "";
+                let year = "";
+
+                if (part1.length === 4) {
+                    year = part1;
+                    day = part3;
+                } else if (part3.length === 4) {
+                    year = part3;
+                    day = part1;
                 } else {
-                    foundYear = dateMatch[3];
-                    date = `${parseInt(dateMatch[1])}-${parseInt(dateMatch[2])}`;
+                    // Smart Heuristic: Determine YY-MM-DD vs DD-MM-YY by matching the current year ("26")
+                    if (part1 === currentYearShort) {
+                        year = part1;
+                        day = part3;
+                    } else if (part3 === currentYearShort) {
+                        year = part3;
+                        day = part1;
+                    } else {
+                        // Default assumption: DD-MM-YY
+                        year = part3;
+                        day = part1;
+                    }
                 }
+
+                foundYear = year;
+                date = `${parseInt(day)}-${parseInt(part2)}`;
             }
 
             // BUG FIX 1: أي رقم سنة مختصر يساوي "26" (السنة الحالية) = نفس العام، لا يُضاف للتاريخ
@@ -967,14 +1018,15 @@
                 ) || "0000";
             }
 
-            const finalResult = `${card} // ${amount} // ${time} // ${date}`;
-            updateUI(finalResult, card, amount, time, date);
+            const formattedAmount = formatAmount(amount);
+            const finalResult = `${card} // ${formattedAmount} // ${time} // ${date}`;
+            updateUI(finalResult, card, formattedAmount, time, date);
             detectCardMeta(cleanText);
 
             const savedData = {
                 fullText: finalResult,
                 card: card,
-                amount: amount,
+                amount: formattedAmount,
                 time: time,
                 date: date,
                 cleanText: cleanText
@@ -1025,16 +1077,18 @@
                     const time = parts[2] || "00:00";
                     const date = parts[3] || "00-00";
 
-                    updateUI(updatedText, card, amount, time, date);
-                    detectCardMeta(updatedText);
+                    const formattedAmount = formatAmount(amount);
+                    const syncedText = `${card} // ${formattedAmount} // ${time} // ${date}`;
+                    updateUI(syncedText, card, formattedAmount, time, date);
+                    detectCardMeta(syncedText);
 
                     const savedData = {
-                        fullText: updatedText,
+                        fullText: syncedText,
                         card: card,
-                        amount: amount,
+                        amount: formattedAmount,
                         time: time,
                         date: date,
-                        cleanText: updatedText
+                        cleanText: syncedText
                     };
                     localStorage.setItem('cardScannerData', JSON.stringify(savedData));
 
@@ -1088,6 +1142,34 @@
             if (text.includes("البيانات")) return;
             secureCopy(text).then(() => {
                 statusDiv.innerText = "تم نسخ السطر كاملاً";
+            });
+        }
+
+        function copyFriendlySummary() {
+            if (isEditMode) return;
+            const card = document.getElementById('chip-card').innerText.trim();
+            const amount = document.getElementById('chip-amount').innerText.trim();
+            const time = document.getElementById('chip-time').innerText.trim();
+            const date = document.getElementById('chip-date').innerText.trim();
+
+            if (card === "-" && amount === "-" && time === "-" && date === "-") {
+                statusDiv.innerText = "لا توجد بيانات لنسخها! ❌";
+                return;
+            }
+
+            let fullDate = date;
+            if (date && date !== "-") {
+                const parts = date.split(/[-/]/);
+                if (parts.length === 2) {
+                    const currentYearStr = new Date().getFullYear();
+                    fullDate = `${date}-${currentYearStr}`;
+                }
+            }
+
+            const summary = `Here are the transaction details:\nAmount: ${amount}\nCard ending in: ${card}\nTime: ${time}\nDate: ${fullDate}`;
+            secureCopy(summary).then(() => {
+                statusDiv.innerText = "تم نسخ التقرير الملخص بالإنجليزية! 📋";
+                setTimeout(() => statusDiv.innerText = "جاهز..", 2000);
             });
         }
 
@@ -1274,7 +1356,7 @@
                     const payload = {
                         contents: [{
                             parts: [
-                                { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR RULE: The current year is 2026. If you see the year written as '26' (short form, 2 digits) anywhere in the date — whether on the left or right side — it always means 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 18-5). If the transaction year is NOT the current year (a different year), return in D-M-YYYY format (e.g. 18-5-2025). 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). 6. The status of the transaction (e.g. declined or success). Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
+                                { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 22-8). If the transaction year is NOT the current year, return in D-M-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
                                 { inlineData: { mimeType: file.type, data: base64String } }
                             ]
                         }]
@@ -1313,7 +1395,7 @@
                         messages: [{
                             role: 'user',
                             content: [
-                                { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR RULE: The current year is 2026. If you see the year written as '26' (short form, 2 digits) anywhere in the date — whether on the left or right side — it always means 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 18-5). If the transaction year is NOT the current year (a different year), return in D-M-YYYY format (e.g. 18-5-2025). 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). 6. The status of the transaction (e.g. declined or success). Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
+                                { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 22-8). If the transaction year is NOT the current year, return in D-M-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
                                 { type: 'image_url', image_url: { url: base64Url } }
                             ]
                         }]
@@ -1355,12 +1437,24 @@
             const network = parts[4] || "unknown";
             const status = parts[5] || "success";
 
-            const finalResult = `${card} // ${amount} // ${time} // ${date}`;
-            updateUI(finalResult, card, amount, time, date);
+            const formattedAmount = formatAmount(amount);
+            const finalResult = `${card} // ${formattedAmount} // ${time} // ${date}`;
+            updateUI(finalResult, card, formattedAmount, time, date);
 
 
             const badge = document.getElementById('declineBadge');
-            if (status.toLowerCase().includes('decline')) {
+            if (
+                status.toLowerCase().includes('decline') ||
+                status.toLowerCase().includes('declined') ||
+                status.toLowerCase().includes('failed') ||
+                status.toLowerCase().includes('مرفوض') ||
+                status.toLowerCase().includes('مرفوضة') ||
+                status.toLowerCase().includes('مرفوضه') ||
+                status.toLowerCase().includes('فشل') ||
+                status.toLowerCase().includes('فشلت') ||
+                status.toLowerCase().includes('غير كافي') ||
+                status.toLowerCase().includes('غير كاف')
+            ) {
                 badge.style.display = 'inline-flex';
             } else {
                 badge.style.display = 'none';
@@ -1369,28 +1463,38 @@
             const networkBadge = document.getElementById('networkBadge');
             networkBadge.style.display = 'none';
             const lowerNetwork = network.toLowerCase();
-            if (lowerNetwork.includes('apple')) {
+            if (
+                lowerNetwork.includes('apple') ||
+                lowerNetwork.includes('applepay') ||
+                lowerNetwork.includes('apple pay') ||
+                lowerNetwork.includes('ابل') ||
+                lowerNetwork.includes('أبل') ||
+                lowerNetwork.includes('ابل باي') ||
+                lowerNetwork.includes('أبل باي') ||
+                lowerNetwork.includes('ابل باى') ||
+                lowerNetwork.includes('أبل باى')
+            ) {
                 networkBadge.style.background = '#fff';
                 networkBadge.style.color = '#000';
                 networkBadge.style.border = '1px solid #ccc';
                 networkBadge.innerHTML = `<img src="Apple.png?v=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0'}" height="12" style="display: block;">`;
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'normal';
                 networkBadge.setAttribute('dir', 'ltr');
-            } else if (lowerNetwork.includes('mada')) {
+            } else if (lowerNetwork.includes('mada') || lowerNetwork.includes('مدى')) {
                 networkBadge.style.background = '#00c853';
                 networkBadge.style.color = '#fff';
                 networkBadge.style.border = 'none';
                 networkBadge.innerHTML = 'mada';
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'normal';
                 networkBadge.setAttribute('dir', 'ltr');
-            } else if (lowerNetwork.includes('visa')) {
+            } else if (lowerNetwork.includes('visa') || lowerNetwork.includes('فيزا')) {
                 networkBadge.style.background = '#1a1f71';
                 networkBadge.style.color = '#fff';
                 networkBadge.style.border = 'none';
                 networkBadge.innerHTML = 'VISA';
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'italic';
                 networkBadge.setAttribute('dir', 'ltr');
             } else if (lowerNetwork.includes('master')) {
@@ -1398,7 +1502,7 @@
                 networkBadge.style.color = '#fff';
                 networkBadge.style.border = 'none';
                 networkBadge.innerHTML = 'MasterCard';
-                networkBadge.style.display = 'inline-block';
+                networkBadge.style.display = 'inline-flex';
                 networkBadge.style.fontStyle = 'normal';
                 networkBadge.setAttribute('dir', 'ltr');
             }
@@ -1406,7 +1510,7 @@
             const savedData = {
                 fullText: finalResult,
                 card: card,
-                amount: amount,
+                amount: formattedAmount,
                 time: time,
                 date: date,
                 cleanText: cleaned
