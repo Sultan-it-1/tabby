@@ -1168,7 +1168,7 @@
 
             const summary = `Here are the transaction details:\nAmount: ${amount}\nCard ending in: ${card}\nTime: ${time}\nDate: ${fullDate}`;
             secureCopy(summary).then(() => {
-                statusDiv.innerText = "تم نسخ التقرير الملخص بالإنجليزية! 📋";
+                statusDiv.innerText = "تم نسخ التقرير الملخص 📋";
                 setTimeout(() => statusDiv.innerText = "جاهز..", 2000);
             });
         }
