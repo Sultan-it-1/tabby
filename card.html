@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Scanner - Context Aware</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --accent-blue: #00d4ff;
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* تثبيت أبعاد الصندوق بالكامل 230 عرض × 300 ارتفاع */
+        .app-container {
+            width: 230px;
+            height: 300px;
+            background: #111;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #222;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* محتوى قابل للتمرير لتفادي الخروج عن الأبعاد */
+        .scrollable-content {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 2px;
+            margin-bottom: 4px;
+        }
+
+        .scrollable-content::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .home-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--accent-green);
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+        }
+
+        .paste-zone {
+            border: 1px dashed #444;
+            padding: 12px 5px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #888;
+            font-weight: bold;
+            transition: 0.2s;
+            background: #1a1a1a;
+            cursor: default;
+        }
+
+        .paste-zone.active {
+            border-color: var(--accent-green);
+            background: #122212;
+            color: var(--accent-green);
+        }
+
+        /* حاوية معالج الناتج الجديد لتتسع لزر التعديل */
+        .output-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 6px 0;
+        }
+
+        #output {
+            flex-grow: 1;
+            background: #000;
+            padding: 6px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            color: var(--accent-green);
+            border: 1px solid #222;
+            cursor: pointer;
+            direction: ltr;
+            word-break: break-all;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* حقل الإدخال عند التعديل */
+        #output-edit {
+            display: none;
+            flex-grow: 1;
+            background: #222;
+            color: #fff;
+            border: 1px solid var(--accent-green);
+            padding: 5px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            direction: ltr;
+            text-align: center;
+            outline: none;
+        }
+
+        .action-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent-green);
+            color: #fff;
+        }
+
+        .chips-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+            direction: ltr;
+            margin-bottom: 6px;
+        }
+
+        .chip {
+            flex: 1;
+            background: #252525;
+            padding: 6px 2px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #333;
+            color: #ccc;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chip:hover {
+            background: #333;
+            border-color: var(--accent-green);
+            color: #fff;
+        }
+
+        .chip[contenteditable="true"] {
+            cursor: text;
+            background: #1a2a1a;
+            border: 1px dashed var(--accent-green);
+            outline: none;
+        }
+
+        .gateway-chip {
+            background: #1e1e1e;
+            color: var(--accent-blue);
+            border-color: #2c2c2c;
+        }
+
+        .lock-container {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            padding: 0 2px;
+        }
+
+        .lock-label {
+            font-size: 9px;
+            color: #aaa;
+            font-weight: bold;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 16px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .3s;
+            border-radius: 16px;
+            border: 1px solid #444;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "🔒";
+            font-size: 9px;
+            height: 12px;
+            width: 12px;
+            left: 2px;
+            bottom: 1px;
+            transition: .3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input:checked+.slider {
+            background-color: color-mix(in srgb, var(--accent-green) 15%, transparent);
+            border-color: var(--accent-green);
+        }
+
+        input:checked+.slider:before {
+            content: "🌐";
+            transform: translateX(12px);
+        }
+
+        .status {
+            font-size: 9px;
+            color: var(--accent-green);
+            height: 12px;
+            font-weight: bold;
+            border-top: 1px solid #222;
+            padding-top: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid #222;
+            margin: 6px 0;
+        }
+
+        /* AI styling */
+        .ai-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: #888;
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .ai-btn.active {
+            background: var(--accent-green);
+            color: #000;
+            border-color: var(--accent-green);
+            box-shadow: 0 0 5px var(--accent-green);
+        }
+
+        .settings-btn,
+        .usage-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: 0.2s;
+        }
+
+        .settings-btn:hover,
+        .usage-btn:hover {
+            background: #333;
+            color: var(--text);
+        }
+
+        .settings-modal {
+            position: absolute;
+            top: 35px;
+            left: 8px;
+            right: 8px;
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 8px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+        }
+
+        .settings-modal input {
+            width: 100%;
+            background: #000;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 4px;
+            font-size: 10px;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 6px;
+            text-align: left;
+        }
+
+        .provider-tabs {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 6px;
+        }
+
+        .provider-tab {
+            flex: 1;
+            padding: 4px;
+            font-size: 9px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #444;
+            background: #222;
+            color: #888;
+            text-align: center;
+            transition: 0.2s;
+        }
+
+        .provider-tab.active {
+            background: var(--accent-green);
+            color: #000;
+            border-color: var(--accent-green);
+        }
+
+        .provider-section {
+            display: none;
+        }
+
+        .provider-section.active {
+            display: block;
+        }
+
+        .settings-modal-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .settings-modal-btns button {
+            flex: 1;
+            padding: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .save-key-btn {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .close-key-btn {
+            background: #333;
+            color: var(--text);
+        }
+
+        .usage-modal {
+            position: absolute;
+            top: 35px;
+            left: 8px;
+            right: 8px;
+            bottom: 30px;
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 6px;
+            display: none;
+            z-index: 101;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+            direction: rtl;
+            overflow-y: auto;
+        }
+
+        .usage-title {
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--accent-green);
+            margin-bottom: 4px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 3px;
+        }
+
+        .usage-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px;
+            margin-bottom: 4px;
+        }
+
+        .usage-card {
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 5px;
+            padding: 4px;
+            text-align: center;
+        }
+
+        .usage-card-label {
+            font-size: 8px;
+            color: #666;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .usage-card-value {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--accent-green);
+            font-family: 'Courier New', monospace;
+        }
+
+        .usage-card-sub {
+            font-size: 7px;
+            color: #555;
+            margin-top: 2px;
+        }
+
+        .usage-section-title {
+            font-size: 8px;
+            color: #888;
+            font-weight: bold;
+            margin: 6px 0 4px 0;
+            text-align: center;
+        }
+
+        .usage-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 6px;
+            font-size: 9px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .usage-row-label {
+            color: #888;
+        }
+
+        .usage-row-value {
+            color: var(--text);
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+        }
+
+        .usage-bar-container {
+            grid-column: span 2;
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 5px;
+            padding: 4px 5px;
+        }
+
+        .usage-bar-track {
+            width: 100%;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .usage-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        .usage-close-btn {
+            width: 100%;
+            padding: 3px;
+            background: #222;
+            color: #888;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 3px;
+        }
+
+        .usage-close-btn:hover {
+            background: #333;
+            color: var(--text);
+        }
+    </style>
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <div class="home-row">
+            <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <button id="aiBtn" class="ai-btn" onclick="toggleAI()">AI</button>
+            <button class="settings-btn" onclick="openSettings()" title="إعدادات API Key">⚙️</button>
+            <button class="usage-btn" onclick="toggleUsageModal()" title="استخدام API">📊</button>
+            <div id="cardIndicators" style="display: flex; gap: 4px; align-items: center; margin-right: auto;">
+                <span id="declineBadge"
+                    style="display: none; background: #ff3333; color: white; font-size: 9px; font-weight: bold; padding: 2px 4px; border-radius: 4px; direction: ltr;">DECLINED</span>
+                <span id="networkBadge"
+                    style="display: none; font-size: 10px; font-weight: 900; padding: 2px 5px; border-radius: 3px; letter-spacing: 0.5px; direction: ltr; align-items: center; justify-content: center; gap: 2px;"></span>
+            </div>
+        </div>
+
+        <div id="settingsModal" class="settings-modal">
+            <div class="provider-tabs">
+                <div class="provider-tab active" id="tabGemini" onclick="switchProvider('gemini')">Gemini</div>
+                <div class="provider-tab" id="tabGroq" onclick="switchProvider('groq')">Groq</div>
+            </div>
+            <div id="sectionGemini" class="provider-section active">
+                <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
+                    مفتاح
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                        style="color: var(--accent-green); text-decoration: underline;">Gemini API</a>:
+                </div>
+                <input type="password" id="geminiKeyInput" placeholder="Gemini Key...">
+            </div>
+            <div id="sectionGroq" class="provider-section">
+                <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
+                    مفتاح
+                    <a href="https://console.groq.com/keys" target="_blank"
+                        style="color: var(--accent-green); text-decoration: underline;">Groq API</a>:
+                </div>
+                <input type="password" id="groqKeyInput" placeholder="Groq Key...">
+            </div>
+            <div style="font-size: 8px; color: #ff9f43; text-align: right; margin-bottom: 6px; font-weight: bold; direction: rtl;">
+                🔒 مفاتيحك تُحفظ محلياً بالكامل على متصفحك ولا يتم إرسالها لأي خادم خارجي.
+            </div>
+            <div class="settings-modal-btns">
+                <button class="save-key-btn" onclick="saveApiKey()">حفظ</button>
+                <button class="close-key-btn" onclick="closeSettings()">إلغاء</button>
+            </div>
+        </div>
+
+        <div id="usageModal" class="usage-modal">
+            <div class="usage-title" id="usageProviderTitle">📊 استهلاك الباقة</div>
+
+            <!-- طلبات اليوم -->
+            <div class="usage-bar-container" id="reqSection">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="usage-card-label">طلبات اليوم</span>
+                    <span style="font-size:7px; color:#555;" id="reqResetTime"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:2px;">
+                    <div><span class="usage-card-value" id="reqUsed">—</span> <span
+                            style="font-size:7px; color:#666;">مستخدم</span></div>
+                    <div style="font-size:8px; color:#888;">من <span class="usage-row-value" id="reqMax">—</span></div>
+                </div>
+                <div class="usage-bar-track" style="margin-top:3px;">
+                    <div class="usage-bar-fill" id="reqBarFill" style="width:0%; background: var(--accent-green);">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                    <span style="font-size:7px; color:var(--accent-green);" id="reqRemaining"></span>
+                    <span style="font-size:7px; color:#555;" id="reqPercent"></span>
+                </div>
+            </div>
+
+            <!-- طلبات الساعة -->
+            <div class="usage-bar-container" id="tokenSection" style="margin-top:3px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="usage-card-label">طلبات الساعة</span>
+                    <span style="font-size:7px; color:#555;" id="tokenResetTime"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:2px;">
+                    <div><span class="usage-card-value" id="tokenUsed">—</span> <span
+                            style="font-size:7px; color:#666;">مستخدم</span></div>
+                    <div style="font-size:8px; color:#888;">من <span class="usage-row-value" id="tokenMax">—</span>
+                    </div>
+                </div>
+                <div class="usage-bar-track" style="margin-top:3px;">
+                    <div class="usage-bar-fill" id="tokenBarFill" style="width:0%; background: var(--accent-green);">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                    <span style="font-size:7px; color:var(--accent-green);" id="tokenRemaining"></span>
+                    <span style="font-size:7px; color:#555;" id="tokenPercent"></span>
+                </div>
+            </div>
+
+            <!-- إحصائيات -->
+            <div class="usage-grid" style="margin-top:4px;">
+                <div class="usage-card">
+                    <div class="usage-card-label">طلباتك اليوم</div>
+                    <div class="usage-card-value" id="usageDay">0</div>
+                </div>
+                <div class="usage-card">
+                    <div class="usage-card-label">إجمالي الكل</div>
+                    <div class="usage-card-value" id="usageTotal">0</div>
+                </div>
+            </div>
+
+            <div id="usageNoData" style="display:none; text-align:center; padding:6px; font-size:8px; color:#666;">⚡
+                استخدم AI مرة لعرض بيانات الباقة</div>
+            <div style="font-size:7px; color:#444; text-align:center; margin-top:3px;" id="usageLastUpdate"></div>
+            <button class="usage-close-btn" onclick="toggleUsageModal()">إغلاق</button>
+        </div>
+
+        <div class="scrollable-content">
+            <div class="paste-zone" id="dropZone">الصق الصورة هنا مباشرة (Ctrl + V)</div>
+
+            <div class="output-wrapper">
+                <div id="output" onclick="copyFull()">البيانات ستظهر هنا</div>
+                <input type="text" id="output-edit">
+                <button class="action-btn" id="editBtn" onclick="toggleEditMode()" title="تعديل">✏️</button>
+                <button class="action-btn" id="summaryBtn" onclick="copyFriendlySummary()" title="نسخ تقرير ملخص">📋</button>
+                <button class="action-btn" id="clearBtn" onclick="clearData()" title="مسح الكل">🗑️</button>
+            </div>
+
+            <div class="chips-container">
+                <div class="chip" id="chip-card" onclick="copyMe(this)">-</div>
+                <div class="chip" id="chip-amount" onclick="copyMe(this)">-</div>
+                <div class="chip" id="chip-time" onclick="copyMe(this)">-</div>
+                <div class="chip" id="chip-date" onclick="copyMe(this)">-</div>
+            </div>
+
+            <hr>
+
+            <div class="lock-container">
+                <span class="lock-label">فتح الرابط تلقائياً?</span>
+                <label class="switch">
+                    <input type="checkbox" id="linkToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="chips-container" style="flex-wrap: wrap; gap: 4px;">
+                <div class="chip gateway-chip" style="flex: 1 0 45%;"
+                    onclick="openGateway('https://portal.noonpayments.com/search/transaction', 'noon normal')">Noon
+                </div>
+                <div class="chip gateway-chip" style="flex: 1 0 45%;"
+                    onclick="openGateway('https://portal.sa.noonpayments.com/search/transaction', 'noon sa')">Noon SA
+                </div>
+                <div class="chip gateway-chip" style="flex: 1 0 45%;"
+                    onclick="openGateway('https://dashboard.checkout.com/payments/all-payments', 'checkout')">Checkout
+                </div>
+                <div class="chip gateway-chip" style="flex: 1 0 45%;"
+                    onclick="openGateway('https://fort.payfort.com', 'pay fort')">Payfort</div>
+            </div>
+        </div>
+
+        <div id="status" class="status">جاهز..</div>
+    </div>
+
+    <script>
+        document.write('<script src="card.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+
+</body>
+
+</html>

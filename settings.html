@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الإعدادات - FAST TOOLKIT</title>
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 0;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            color: var(--accent-green);
+        }
+
+        .settings-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            text-align: right;
+            padding-right: 2px;
+        }
+
+        .settings-content::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .settings-content::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .setting-group {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 6px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        /* Toggle switch */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 16px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .3s;
+            border-radius: 16px;
+            border: 1px solid #444;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "🌙";
+            font-size: 9px;
+            height: 12px;
+            width: 12px;
+            left: 2px;
+            bottom: 1px;
+            transition: .3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input:checked+.slider {
+            background-color: #eee;
+            border-color: #ccc;
+        }
+
+        input:checked+.slider:before {
+            content: "☀️";
+            transform: translateX(12px);
+            color: #f39c12;
+        }
+
+        /* Range Sliders */
+        .range-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .range-wrapper span {
+            font-size: 10px;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .range-wrapper b {
+            color: var(--accent-green);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            cursor: pointer;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Colors */
+        .color-options {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 4px;
+        }
+
+        .color-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .color-btn.active {
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        .footer-btns {
+            margin-top: auto;
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-reset {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        .btn-reset:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-btn">🔙 رجوع</a>
+            <h1>الإعدادات ⚙️</h1>
+        </div>
+
+        <div class="settings-content">
+
+            <div class="setting-group">
+                <div class="switch-container">
+                    <label style="margin:0;">الوضع العام</label>
+                    <label class="switch">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label>اللون الأساسي</label>
+                <div class="color-options">
+                    <div class="color-btn" style="background:#00ff00" data-color="#00ff00" title="أخضر"></div>
+                    <div class="color-btn" style="background:#ff3399" data-color="#ff3399" title="وردي"></div>
+                    <div class="color-btn" style="background:#00e5ff" data-color="#00e5ff" title="تركوازي"></div>
+                    <div class="color-btn" style="background:#ff9f43" data-color="#ff9f43" title="برتقالي"></div>
+                    <div class="color-btn" style="background:#007aff" data-color="#007aff" title="أزرق"></div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="switch-container" style="margin-bottom: 4px;">
+                    <label style="margin:0; font-size: 10px; font-weight: bold;">اختصارات لوحة المفاتيح</label>
+                    <label class="switch">
+                        <input type="checkbox" id="shortcutsToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div id="shortcutsConfig" style="display: none; flex-direction: column; gap: 4px; margin-top: 8px; border-top: 1px solid #222; padding-top: 6px;">
+                    <div style="font-size: 7px; color: #888; text-align: center; margin-bottom: 4px;">اضغط على الزر واكتب المفتاح الجديد للحفظ</div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>نسخ سريع (Tab 1):</span>
+                        <button class="key-bind-btn" data-key="nav1" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">1</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>سمة (Tab 2):</span>
+                        <button class="key-bind-btn" data-key="nav2" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">2</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>Card Scan (Tab 3):</span>
+                        <button class="key-bind-btn" data-key="nav3" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">3</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>Sticky Notes (Tab 4):</span>
+                        <button class="key-bind-btn" data-key="nav4" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">4</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>الرئيسية (Home):</span>
+                        <button class="key-bind-btn" data-key="navHome" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">H</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>البحث (Search):</span>
+                        <button class="key-bind-btn" data-key="search" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">/</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>ترتيب الأقسام (Sort):</span>
+                        <button class="key-bind-btn" data-key="sort" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تبديل المجموعات (Tab):</span>
+                        <button class="key-bind-btn" data-key="tab" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">T</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تحليل الـ AI (Toggle AI):</span>
+                        <button class="key-bind-btn" data-key="ai" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">A</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>إعدادات الـ API (Settings):</span>
+                        <button class="key-bind-btn" data-key="settings" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>إحصائيات (Usage):</span>
+                        <button class="key-bind-btn" data-key="usage" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">U</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>مسح البيانات (Clear):</span>
+                        <button class="key-bind-btn" data-key="clear" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">C</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تعديل المخرجات (Edit):</span>
+                        <button class="key-bind-btn" data-key="edit" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">E</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تصغير/توسيع النافذة (Toggle PiP):</span>
+                        <button class="key-bind-btn" data-key="pipToggle" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">P</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer-btns">
+            <button class="action-btn btn-reset" id="resetBtn">استعادة الافتراضي 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentSettings = window.fastToolkitSettings;
+
+            const modeToggle = document.getElementById('modeToggle');
+            const colorBtns = document.querySelectorAll('.color-btn');
+            const resetBtn = document.getElementById('resetBtn');
+
+            let selectedColor = currentSettings.themeColor;
+            modeToggle.checked = (currentSettings.mode === 'light');
+
+            function updateColorSelection() {
+                colorBtns.forEach(btn => {
+                    if (btn.dataset.color.toLowerCase() === selectedColor.toLowerCase()) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+            updateColorSelection();
+
+            const autoSave = () => {
+                const newSettings = {
+                    mode: modeToggle.checked ? 'light' : 'dark',
+                    themeColor: selectedColor
+                };
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(newSettings));
+                window.location.reload();
+            };
+
+            // Event Listeners for auto-save
+            modeToggle.addEventListener('change', autoSave);
+
+            colorBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedColor = btn.dataset.color;
+                    autoSave();
+                });
+            });
+
+            // Keyboard Shortcuts Config
+            const shortcuts = window.getFastToolkitShortcuts ? window.getFastToolkitShortcuts() : {
+                enabled: true,
+                nav1: "1", nav2: "2", nav3: "3", nav4: "4", navHome: "h",
+                search: "/", sort: "s", tab: "t", ai: "a", settings: "s",
+                usage: "u", clear: "c", edit: "e", pipToggle: "p"
+            };
+
+            const shortcutsToggle = document.getElementById('shortcutsToggle');
+            const shortcutsConfig = document.getElementById('shortcutsConfig');
+            const bindBtns = document.querySelectorAll('.key-bind-btn');
+
+            shortcutsToggle.checked = shortcuts.enabled;
+            shortcutsConfig.style.display = shortcuts.enabled ? 'flex' : 'none';
+
+            bindBtns.forEach(btn => {
+                const key = btn.dataset.key;
+                btn.innerText = shortcuts[key].toUpperCase();
+            });
+
+            shortcutsToggle.addEventListener('change', () => {
+                shortcuts.enabled = shortcutsToggle.checked;
+                shortcutsConfig.style.display = shortcutsToggle.checked ? 'flex' : 'none';
+                localStorage.setItem('fastToolkitShortcuts', JSON.stringify(shortcuts));
+            });
+
+            let activeBindBtn = null;
+            let tempKeyListener = null;
+
+            bindBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (activeBindBtn) {
+                        activeBindBtn.innerText = shortcuts[activeBindBtn.dataset.key].toUpperCase();
+                        activeBindBtn.style.borderColor = '#444';
+                    }
+
+                    activeBindBtn = btn;
+                    btn.innerText = '⏳';
+                    btn.style.borderColor = 'var(--accent-green)';
+
+                    if (tempKeyListener) {
+                        document.removeEventListener('keydown', tempKeyListener);
+                    }
+
+                    tempKeyListener = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (['control', 'shift', 'alt', 'meta', 'escape'].includes(e.key.toLowerCase())) {
+                            return;
+                        }
+
+                        const newKey = e.key.toLowerCase();
+                        shortcuts[btn.dataset.key] = newKey;
+                        btn.innerText = newKey.toUpperCase();
+                        btn.style.borderColor = '#444';
+
+                        localStorage.setItem('fastToolkitShortcuts', JSON.stringify(shortcuts));
+                        activeBindBtn = null;
+                        document.removeEventListener('keydown', tempKeyListener);
+                        tempKeyListener = null;
+                    };
+
+                    document.addEventListener('keydown', tempKeyListener);
+                });
+            });
+
+            resetBtn.addEventListener('click', () => {
+                const newDefaults = {
+                    mode: 'light',
+                    themeColor: '#007aff'
+                };
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(newDefaults));
+                localStorage.removeItem('fastToolkitExpanded');
+                localStorage.removeItem('fastToolkitShortcuts');
+                window.location.reload();
+            });
+        });
+    </script>
+</body>
+
+</html>
