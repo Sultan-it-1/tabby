@@ -1,4 +1,7 @@
-const CACHE_NAME = "fast-toolkit-cache-v1";
+// استيراد ملف الإصدار لربط اسم الكاش ديناميكياً
+try { importScripts('./version.js'); } catch (e) {}
+const CACHE_NAME = "fast-toolkit-cache-" + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'v1');
+
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",

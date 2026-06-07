@@ -78,9 +78,19 @@
             margin-bottom: 6px;
             flex-shrink: 0;
             gap: 4px;
-            border-bottom: 1px solid #2a2a2a;
+            border-bottom: none;
             padding-bottom: 5px;
             position: relative;
+        }
+        .header-row::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to left, transparent, var(--accent-green, #00c864) 40%, var(--accent-green, #00c864) 60%, transparent);
+            opacity: 0.35;
         }
 
         .header-right,
@@ -160,7 +170,7 @@
         }
 
         .add-main-btn {
-            background: var(--accent-green)11;
+            background: transparent;
             border: 1px solid var(--accent-green);
             color: var(--accent-green);
             padding: 3px 6px;
@@ -176,7 +186,7 @@
         }
 
         .add-main-btn:hover {
-            background: var(--accent-green)22;
+            background: rgba(0, 200, 80, 0.12);
         }
 
         .container-switch-btn {
@@ -209,6 +219,14 @@
             margin: 4px 0 2px;
             border-right: 3px solid var(--accent-green);
             padding-right: 5px;
+            transition: background 0.15s;
+        }
+
+        .section-header.drag-over-section {
+            background: rgba(var(--accent-green-rgb, 0,200,100), 0.08);
+            border-right-color: #fff;
+            border-radius: 3px;
+            outline: 1px dashed var(--accent-green);
         }
 
         .section-label {
@@ -217,7 +235,7 @@
             text-transform: uppercase;
             font-weight: bold;
             user-select: none;
-            cursor: context-menu;
+            cursor: inherit;
         }
 
         .del-section {
@@ -317,21 +335,65 @@
             display: flex;
             gap: 4px;
             margin-top: auto;
-            padding-top: 4px;
-            border-top: 1px solid #333;
+            padding-top: 5px;
+            border-top: none;
             flex-shrink: 0;
+            position: relative;
+        }
+        .backup-row:first-of-type::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to left, transparent, #333 30%, #333 70%, transparent);
         }
 
         .backup-btn {
             flex: 1;
             background: #111;
-            border: 1px solid #444;
-            color: #aaa;
-            padding: 5px;
-            border-radius: 4px;
-            font-size: 10px;
+            border: 1px solid #333;
+            color: #777;
+            padding: 5px 3px;
+            border-radius: 5px;
+            font-size: 14px;
             cursor: pointer;
             white-space: nowrap;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .backup-btn:hover {
+            color: #ccc;
+            border-color: #555;
+            background: #1a1a1a;
+        }
+
+        /* Tooltip على أزرار backup */
+        .backup-btn[data-tip]::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2a2a2a;
+            color: #ccc;
+            font-size: 9px;
+            padding: 3px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+            border: 1px solid #444;
+            z-index: 50;
+        }
+        .backup-btn[data-tip]:hover::after {
+            opacity: 1;
         }
 
 
@@ -355,20 +417,59 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             align-items: center;
             justify-content: center;
             z-index: 100;
             padding: 10px;
         }
 
+        .modal.open {
+            display: flex;
+        }
+
+        /* Auto Sync Button Toggle Styles */
+        .sync-btn-label input[type="checkbox"] {
+            display: none;
+        }
+        .sync-btn-label svg {
+            transition: transform 0.4s ease, color 0.3s ease;
+        }
+        .sync-btn-label:has(input:checked) {
+            border-color: #1a3a5f;
+            background: #0a1526;
+            color: #4285f4;
+        }
+        .sync-btn-label:has(input:not(:checked)) {
+            border-color: #333;
+            background: #111;
+            color: #555;
+        }
+        .sync-btn-label:has(input:checked) svg {
+            transform: rotate(180deg);
+            color: #4285f4;
+        }
+        .sync-btn-label:has(input:not(:checked)) svg {
+            color: #555;
+        }
+
+
+        @keyframes modal-slide-in {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
         .modal-content {
-            background: #1a1a1a;
-            padding: 10px;
-            border-radius: 6px;
+            background: #1c1c1c;
+            padding: 14px;
+            border-radius: 10px;
             width: 100%;
             max-width: 190px;
             border: 1px solid var(--accent-green);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,200,80,0.08);
+            animation: modal-slide-in 0.22s ease;
         }
 
         input,
@@ -464,14 +565,22 @@
         <div id="main-content" class="content-scroll"></div>
 
         <div class="backup-row">
-            <button class="backup-btn" onclick="exportData()">💾 نسخة</button>
-            <button class="backup-btn" onclick="document.getElementById('importFile').click()">📂 استيراد</button>
-            <button class="backup-btn" style="color: #ff4444; border-color: #552222;" onclick="triggerDeleteAll()">🗑️ مسح الكل</button>
+            <button class="backup-btn" onclick="exportData()" data-tip="تصدير نسخة JSON">💾</button>
+            <button class="backup-btn" onclick="document.getElementById('importFile').click()" data-tip="استيراد ملف JSON">📂</button>
+            <button class="backup-btn" style="color: #ff5555; border-color: #3a1818;" onclick="triggerDeleteAll()" data-tip="مسح كل البيانات">🗑️</button>
             <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importData(event)">
         </div>
-        <div class="backup-row" style="margin-top: 4px; border-top: none; padding-top: 0;">
-            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f;" onclick="triggerCloudAction('backup')">☁️ نسخ سحابي (Drive)</button>
-            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f;" onclick="triggerCloudAction('restore')">☁️ استعادة سحابية (Drive)</button>
+        <div class="backup-row" style="margin-top: 4px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
+            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f; flex: 1;" onclick="triggerCloudAction('backup')">☁️ نسخ (Drive)</button>
+            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f; flex: 1;" onclick="triggerCloudAction('restore')">☁️ استعادة (Drive)</button>
+            <label class="backup-btn sync-btn-label" style="flex: 0 0 auto; padding: 0 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;" data-tip="مزامنة تلقائية في الخلفية">
+                <input type="checkbox" id="autoSyncCheckbox">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+            </label>
         </div>
 
         <div class="status-container">

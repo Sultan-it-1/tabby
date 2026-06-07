@@ -61,6 +61,9 @@
         root.style.setProperty('--border', itemBorder);
     }
 
+    // Store for PiP usage
+    window._appContainerBg = containerBg;
+
     // Apply Theme Color
     root.style.setProperty('--accent-green', settings.themeColor);
 
@@ -371,11 +374,14 @@
             if (headerBar || pBody) {
                 const accentColor = settings.themeColor;
                 const isLight = settings.mode === 'light';
-                const currentBg = isLight ? "#fff" : "#0f0f0f";
                 const currentText = isLight ? "#111" : "#fff";
 
-                if (headerBar) headerBar.style.backgroundColor = currentBg;
-                if (pBody) pBody.style.backgroundColor = isLight ? "#f8f8f8" : "#0f0f0f";
+                if (headerBar) headerBar.style.backgroundColor = "transparent";
+                if (pBody) {
+                    const bgColor = window._appContainerBg || (isLight ? '#f0f0f0' : '#111111');
+                    pBody.style.backgroundColor = bgColor;
+                    pBody.ownerDocument.documentElement.style.backgroundColor = bgColor;
+                }
                 if (titleSpan) {
                     titleSpan.style.color = currentText;
                     const pulseDot = headerBar.querySelector(".pip-pulse-dot");
@@ -548,7 +554,13 @@
             body.style.margin = "0";
             body.style.padding = "0";
             body.style.overflow = "hidden";
-            body.style.backgroundColor = settings.mode === 'light' ? "#fff" : "#0f0f0f";
+            // Use the exact same containerBg computed by applySettings
+            const pipBgColor = window._appContainerBg || (settings.mode === 'light' ? '#f0f0f0' : '#111111');
+            body.style.backgroundColor = pipBgColor;
+            // Fix browser default white on html element
+            pipWindow.document.documentElement.style.backgroundColor = pipBgColor;
+            pipWindow.document.documentElement.style.margin = "0";
+            pipWindow.document.documentElement.style.padding = "0";
             body.style.width = "100vw";
             body.style.height = "100vh";
             body.style.display = "flex";
@@ -559,12 +571,12 @@
             // Custom header bar
             const headerBar = pipWindow.document.createElement("div");
             headerBar.id = "pipHeaderBar";
-            headerBar.style.height = "32px";
-            headerBar.style.minHeight = "32px";
+            headerBar.style.height = "38px";
+            headerBar.style.minHeight = "38px";
             headerBar.style.display = "flex";
             headerBar.style.alignItems = "center";
             headerBar.style.justifyContent = "space-between";
-            headerBar.style.padding = "0 12px";
+            headerBar.style.padding = "0 14px";
             headerBar.style.userSelect = "none";
             headerBar.style.boxSizing = "border-box";
             headerBar.style.width = "100%";
@@ -574,7 +586,8 @@
             const titleWrapper = pipWindow.document.createElement("div");
             titleWrapper.style.display = "flex";
             titleWrapper.style.alignItems = "center";
-            titleWrapper.style.gap = "8px";
+            titleWrapper.style.gap = "6px";
+            titleWrapper.dir = "ltr"; // For "Fast Toolkit ●" layout
 
             const pulseDot = pipWindow.document.createElement("span");
             pulseDot.className = "pip-pulse-dot";
@@ -599,76 +612,88 @@
 
             const titleSpan = pipWindow.document.createElement("span");
             titleSpan.id = "pipTitleSpan";
-            titleSpan.innerText = "Fast Toolkit";
+            titleSpan.innerText = "";
             titleSpan.style.fontFamily = "'Outfit', 'Segoe UI', sans-serif";
-            titleSpan.style.fontWeight = "700";
-            titleSpan.style.fontSize = "11px";
-            titleSpan.style.letterSpacing = "0.5px";
+            titleSpan.style.fontWeight = "600";
+            titleSpan.style.fontSize = "12px";
+            titleSpan.style.letterSpacing = "0.3px";
 
-            titleWrapper.appendChild(pulseDot);
+            // Append in LTR order: Title then Dot
             titleWrapper.appendChild(titleSpan);
+            titleWrapper.appendChild(pulseDot);
 
             // Minimize button
             const minBtn = pipWindow.document.createElement("button");
             minBtn.id = "pipMinBtn";
             minBtn.innerHTML = `
-                <span style="font-size: 7px; margin-top: 1px;">➖</span>
-                <span style="font-size: 10px; font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; letter-spacing: -0.2px;">تصغير</span>
+                <span style="font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; font-size: 11px; letter-spacing: 0.2px;">تصغير</span>
+                <span style="font-size: 13px; color: #7c4dff; font-weight: bold; line-height: 1; margin-top: -1px;">—</span>
             `;
             minBtn.style.display = "flex";
             minBtn.style.alignItems = "center";
             minBtn.style.justifyContent = "center";
-            minBtn.style.gap = "6px";
+            minBtn.style.gap = "8px";
             minBtn.style.borderRadius = "20px";
-            minBtn.style.padding = "3px 12px";
+            minBtn.style.padding = "4px 14px";
             minBtn.style.cursor = "pointer";
             minBtn.style.outline = "none";
+            minBtn.style.border = "1px solid";
             minBtn.style.boxSizing = "border-box";
-            minBtn.style.transition = "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)";
+            minBtn.style.transition = "all 0.25s ease";
+
+            const btnStyle = pipWindow.document.createElement("style");
+            btnStyle.textContent = `
+                #pipMinBtn {
+                    -webkit-tap-highlight-color: transparent;
+                }
+                #pipMinBtn:focus, #pipMinBtn:focus-visible {
+                    outline: none;
+                }
+                #pipMinBtn:active {
+                    transform: scale(0.94);
+                    opacity: 0.8;
+                }
+            `;
+            pipWindow.document.head.appendChild(btnStyle);
 
             let isCollapsed = false;
 
             // Apply style dynamically
             const isLight = settings.mode === 'light';
-            const currentBg = isLight ? "#fff" : "#0f0f0f";
-            const currentText = isLight ? "#111" : "#fff";
-
-            headerBar.style.backgroundColor = currentBg;
-            titleSpan.style.color = currentText;
-
+            
             if (isLight) {
-                minBtn.style.color = "#444";
-                minBtn.style.background = "rgba(0, 0, 0, 0.05)";
-                minBtn.style.borderColor = "rgba(0, 0, 0, 0.1)";
+                headerBar.style.backgroundColor = "transparent";
+                titleSpan.style.color = "#111";
+                minBtn.style.color = "#222";
+                minBtn.style.background = "rgba(0,0,0,0.06)";
+                minBtn.style.borderColor = "rgba(0,0,0,0.12)";
+                minBtn.onmouseover = () => { minBtn.style.background = "rgba(0,0,0,0.12)"; };
+                minBtn.onmouseout = () => { minBtn.style.background = "rgba(0,0,0,0.06)"; };
             } else {
-                minBtn.style.color = "#ccc";
-                minBtn.style.background = "rgba(255, 255, 255, 0.04)";
-                minBtn.style.borderColor = "rgba(255, 255, 255, 0.08)";
+                headerBar.style.backgroundColor = "transparent";
+                titleSpan.style.color = "#eee";
+                minBtn.style.color = "#eee";
+                minBtn.style.background = "#1e1e1e";
+                minBtn.style.borderColor = "#333";
+                minBtn.onmouseover = () => { minBtn.style.background = "#2a2a2a"; };
+                minBtn.onmouseout = () => { minBtn.style.background = "#1e1e1e"; };
             }
 
             headerBar.appendChild(titleWrapper);
             headerBar.appendChild(minBtn);
             body.appendChild(headerBar);
 
-            // Divider
-            const divider = pipWindow.document.createElement("div");
-            divider.id = "pipDivider";
-            divider.style.height = "1px";
-            divider.style.minHeight = "1px";
-            divider.style.width = "100%";
-            divider.style.background = isLight ? "#ccc" : "#2a2a2a";
-            body.appendChild(divider);
-
             // Iframe
             const iframe = pipWindow.document.createElement("iframe");
             iframe.id = "pipIframe";
             iframe.src = window.location.href; // open this current page!
             iframe.style.width = "100%";
-            iframe.style.height = "calc(100% - 33px)";
+            iframe.style.height = "calc(100% - 38px)";
             iframe.style.border = "none";
             iframe.style.margin = "0";
             iframe.style.padding = "0";
             iframe.style.display = "block";
+            iframe.style.backgroundColor = "transparent";
             iframe.setAttribute("allow", "clipboard-read; clipboard-write; camera; microphone; geolocation");
             body.appendChild(iframe);
 
@@ -697,7 +722,7 @@
                         <span style="font-size: 7px; margin-top: 1px;">➕</span>
                         <span style="font-size: 10px; font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; letter-spacing: -0.2px;">توسيع</span>
                     `;
-                    titleSpan.innerText = "الأدوات (مُصغّرة)";
+                    titleSpan.innerText = "";
                     try {
                         pipWindow.resizeTo(320, 78);
                     } catch (e) {
@@ -710,7 +735,7 @@
                         <span style="font-size: 7px; margin-top: 1px;">➖</span>
                         <span style="font-size: 10px; font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; letter-spacing: -0.2px;">تصغير</span>
                     `;
-                    titleSpan.innerText = "Fast Toolkit";
+                    titleSpan.innerText = "";
                     try {
                         pipWindow.resizeTo(320, 480);
                     } catch (e) {
@@ -749,29 +774,32 @@
 
         const isLight = settings.mode === 'light';
 
-        // 1. Check for index.html relative header wrapper
-        const relativeHeader = document.querySelector('.header > div[style*="position: relative"]');
-        if (relativeHeader) {
-            const btn = document.createElement('a');
+        // 1. Check for index.html header actions wrapper
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+            const btn = document.createElement('button');
             btn.id = 'pipBtn';
-            btn.href = '#';
             btn.title = 'تشغيل النافذة العائمة (PiP)';
             btn.style.cssText = `
-                position: absolute; 
-                right: 0; 
-                text-decoration: none; 
-                font-size: 14px; 
-                transition: transform 0.2s;
+                background: none;
+                border: none;
+                color: #555;
                 cursor: pointer;
+                padding: 2px 3px;
+                line-height: 1;
+                transition: color 0.2s;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
             `;
             btn.innerHTML = '📌';
-            btn.onmouseover = () => btn.style.transform = 'scale(1.2)';
-            btn.onmouseout = () => btn.style.transform = 'scale(1)';
+            btn.onmouseover = () => btn.style.color = 'var(--accent-green, #00c864)';
+            btn.onmouseout = () => btn.style.color = '#555';
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 launchPip();
             });
-            relativeHeader.appendChild(btn);
+            headerActions.appendChild(btn);
             return;
         }
 
@@ -933,6 +961,13 @@
         const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
         if (isInput) return;
 
+        // Ctrl+Shift+D لتبديل Dark/Light Mode
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+            e.preventDefault();
+            fastToolkitToggleTheme();
+            return;
+        }
+
         // Ignore if any modifier key is pressed (to not override browser shortcuts)
         if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
 
@@ -964,6 +999,179 @@
             if (!window.location.pathname.endsWith('index.html') && !window.location.pathname.endsWith('/')) {
                 window.location.href = 'index.html';
             }
+        } else if (pressedKey === '?') {
+            e.preventDefault();
+            showShortcutsOverlay();
         }
     });
+
+    // ====== Dark/Light Mode Toggle ======
+    function fastToolkitToggleTheme() {
+        let s;
+        try { s = JSON.parse(localStorage.getItem('fastToolkitSettings') || '{}'); } catch { s = {}; }
+        const newMode = (s.mode === 'dark') ? 'light' : 'dark';
+        s.mode = newMode;
+        localStorage.setItem('fastToolkitSettings', JSON.stringify(s));
+
+        const root = document.documentElement;
+        const themeColor = s.themeColor || '#007aff';
+
+        // إعادة تطبيق الألوان فوراً
+        if (newMode === 'dark') {
+            root.style.setProperty('--bg', '#0f0f0f');
+            root.style.setProperty('--card-bg', '#1a1a1a');
+            root.style.setProperty('--text', '#eeeeee');
+            root.style.setProperty('--border', '#333333');
+        } else {
+            const hex = themeColor;
+            const r = parseInt(hex.slice(1,3),16)||0, g = parseInt(hex.slice(3,5),16)||0, b = parseInt(hex.slice(5,7),16)||0;
+            root.style.setProperty('--bg', '#0f0f0f');
+            root.style.setProperty('--card-bg', '#ffffff');
+            root.style.setProperty('--text', '#111111');
+            root.style.setProperty('--border', `rgb(${Math.round(r*.2+255*.8)},${Math.round(g*.2+255*.8)},${Math.round(b*.2+255*.8)})`);
+        }
+
+        // تحديث الحاويات بخلفية جديدة
+        const styleEl = document.getElementById('dynamic-settings-styles');
+        if (styleEl) {
+            const bg = newMode === 'dark' ? '#111111' : '#ffffff';
+            const border = newMode === 'dark' ? '#222222' : '#dddddd';
+            const textC = newMode === 'dark' ? '#eeeeee' : '#111111';
+            styleEl.textContent = styleEl.textContent
+                .replace(/background: #[0-9a-fA-F]{6,8} !important; \/\* container-bg \*\//g, `background: ${bg} !important; /* container-bg */`);
+        }
+
+        // إظهار toast سريع
+        const toast = document.createElement('div');
+        toast.textContent = newMode === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        toast.style.cssText = `
+            position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+            background:#222;color:#fff;padding:6px 14px;border-radius:20px;
+            font-size:11px;font-weight:bold;z-index:999999;
+            border:1px solid #444;box-shadow:0 4px 12px rgba(0,0,0,0.5);
+            opacity:1;transition:opacity 0.4s;
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 1200);
+    }
+    window.fastToolkitToggleTheme = fastToolkitToggleTheme;
+
+    // ====== Shortcuts Visual Overlay ======
+    function showShortcutsOverlay() {
+        // إغلاق إن كانت مفتوحة
+        const existing = document.getElementById('ftShortcutsOverlay');
+        if (existing) { existing.remove(); return; }
+
+        const shortcuts = window.getFastToolkitShortcuts();
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00ff00';
+
+        const groups = [
+            {
+                title: '🧭 التنقل',
+                items: [
+                    { key: shortcuts.navHome, desc: 'الرئيسية' },
+                    { key: shortcuts.nav1, desc: 'الملاحظات' },
+                    { key: shortcuts.nav2, desc: 'سيمة' },
+                    { key: shortcuts.nav3, desc: 'كارد سكانر' },
+                    { key: shortcuts.nav4, desc: 'الستيكي نوت' },
+                ]
+            },
+            {
+                title: '⚡ الصفحة الحالية',
+                items: [
+                    { key: shortcuts.ai || 'a', desc: 'تبديل AI' },
+                    { key: shortcuts.settings || 's', desc: 'الإعدادات' },
+                    { key: shortcuts.usage || 'u', desc: 'الاستهلاك' },
+                    { key: shortcuts.clear || 'c', desc: 'مسح البيانات' },
+                    { key: shortcuts.edit || 'e', desc: 'تعديل' },
+                    { key: shortcuts.pipToggle || 'p', desc: 'تبديل PiP' },
+                ]
+            },
+            {
+                title: '📝 ملاحظات',
+                items: [
+                    { key: 'Ctrl+↵', desc: 'نسخ الملاحظة' },
+                    { key: 'Ctrl+⌫', desc: 'مسح الملاحظة' },
+                    { key: 'Ctrl+Tab', desc: 'ملاحظة تالية' },
+                    { key: 'Ctrl+⇧+N', desc: 'ملاحظة جديدة' },
+                ]
+            },
+            {
+                title: '🔑 عام',
+                items: [
+                    { key: '?', desc: 'هذه القائمة' },
+                    { key: 'Ctrl+⇧+D', desc: 'تبديل Dark/Light' },
+                    { key: 'Esc', desc: 'إغلاق النوافذ' },
+                ]
+            }
+        ];
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ftShortcutsOverlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Segoe UI', sans-serif; direction: rtl;
+        `;
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: #111; border: 1px solid #333; border-radius: 12px;
+            padding: 16px; min-width: 260px; max-width: 320px; max-height: 90vh;
+            overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+            scrollbar-width: thin;
+        `;
+
+        const title = document.createElement('div');
+        title.style.cssText = `font-size: 11px; font-weight: bold; color: ${accent}; text-align: center; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase;`;
+        title.textContent = '⌨️ اختصارات لوحة المفاتيح';
+        box.appendChild(title);
+
+        groups.forEach(group => {
+            const groupTitle = document.createElement('div');
+            groupTitle.style.cssText = `font-size: 8px; color: #666; font-weight: bold; margin: 8px 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px;`;
+            groupTitle.textContent = group.title;
+            box.appendChild(groupTitle);
+
+            group.items.forEach(item => {
+                const row = document.createElement('div');
+                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; border-radius: 4px; margin-bottom: 2px;`;
+                row.onmouseover = () => row.style.background = '#1a1a1a';
+                row.onmouseout = () => row.style.background = 'transparent';
+
+                const desc = document.createElement('span');
+                desc.style.cssText = `font-size: 9px; color: #aaa;`;
+                desc.textContent = item.desc;
+
+                const keyBadge = document.createElement('kbd');
+                keyBadge.style.cssText = `
+                    font-size: 9px; font-family: monospace; font-weight: bold;
+                    background: #1e1e1e; color: ${accent}; border: 1px solid #333;
+                    border-bottom: 2px solid #444; border-radius: 4px;
+                    padding: 1px 6px; white-space: nowrap;
+                `;
+                keyBadge.textContent = item.key;
+
+                row.appendChild(desc);
+                row.appendChild(keyBadge);
+                box.appendChild(row);
+            });
+        });
+
+        const hint = document.createElement('div');
+        hint.style.cssText = `font-size: 7px; color: #444; text-align: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid #222;`;
+        hint.textContent = 'اضغط ? أو Esc أو انقر خارج الإطار للإغلاق';
+        box.appendChild(hint);
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        // إغلاق بـ Escape
+        const escClose = (ev) => { if (ev.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escClose); } };
+        document.addEventListener('keydown', escClose);
+    }
+
+    window.showShortcutsOverlay = showShortcutsOverlay;
 })();

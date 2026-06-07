@@ -185,6 +185,13 @@
         .footer b {
             color: #888;
         }
+
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1px;
+        }
     </style>
     <!-- Centralized Cache Busting Loader -->
     <script>
@@ -199,10 +206,12 @@
 
     <div class="container">
         <div class="header">
-            <div style="position: relative; display: flex; justify-content: center; align-items: center;">
-                <h1 style="margin: 0; text-align: center;">FAST TOOLKIT</h1>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="header-actions">
+                </div>
+                <h1 style="margin: 0; text-align: center; flex: 1;">FAST TOOLKIT</h1>
                 <a href="settings.html"
-                    style="position: absolute; left: 0; text-decoration: none; font-size: 14px; transition: transform 0.2s;"
+                    style="text-decoration: none; font-size: 14px; transition: transform 0.2s; flex-shrink:0;"
                     onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'"
                     title="الإعدادات">⚙️</a>
             </div>

@@ -83,6 +83,52 @@ document.addEventListener('paste', async (e) => {
     }
 });
 
+// === معالجة الصورة مسبقاً بـ Canvas لتحسين دقة Tesseract ===
+async function preprocessImage(file) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(2, 1200 / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // تحويل للرمادي وزيادة التباين
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                // تطبيق threshold للتحويل الثنائي (بالأبيض والأسود)
+                const binary = gray > 128 ? 255 : 0;
+                data[i] = data[i + 1] = data[i + 2] = binary;
+            }
+            ctx.putImageData(imageData, 0, 0);
+            URL.revokeObjectURL(url);
+            canvas.toBlob(resolve, 'image/png');
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+    });
+}
+
+// === سجل المسح - آخر 10 عمليات ناجحة ===
+function getScanHistory() {
+    try { return JSON.parse(localStorage.getItem('cardScannerHistory') || '[]'); } catch { return []; }
+}
+
+function saveScanToHistory(data) {
+    if (!data || !data.card || data.card === '-' || data.card === '0000') return;
+    let history = getScanHistory();
+    // إزالة التكرار لنفس البطاقة والمبلغ والوقت
+    history = history.filter(h => h.fullText !== data.fullText);
+    history.unshift({ ...data, scannedAt: new Date().toISOString() });
+    if (history.length > 10) history = history.slice(0, 10);
+    localStorage.setItem('cardScannerHistory', JSON.stringify(history));
+}
+
 async function processImage(file) {
     dropZone.classList.add('active');
     if (isAIActive) {
@@ -106,9 +152,11 @@ async function processImage(file) {
             await extractCardWithAI(file, apiKey);
         }
     } else {
-        statusDiv.innerText = "جاري القراءة... ⏳";
+        statusDiv.innerText = "جاري معالجة الصورة... 🔧";
         try {
-            const { data: { text } } = await Tesseract.recognize(file, 'eng+ara');
+            const processedFile = await preprocessImage(file);
+            statusDiv.innerText = "جاري القراءة... ⏳";
+            const { data: { text } } = await Tesseract.recognize(processedFile, 'eng+ara');
             parseData(text);
         } catch (err) {
             statusDiv.innerText = "خطأ في القراءة ❌";
@@ -315,6 +363,7 @@ function parseData(rawText) {
         cleanText: cleanText
     };
     localStorage.setItem('cardScannerData', JSON.stringify(savedData));
+    saveScanToHistory(savedData);
 
     statusDiv.innerText = "تم النسخ والتحليل! ✅";
     secureCopy(finalResult);
@@ -639,7 +688,7 @@ async function extractCardWithAI(file, apiKey) {
             const payload = {
                 contents: [{
                     parts: [
-                        { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 22-8). If the transaction year is NOT the current year, return in D-M-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
+                        { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success" },
                         { inlineData: { mimeType: file.type, data: base64String } }
                     ]
                 }]
@@ -678,7 +727,7 @@ async function extractCardWithGroq(file, groqKey) {
                 messages: [{
                     role: 'user',
                     content: [
-                        { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' ALWAYS indicates the card — the digits immediately after 'عبر' are the card digits. Rule B: If 'عبر' and 'من' appear on the same line, the digits after 'عبر' are the card, and the digits after 'من' are an account number — ignore those. Rule C: If 'من' appears WITHOUT 'عبر' AND without the word 'حساب' (account), then the digits after 'من' ARE the card number. Rule D: If 'من' appears with 'حساب', those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return in D-M format (e.g. 22-8). If the transaction year is NOT the current year, return in D-M-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-5 // mada // success" },
+                        { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success" },
                         { type: 'image_url', image_url: { url: base64Url } }
                     ]
                 }]
@@ -715,7 +764,27 @@ function parseAIResult(aiText) {
     const card = parts[0] || "0000";
     const amount = parts[1] || "0.00";
     const time = parts[2] || "00:00";
-    const date = parts[3] || "00-00";
+    let date = parts[3] || "00-00";
+
+    // Fix for flipped MM-DD dates returned by AI or padding
+    if (date && date !== "00-00" && date !== "-") {
+        const dParts = date.split('-');
+        if (dParts.length >= 2) {
+            const p1 = parseInt(dParts[0]) || 0;
+            const p2 = parseInt(dParts[1]) || 0;
+            // If p1 is a valid month and p2 is clearly a day (>12), the AI flipped it to MM-DD
+            if (p1 <= 12 && p2 > 12 && p2 <= 31) {
+                dParts[0] = String(p2).padStart(2, '0');
+                dParts[1] = String(p1).padStart(2, '0');
+                date = dParts.join('-');
+            } else {
+                // Ensure double digit padding for DD-MM
+                dParts[0] = String(p1).padStart(2, '0');
+                dParts[1] = String(p2).padStart(2, '0');
+                date = dParts.join('-');
+            }
+        }
+    }
     const network = parts[4] || "unknown";
     const status = parts[5] || "success";
 
@@ -797,12 +866,72 @@ function parseAIResult(aiText) {
         cleanText: cleaned
     };
     localStorage.setItem('cardScannerData', JSON.stringify(savedData));
+    saveScanToHistory(savedData);
 
     statusDiv.innerText = "تم النسخ والتحليل بالـ AI! ✅";
     secureCopy(finalResult);
 }
 
+
+// === نافذة سجل المسح ===
+function toggleHistoryModal() {
+    let modal = document.getElementById('historyModal');
+    if (modal) {
+        modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
+        if (modal.style.display === 'block') renderHistoryModal();
+        return;
+    }
+    // إنشاء النافذة للمرة الأولى
+    modal = document.createElement('div');
+    modal.id = 'historyModal';
+    modal.style.cssText = 'position:absolute;top:35px;left:8px;right:8px;bottom:30px;background:#151515;border:1px solid #333;border-radius:8px;padding:8px;z-index:102;box-shadow:0 4px 15px rgba(0,0,0,0.8);direction:rtl;overflow-y:auto;display:block;';
+    document.querySelector('.app-container').appendChild(modal);
+    renderHistoryModal();
+}
+
+function renderHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+    const history = getScanHistory();
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00ff00';
+    
+    if (history.length === 0) {
+        modal.innerHTML = `<div style="color:#555;text-align:center;padding:20px;font-size:10px;">لا يوجد سجل مسح بعد 🕒</div><button onclick="document.getElementById('historyModal').style.display='none'" style="width:100%;padding:3px;background:#222;color:#888;border:1px solid #333;border-radius:4px;font-size:8px;font-weight:bold;cursor:pointer;margin-top:4px;">إغلاق</button>`;
+        return;
+    }
+
+    modal.innerHTML = `
+        <div style="font-size:9px;font-weight:bold;color:${accent};margin-bottom:6px;text-align:center;border-bottom:1px solid #333;padding-bottom:4px;">🕒 آخر ${history.length} عمليات مسح</div>
+        ${history.map((h, i) => {
+            const t = new Date(h.scannedAt);
+            const timeStr = t.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = t.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
+            return `<div onclick="restoreFromHistory(${i})" style="cursor:pointer;background:#0a0a0a;border:1px solid #222;border-left:3px solid ${accent};border-radius:4px;padding:5px 8px;margin-bottom:3px;direction:ltr;" title="اضغط لاستعادة وتحديد">
+                <div style="font-family:monospace;font-size:10px;font-weight:bold;color:${accent};">${h.fullText}</div>
+                <div style="font-size:8px;color:#555;margin-top:2px;">${dateStr} — ${timeStr}</div>
+            </div>`;
+        }).join('')}
+        <button onclick="localStorage.removeItem('cardScannerHistory');renderHistoryModal();" style="width:100%;padding:3px;background:#1a0505;color:#ff4444;border:1px solid #331111;border-radius:4px;font-size:8px;font-weight:bold;cursor:pointer;margin-top:4px;">مسح السجل 🗑️</button>
+        <button onclick="document.getElementById('historyModal').style.display='none'" style="width:100%;padding:3px;background:#222;color:#888;border:1px solid #333;border-radius:4px;font-size:8px;font-weight:bold;cursor:pointer;margin-top:3px;">إغلاق</button>
+    `;
+}
+
+function restoreFromHistory(index) {
+    const history = getScanHistory();
+    const h = history[index];
+    if (!h) return;
+    updateUI(h.fullText, h.card, h.amount, h.time, h.date);
+    if (h.cleanText) detectCardMeta(h.cleanText);
+    const savedData = { fullText: h.fullText, card: h.card, amount: h.amount, time: h.time, date: h.date, cleanText: h.cleanText || h.fullText };
+    localStorage.setItem('cardScannerData', JSON.stringify(savedData));
+    secureCopy(h.fullText);
+    statusDiv.innerText = "تم استعادة البيانات! ✅";
+    document.getElementById('historyModal').style.display = 'none';
+}
+window.restoreFromHistory = restoreFromHistory;
+
 // Bind UI actions to window context
+window.toggleHistoryModal = toggleHistoryModal;
 window.toggleAI = toggleAI;
 window.switchProvider = switchProvider;
 window.openSettings = openSettings;

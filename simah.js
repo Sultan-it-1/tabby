@@ -319,11 +319,42 @@ async function extractWithGroq(file, groqKey) {
     };
 }
 
+// === معالجة الصورة مسبقاً بـ Canvas لرفع دقة Tesseract (Grayscale + Threshold) ===
+async function preprocessImageForSimah(file) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(2, 1400 / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                const binary = gray > 140 ? 255 : 0; // أكثر تساهلاً لحروف UUID
+                data[i] = data[i + 1] = data[i + 2] = binary;
+            }
+            ctx.putImageData(imageData, 0, 0);
+            URL.revokeObjectURL(url);
+            canvas.toBlob(resolve, 'image/png');
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+    });
+}
+
 async function extractWithTesseract(file) {
     try {
+        statusDiv.innerText = "جاري معالجة الصورة... 🔧";
+        const processedFile = await preprocessImageForSimah(file);
+        statusDiv.innerText = "جاري قراءة الحسابات... ⏳";
         const worker = await Tesseract.createWorker('eng');
         await worker.setParameters({ tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' });
-        const { data: { text } } = await worker.recognize(file);
+        const { data: { text } } = await worker.recognize(processedFile);
         await worker.terminate();
         extractAccounts(text);
     } catch (err) { statusDiv.innerText = "فشل في القراءة ❌"; }

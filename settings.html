@@ -281,6 +281,16 @@
             </div>
 
             <div class="setting-group">
+                <div class="switch-container">
+                    <label style="margin:0;">المزامنة السحابية التلقائية (Drive)</label>
+                    <label class="switch">
+                        <input type="checkbox" id="autoSyncToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-group">
                 <label>اللون الأساسي</label>
                 <div class="color-options">
                     <div class="color-btn" style="background:#00ff00" data-color="#00ff00" title="أخضر"></div>
@@ -288,7 +298,20 @@
                     <div class="color-btn" style="background:#00e5ff" data-color="#00e5ff" title="تركوازي"></div>
                     <div class="color-btn" style="background:#ff9f43" data-color="#ff9f43" title="برتقالي"></div>
                     <div class="color-btn" style="background:#007aff" data-color="#007aff" title="أزرق"></div>
+                    <label class="color-btn" id="customColorBtn" style="background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-sizing: border-box;" title="لون مخصص">
+                        <input type="color" id="customColorInput" style="opacity: 0; position: absolute; inset: 0; width: 200%; height: 200%; top: -50%; left: -50%; cursor: pointer;">
+                        <span style="color: white; font-size: 16px; font-weight: bold; text-shadow: 0 0 4px rgba(0,0,0,0.8); pointer-events: none; margin-top: -2px;">+</span>
+                    </label>
                 </div>
+            </div>
+
+            <div class="setting-group">
+                <label>النسخ الاحتياطي الشامل (لكل الأدوات)</label>
+                <div style="display: flex; gap: 4px; margin-top: 4px;">
+                    <button class="action-btn" id="exportAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">تصدير كامل 💾</button>
+                    <button class="action-btn" id="importAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">استيراد كامل 📂</button>
+                </div>
+                <input type="file" id="importAllFile" style="display:none;" accept=".json">
             </div>
 
             <div class="setting-group">
@@ -303,60 +326,60 @@
                     <div style="font-size: 7px; color: #888; text-align: center; margin-bottom: 4px;">اضغط على الزر واكتب المفتاح الجديد للحفظ</div>
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
-                        <span>نسخ سريع (Tab 1):</span>
-                        <button class="key-bind-btn" data-key="nav1" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">1</button>
+                        <span>نسخ سريع (tool 1):</span>
+                        <button class="key-bind-btn" data-key="nav1" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">1</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
-                        <span>سمة (Tab 2):</span>
-                        <button class="key-bind-btn" data-key="nav2" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">2</button>
+                        <span>سمة (tool 2):</span>
+                        <button class="key-bind-btn" data-key="nav2" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">2</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
-                        <span>Card Scan (Tab 3):</span>
-                        <button class="key-bind-btn" data-key="nav3" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">3</button>
+                        <span>Card Scan (tool 3):</span>
+                        <button class="key-bind-btn" data-key="nav3" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">3</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
-                        <span>Sticky Notes (Tab 4):</span>
-                        <button class="key-bind-btn" data-key="nav4" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">4</button>
+                        <span>Sticky Notes (tool 4):</span>
+                        <button class="key-bind-btn" data-key="nav4" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">4</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>الرئيسية (Home):</span>
-                        <button class="key-bind-btn" data-key="navHome" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">H</button>
+                        <button class="key-bind-btn" data-key="navHome" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">H</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>البحث (Search):</span>
-                        <button class="key-bind-btn" data-key="search" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">/</button>
+                        <button class="key-bind-btn" data-key="search" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">/</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>ترتيب الأقسام (Sort):</span>
-                        <button class="key-bind-btn" data-key="sort" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
+                        <button class="key-bind-btn" data-key="sort" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>تبديل المجموعات (Tab):</span>
-                        <button class="key-bind-btn" data-key="tab" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">T</button>
+                        <button class="key-bind-btn" data-key="tab" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">T</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>تحليل الـ AI (Toggle AI):</span>
-                        <button class="key-bind-btn" data-key="ai" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">A</button>
+                        <button class="key-bind-btn" data-key="ai" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">A</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>إعدادات الـ API (Settings):</span>
-                        <button class="key-bind-btn" data-key="settings" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
+                        <button class="key-bind-btn" data-key="settings" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>إحصائيات (Usage):</span>
-                        <button class="key-bind-btn" data-key="usage" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">U</button>
+                        <button class="key-bind-btn" data-key="usage" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">U</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>مسح البيانات (Clear):</span>
-                        <button class="key-bind-btn" data-key="clear" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">C</button>
+                        <button class="key-bind-btn" data-key="clear" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">C</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>تعديل المخرجات (Edit):</span>
-                        <button class="key-bind-btn" data-key="edit" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">E</button>
+                        <button class="key-bind-btn" data-key="edit" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">E</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>تصغير/توسيع النافذة (Toggle PiP):</span>
-                        <button class="key-bind-btn" data-key="pipToggle" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #444; background: #222; color: var(--accent-green); border-radius: 3px; cursor: pointer; font-weight: bold;">P</button>
+                        <button class="key-bind-btn" data-key="pipToggle" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">P</button>
                     </div>
                 </div>
             </div>
@@ -375,18 +398,41 @@
             const modeToggle = document.getElementById('modeToggle');
             const colorBtns = document.querySelectorAll('.color-btn');
             const resetBtn = document.getElementById('resetBtn');
+            
+            const autoSyncToggle = document.getElementById('autoSyncToggle');
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            const importAllBtn = document.getElementById('importAllBtn');
+            const importAllFile = document.getElementById('importAllFile');
+
+            // Load autoSync status
+            autoSyncToggle.checked = localStorage.getItem('autoSyncGDrive') === 'true';
+            autoSyncToggle.addEventListener('change', () => {
+                localStorage.setItem('autoSyncGDrive', autoSyncToggle.checked ? 'true' : 'false');
+            });
 
             let selectedColor = currentSettings.themeColor;
             modeToggle.checked = (currentSettings.mode === 'light');
 
             function updateColorSelection() {
+                let foundMatch = false;
                 colorBtns.forEach(btn => {
-                    if (btn.dataset.color.toLowerCase() === selectedColor.toLowerCase()) {
+                    if (btn.id === 'customColorBtn') return;
+                    if (btn.dataset.color && btn.dataset.color.toLowerCase() === selectedColor.toLowerCase()) {
                         btn.classList.add('active');
+                        foundMatch = true;
                     } else {
                         btn.classList.remove('active');
                     }
                 });
+
+                const customBtn = document.getElementById('customColorBtn');
+                if (customBtn) {
+                    if (!foundMatch) {
+                        customBtn.classList.add('active');
+                    } else {
+                        customBtn.classList.remove('active');
+                    }
+                }
             }
             updateColorSelection();
 
@@ -403,11 +449,23 @@
             modeToggle.addEventListener('change', autoSave);
 
             colorBtns.forEach(btn => {
+                if (btn.id === 'customColorBtn') return;
                 btn.addEventListener('click', () => {
                     selectedColor = btn.dataset.color;
                     autoSave();
                 });
             });
+
+            const customColorInput = document.getElementById('customColorInput');
+            if (customColorInput) {
+                const isHex = /^#[0-9A-F]{6}$/i.test(selectedColor);
+                if (isHex) customColorInput.value = selectedColor;
+                
+                customColorInput.addEventListener('change', (e) => {
+                    selectedColor = e.target.value;
+                    autoSave();
+                });
+            }
 
             // Keyboard Shortcuts Config
             const shortcuts = window.getFastToolkitShortcuts ? window.getFastToolkitShortcuts() : {
@@ -485,6 +543,79 @@
                 localStorage.removeItem('fastToolkitExpanded');
                 localStorage.removeItem('fastToolkitShortcuts');
                 window.location.reload();
+            });
+
+            // Unified Backup Export
+            exportAllBtn.addEventListener('click', () => {
+                const backupKeys = [
+                    'fastToolkitSettings',
+                    'fastToolkitShortcuts',
+                    'fastToolkitExpanded',
+                    'copyGridDataV6',
+                    'unbackedUpCountV6',
+                    'quick_sticky_note',
+                    'stickyNotesData',
+                    'currentStickyNoteId',
+                    'cardScannerData',
+                    'cardScannerHistory',
+                    'simahApprovedAccounts',
+                    'simahAccountsHistory',
+                    'simah_ai_provider',
+                    'simah_ai_pref',
+                    'simah_usage',
+                    'autoSyncGDrive',
+                    'cardLinkToggle'
+                ];
+                const backupData = {};
+                backupKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value !== null) {
+                        backupData[key] = value;
+                    }
+                });
+                
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const filename = `fast_toolkit_all_backup_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.json`;
+
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+            });
+
+            // Unified Backup Import
+            importAllBtn.addEventListener('click', () => {
+                importAllFile.click();
+            });
+
+            importAllFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (x) => {
+                    try {
+                        const imported = JSON.parse(x.target.result);
+                        if (!imported || typeof imported !== 'object') throw new Error();
+                        
+                        Object.keys(imported).forEach(key => {
+                            localStorage.setItem(key, imported[key]);
+                        });
+                        
+                        alert("تم استيراد كافة البيانات وإعادة ضبط التطبيق بنجاح! 🎉");
+                        window.location.reload();
+                    } catch (err) {
+                        alert("حدث خطأ أثناء استيراد الملف! تأكد من أنه ملف نسخ احتياطي صحيح. ❌");
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
             });
         });
     </script>

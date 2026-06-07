@@ -10,6 +10,15 @@ let isSortMode = false;
 let draggedItem = null, dragTimeout = null;
 let confirmCallback = null, searchQuery = '';
 
+// أسماء التبويبات المخصصة - مخزنة في localStorage
+const DEFAULT_TAB_LABELS = { c1: 'Tab 1', c2: 'Tab 2', c3: 'Tab 3' };
+let tabLabels = (() => {
+    try { return { ...DEFAULT_TAB_LABELS, ...JSON.parse(localStorage.getItem('noteTabLabels') || '{}') }; }
+    catch { return { ...DEFAULT_TAB_LABELS }; }
+})();
+
+function saveTabLabels() { localStorage.setItem('noteTabLabels', JSON.stringify(tabLabels)); }
+
 const defaultData = {
     c1: {},
     c2: {},
@@ -29,8 +38,8 @@ function render() {
     container.innerHTML = '';
     document.documentElement.dir = 'rtl';
 
-    const btnLabels = { 'c1': 'Tab 1', 'c2': 'Tab 2', 'c3': 'Tab 3' };
-    document.getElementById('containerBtn').innerText = btnLabels[currentContainer];
+    document.getElementById('containerBtn').innerText = tabLabels[currentContainer];
+    document.getElementById('containerBtn').title = 'اضغط مطولاً لإعادة تسمية التب';
 
     const isSearching = searchQuery.length > 0;
     const sortBtn = document.getElementById('sortModeBtn');
@@ -61,7 +70,7 @@ function render() {
             const safeCatJS = escapeJS(cat);
             const safeCatHTML = escapeHTML(cat);
 
-            const displayCatName = isSearching ? `${safeCatHTML} <span style="font-size:9px;color:var(--accent-green);margin-right:4px;">(${btnLabels[cId]})</span>` : safeCatHTML;
+            const displayCatName = isSearching ? `${safeCatHTML} <span style="font-size:9px;color:var(--accent-green);margin-right:4px;">(${tabLabels[cId]})</span>` : safeCatHTML;
 
             const secHeader = document.createElement('div');
             secHeader.className = 'section-header';
@@ -88,6 +97,47 @@ function render() {
                 const labelEl = secHeader.querySelector('.section-label');
                 labelEl.addEventListener('contextmenu', (e) => { e.preventDefault(); openEditSectionModal(cat); });
                 labelEl.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { e.preventDefault(); openEditSectionModal(cat); } });
+
+                // === Drag & Drop للأقسام — معطّل في Sort Mode ===
+                if (!isSortMode) {
+                secHeader.setAttribute('draggable', 'true');
+                secHeader.dataset.sectionCat = cat;
+                secHeader.dataset.sectionCid = cId;
+                secHeader.style.cursor = 'grab';
+
+                secHeader.addEventListener('dragstart', (ev) => {
+                    ev.dataTransfer.setData('text/section', JSON.stringify({ cat, cId }));
+                    secHeader.style.opacity = '0.5';
+                });
+                secHeader.addEventListener('dragend', () => {
+                    secHeader.style.opacity = '1';
+                    document.querySelectorAll('.section-header').forEach(h => h.classList.remove('drag-over-section'));
+                });
+                secHeader.addEventListener('dragover', (ev) => {
+                    ev.preventDefault();
+                    secHeader.classList.add('drag-over-section');
+                });
+                secHeader.addEventListener('dragleave', () => secHeader.classList.remove('drag-over-section'));
+                secHeader.addEventListener('drop', (ev) => {
+                    ev.preventDefault();
+                    secHeader.classList.remove('drag-over-section');
+                    let srcInfo;
+                    try { srcInfo = JSON.parse(ev.dataTransfer.getData('text/section')); } catch { return; }
+                    if (!srcInfo || srcInfo.cat === cat) return;
+                    // إعادة ترتيب مفاتيح الـ storageData
+                    const obj = storageData[cId];
+                    const keys = Object.keys(obj);
+                    const fromIdx = keys.indexOf(srcInfo.cat);
+                    const toIdx = keys.indexOf(cat);
+                    if (fromIdx === -1 || toIdx === -1) return;
+                    keys.splice(fromIdx, 1);
+                    keys.splice(toIdx, 0, srcInfo.cat);
+                    const newObj = {};
+                    keys.forEach(k => { newObj[k] = obj[k]; });
+                    storageData[cId] = newObj;
+                    saveAndRefresh();
+                });
+                } // end if (!isSortMode)
             }
 
             const grid = document.createElement('div');
@@ -131,8 +181,23 @@ function render() {
                             .replace(/xxxx/gi, cardData.card)
                             .replace(/yyyy/gi, cardData.amount);
                     }
-                    navigator.clipboard.writeText(textToCopy);
-                    showStatus("تم النسخ! ✅");
+                    
+                    try {
+                        const htmlText = textToCopy.replace(/\n/g, '<br>');
+                        const clipboardItem = new ClipboardItem({
+                            "text/plain": new Blob([textToCopy], { type: "text/plain" }),
+                            "text/html": new Blob([htmlText], { type: "text/html" })
+                        });
+                        navigator.clipboard.write([clipboardItem]).then(() => {
+                            showStatus("تم النسخ! ✅");
+                        }).catch(() => {
+                            navigator.clipboard.writeText(textToCopy);
+                            showStatus("تم النسخ! ✅");
+                        });
+                    } catch (err) {
+                        navigator.clipboard.writeText(textToCopy);
+                        showStatus("تم النسخ! ✅");
+                    }
                 };
 
                 chip.oncontextmenu = (e) => { e.preventDefault(); openItemModal(cId, cat, item); };
@@ -254,6 +319,24 @@ function render() {
         }
     });
 
+    // === Empty State ===
+    if (container.children.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.cssText = `
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 100%; gap: 8px;
+            color: #333; user-select: none; padding: 10px;
+        `;
+        empty.innerHTML = `
+            <div style="font-size:32px;opacity:0.3;">📋</div>
+            <div style="font-size:10px;color:#444;text-align:center;line-height:1.6;">
+                لا توجد أقسام بعد<br>
+                <span style="color:var(--accent-green);opacity:0.7;">اضغط "+ قسم" للبدء</span>
+            </div>
+        `;
+        container.appendChild(empty);
+    }
+
     checkBackupStatus();
 }
 
@@ -264,6 +347,47 @@ function switchContainer() {
     closeSearch();
     render();
 }
+
+function renameCurrentTab() {
+    const currentLabel = tabLabels[currentContainer];
+    const newName = window.prompt(`اسم جديد لـ ${currentLabel}:`, currentLabel);
+    if (newName !== null && newName.trim() !== '') {
+        tabLabels[currentContainer] = newName.trim().slice(0, 12);
+        saveTabLabels();
+        render();
+        showStatus(`تم تسمية التب: ${tabLabels[currentContainer]} ✅`);
+    }
+}
+window.renameCurrentTab = renameCurrentTab;
+
+// longpress على زر Tab لإعادة التسمية
+(function setupTabLongPress() {
+    let tabLongTimer = null;
+    document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('containerBtn');
+        if (!btn) return;
+        btn.addEventListener('mousedown', () => {
+            tabLongTimer = setTimeout(() => { tabLongTimer = null; renameCurrentTab(); }, 600);
+        });
+        btn.addEventListener('mouseup', () => clearTimeout(tabLongTimer));
+        btn.addEventListener('mouseleave', () => clearTimeout(tabLongTimer));
+        btn.addEventListener('touchstart', (e) => {
+            tabLongTimer = setTimeout(() => { tabLongTimer = null; e.preventDefault(); renameCurrentTab(); }, 600);
+        }, { passive: false });
+        btn.addEventListener('touchend', () => clearTimeout(tabLongTimer));
+    });
+    // fallback: if DOMContentLoaded already fired
+    if (document.readyState !== 'loading') {
+        const btn = document.getElementById('containerBtn');
+        if (btn) {
+            btn.addEventListener('mousedown', () => {
+                tabLongTimer = setTimeout(() => { tabLongTimer = null; renameCurrentTab(); }, 600);
+            });
+            btn.addEventListener('mouseup', () => clearTimeout(tabLongTimer));
+            btn.addEventListener('mouseleave', () => clearTimeout(tabLongTimer));
+        }
+    }
+})();
 
 function openSearch() {
     document.getElementById('searchBar').style.display = 'flex';
@@ -357,7 +481,7 @@ function moveSectionToTab(cat, targetCId) {
 function openEditSectionModal(cat) {
     activeCat = cat;
     document.getElementById('editSectionName').value = cat;
-    document.getElementById('editSectionModal').style.display = 'flex';
+    document.getElementById('editSectionModal').classList.add('open');
 }
 
 // Global scope bindings for inline calls
@@ -481,7 +605,7 @@ function showStatus(msg) {
 
 function openSectionModal() {
     document.getElementById('sectionName').value = '';
-    document.getElementById('sectionModal').style.display = 'flex';
+    document.getElementById('sectionModal').classList.add('open');
 }
 window.openSectionModal = openSectionModal;
 
@@ -505,7 +629,7 @@ function openItemModal(cId, cat, item = null) {
     document.getElementById('itemName').value = item ? (item.l || '') : '';
     document.getElementById('itemText').value = item ? (item.t || '') : '';
     document.getElementById('delItemBtn').style.display = item ? 'block' : 'none';
-    document.getElementById('editModal').style.display = 'flex';
+    document.getElementById('editModal').classList.add('open');
 }
 
 function saveItem() {
@@ -535,7 +659,10 @@ function saveItem() {
 window.saveItem = saveItem;
 
 function closeModal() {
-    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+    document.querySelectorAll('.modal').forEach(m => {
+        m.classList.remove('open');
+        m.style.display = ''; // تفريغ الـ inline style إذا كان موجوداً
+    });
     activeCat = null;
     activeId = null;
 }
@@ -577,9 +704,19 @@ function confirmDeleteAll() {
 }
 window.confirmDeleteAll = confirmDeleteAll;
 
+let autoSyncTimeout = null;
 function saveAndRefresh() {
     localStorage.setItem('copyGridDataV6', JSON.stringify(storageData));
     render();
+
+    // المزامنة التلقائية الخلفية
+    const isAutoSync = localStorage.getItem('autoSyncGDrive') === 'true';
+    if (isAutoSync) {
+        clearTimeout(autoSyncTimeout);
+        autoSyncTimeout = setTimeout(() => {
+            triggerBackgroundCloudSync();
+        }, 2000);
+    }
 }
 
 function exportData() {
@@ -635,6 +772,26 @@ window.addEventListener('storage', (e) => {
     }
 });
 
+let gDriveAccessToken = sessionStorage.getItem('gDriveAccessToken') || null;
+
+function checkResponseStatus(res) {
+    if (res.status === 401) {
+        gDriveAccessToken = null;
+        sessionStorage.removeItem('gDriveAccessToken');
+        showStatus("انتهت جلسة Drive، يرجى إعادة تسجيل الدخول! ⚠️");
+        throw new Error("Unauthorized");
+    }
+    return res;
+}
+
+function triggerBackgroundCloudSync() {
+    if (!gDriveAccessToken) {
+        showStatus("☁️ مزامنة معلقة (سجل دخول أولاً)");
+        return;
+    }
+    executeDriveAction(gDriveAccessToken, 'backup', true);
+}
+
 function triggerCloudAction(action) {
     const clientId = window.GOOGLE_CLIENT_ID;
     if (!clientId) {
@@ -654,7 +811,9 @@ function triggerCloudAction(action) {
             scope: 'https://www.googleapis.com/auth/drive.file',
             callback: (tokenResponse) => {
                 if (tokenResponse && tokenResponse.access_token) {
-                    executeDriveAction(tokenResponse.access_token, action);
+                    gDriveAccessToken = tokenResponse.access_token;
+                    sessionStorage.setItem('gDriveAccessToken', gDriveAccessToken);
+                    executeDriveAction(gDriveAccessToken, action);
                 } else {
                     showStatus("فشل تسجيل الدخول! ❌");
                 }
@@ -668,8 +827,8 @@ function triggerCloudAction(action) {
 }
 window.triggerCloudAction = triggerCloudAction;
 
-function executeDriveAction(token, action) {
-    showStatus("جاري الاتصال بـ Google Drive... ☁️");
+function executeDriveAction(token, action, isBackground = false) {
+    showStatus(isBackground ? "جاري الحفظ تلقائياً... ☁️" : "جاري الاتصال بـ Google Drive... ☁️");
     const filename = "fast_copy_backup.json";
 
     fetch(`https://www.googleapis.com/drive/v3/files?q=name='${filename}'+and+trashed=false`, {
@@ -678,6 +837,7 @@ function executeDriveAction(token, action) {
             'Authorization': `Bearer ${token}`
         }
     })
+    .then(checkResponseStatus)
     .then(res => res.json())
     .then(data => {
         const files = data.files || [];
@@ -685,9 +845,9 @@ function executeDriveAction(token, action) {
 
         if (action === 'backup') {
             if (fileId) {
-                updateDriveFile(token, fileId, storageData);
+                updateDriveFile(token, fileId, storageData, isBackground);
             } else {
-                createDriveFile(token, filename, storageData);
+                createDriveFile(token, filename, storageData, isBackground);
             }
         } else if (action === 'restore') {
             if (fileId) {
@@ -699,12 +859,14 @@ function executeDriveAction(token, action) {
     })
     .catch(err => {
         console.error("Drive search failed:", err);
-        showStatus("فشل الاتصال بـ Google Drive! ❌");
+        if (err.message !== "Unauthorized") {
+            showStatus("فشل الاتصال بـ Google Drive! ❌");
+        }
     });
 }
 
-function updateDriveFile(token, fileId, content) {
-    showStatus("جاري رفع البيانات... ☁️");
+function updateDriveFile(token, fileId, content, isBackground = false) {
+    if (!isBackground) showStatus("جاري رفع البيانات... ☁️");
     fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
         method: 'PATCH',
         headers: {
@@ -713,23 +875,26 @@ function updateDriveFile(token, fileId, content) {
         },
         body: JSON.stringify(content)
     })
+    .then(checkResponseStatus)
     .then(res => {
         if (res.ok) {
             unbackedUpCount = 0;
             localStorage.setItem('unbackedUpCountV6', '0');
             render();
-            showStatus("تم النسخ السحابي بنجاح! ☁️ ✅");
+            showStatus(isBackground ? "تمت المزامنة التلقائية! ☁️ ✅" : "تم النسخ السحابي بنجاح! ☁️ ✅");
         } else {
             showStatus("فشل تحديث النسخة! ❌");
         }
     })
     .catch(err => {
         console.error("Drive update failed:", err);
-        showStatus("فشل رفع البيانات! ❌");
+        if (err.message !== "Unauthorized") {
+            showStatus("فشل رفع البيانات! ❌");
+        }
     });
 }
 
-function createDriveFile(token, filename, content) {
+function createDriveFile(token, filename, content, isBackground = false) {
     showStatus("جاري إنشاء ملف النسخ... ☁️");
     fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
@@ -742,17 +907,20 @@ function createDriveFile(token, filename, content) {
             mimeType: 'application/json'
         })
     })
+    .then(checkResponseStatus)
     .then(res => res.json())
     .then(meta => {
         if (meta && meta.id) {
-            updateDriveFile(token, meta.id, content);
+            updateDriveFile(token, meta.id, content, isBackground);
         } else {
             showStatus("فشل إنشاء ملف النسخة! ❌");
         }
     })
     .catch(err => {
         console.error("Drive creation failed:", err);
-        showStatus("فشل إنشاء الملف! ❌");
+        if (err.message !== "Unauthorized") {
+            showStatus("فشل إنشاء الملف! ❌");
+        }
     });
 }
 
@@ -764,6 +932,7 @@ function restoreDriveFile(token, fileId) {
             'Authorization': `Bearer ${token}`
         }
     })
+    .then(checkResponseStatus)
     .then(res => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -782,7 +951,9 @@ function restoreDriveFile(token, fileId) {
     })
     .catch(err => {
         console.error("Drive restore failed:", err);
-        showStatus("فشل تحميل البيانات! ❌");
+        if (err.message !== "Unauthorized") {
+            showStatus("فشل تحميل البيانات! ❌");
+        }
     });
 }
 
@@ -795,3 +966,15 @@ window.toggleSortMode = toggleSortMode;
 
 updateCardSyncBadge();
 render();
+
+// تهيئة مربع المزامنة التلقائية
+const autoSyncCheckbox = document.getElementById('autoSyncCheckbox');
+if (autoSyncCheckbox) {
+    autoSyncCheckbox.checked = localStorage.getItem('autoSyncGDrive') === 'true';
+    autoSyncCheckbox.addEventListener('change', () => {
+        localStorage.setItem('autoSyncGDrive', autoSyncCheckbox.checked ? 'true' : 'false');
+        if (autoSyncCheckbox.checked) {
+            triggerBackgroundCloudSync();
+        }
+    });
+}
