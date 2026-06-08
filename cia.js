@@ -592,6 +592,17 @@ function restoreDriveFile(token, fileId) {
 // Initialize on load
 loadCIAData();
 
+// Restore autoCopy checkbox state from localStorage
+(function restoreAutoCopy() {
+    const cb = document.getElementById('autoCopyCb');
+    if (cb) {
+        cb.checked = localStorage.getItem('ciaAutoCopy') === 'true';
+        cb.addEventListener('change', () => {
+            localStorage.setItem('ciaAutoCopy', cb.checked);
+        });
+    }
+})();
+
 // Drag and Drop JSON
 document.body.addEventListener('dragover', (e) => {
     e.preventDefault();
