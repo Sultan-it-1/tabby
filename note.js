@@ -68,6 +68,7 @@ function render() {
             }
 
             const filteredItems = sections[cat].filter(item => {
+                if (!item) return false; // حماية ضد undefined
                 const labelSafe = item.l ? item.l.toLowerCase() : '';
                 const textSafe = item.t ? item.t.toLowerCase() : '';
                 return labelSafe.includes(searchQuery) || textSafe.includes(searchQuery);
@@ -237,6 +238,7 @@ function render() {
 
                     chip.addEventListener('drop', (e) => {
                         e.preventDefault();
+                        e.stopPropagation(); // ⚠️ منع event bubbling للـ grid فيُنفَّذ مرتين
                         chip.classList.remove('drag-over');
                         const srcInfo = JSON.parse(e.dataTransfer.getData('application/json') || 'null');
                         if (!srcInfo) return;
@@ -258,9 +260,12 @@ function render() {
                         } else {
                             // cross-section move
                             const srcList = storageData[srcInfo.cId][srcInfo.cat];
+                            if (!srcList || srcInfo.index >= srcList.length) return;
                             const [movedItem] = srcList.splice(srcInfo.index, 1);
-                            storageData[targetCId][targetCat].splice(toIndex, 0, movedItem);
-                            saveAndRefresh();
+                            if (movedItem !== undefined) {
+                                storageData[targetCId][targetCat].splice(toIndex, 0, movedItem);
+                                saveAndRefresh();
+                            }
                         }
                     });
 
