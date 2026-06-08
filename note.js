@@ -1007,9 +1007,9 @@ function restoreDriveFile(token, fileId) {
     .then(imported => {
         if (imported && typeof imported === 'object') {
             storageData = imported;
-            saveAndRefresh();
             unbackedUpCount = 0;
             localStorage.setItem('unbackedUpCountV6', '0');
+            localStorage.setItem('copyGridDataV6', JSON.stringify(storageData));
             render();
             showStatus("تمت الاستعادة السحابية بنجاح! ☁️ ✅");
         } else {

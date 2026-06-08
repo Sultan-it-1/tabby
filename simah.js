@@ -156,8 +156,8 @@ function recordUsage(provider) {
 }
 
 const PROVIDER_LIMITS = {
-    groq: { rpmLimit: 30, rpdLimit: 1000, label: 'Groq' },
-    gemini: { rpmLimit: 10, rpdLimit: 1500, label: 'Gemini' }
+    groq: { rphLimit: 1800, rpdLimit: 1000, label: 'Groq' },
+    gemini: { rphLimit: 600, rpdLimit: 1500, label: 'Gemini' }
 };
 
 function toggleUsageModal() {
@@ -214,13 +214,13 @@ function refreshUsageModal() {
     const tokenSection = document.getElementById('tokenSection');
     tokenSection.style.display = 'block';
 
-    const rpmMax = limits.rpmLimit;
+    const rphMax = limits.rphLimit;
     const rpmUsed = hourCount;
-    const rpmRemaining = Math.max(0, rpmMax - rpmUsed);
-    const rpmPct = rpmMax > 0 ? Math.round((rpmUsed / rpmMax) * 100) : 0;
+    const rpmRemaining = Math.max(0, rphMax - rpmUsed);
+    const rpmPct = rphMax > 0 ? Math.round((rpmUsed / rphMax) * 100) : 0;
 
     document.getElementById('tokenUsed').innerText = rpmUsed;
-    document.getElementById('tokenMax').innerText = rpmMax;
+    document.getElementById('tokenMax').innerText = rphMax;
     document.getElementById('tokenRemaining').innerText = `${rpmRemaining} متبقي`;
     document.getElementById('tokenPercent').innerText = `${rpmPct}% مستهلك`;
     document.getElementById('tokenResetTime').innerText = `يتجدد كل ساعة`;
