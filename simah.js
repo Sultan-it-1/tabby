@@ -2,11 +2,51 @@ const appContainer = document.getElementById('appContainer');
 const resultsArea = document.getElementById('results');
 const finalListArea = document.getElementById('finalList');
 const listCounter = document.getElementById('listCounter');
-const statusDiv = document.getElementById('status');
 const aiBtn = document.getElementById('aiBtn');
 const settingsModal = document.getElementById('settingsModal');
 const geminiKeyInput = document.getElementById('geminiKeyInput');
 const groqKeyInput = document.getElementById('groqKeyInput');
+
+function showToast(message, isError = false, duration = 2500) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return { remove: () => {}, update: () => {} };
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = message;
+    
+    if (isError) {
+        toast.style.color = '#ff4444';
+        toast.style.borderColor = 'rgba(255,68,68,0.3)';
+    }
+
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    let timeoutId;
+    const remove = () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    };
+
+    if (duration > 0) {
+        timeoutId = setTimeout(remove, duration);
+    }
+
+    return {
+        remove,
+        update: (newMessage, newIsError) => {
+            toast.innerHTML = newMessage;
+            if (newIsError !== undefined) {
+                toast.style.color = newIsError ? '#ff4444' : 'var(--accent-green)';
+                toast.style.borderColor = newIsError ? 'rgba(255,68,68,0.3)' : 'rgba(0,200,100,0.2)';
+            }
+        }
+    };
+}
 
 let savedAccountsList = [];
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
@@ -71,8 +111,7 @@ function saveApiKey() {
     closeSettings();
 
     const providerName = currentProvider === 'groq' ? 'Groq' : 'Gemini';
-    statusDiv.innerText = `تم الحفظ — المزود: ${providerName} ✅`;
-    setTimeout(() => statusDiv.innerText = "جاهز لسحب الحسابات", 2000);
+    showToast(`تم الحفظ — المزود: ${providerName} ✅`);
 }
 
 // ======== نظام تتبع الاستخدام ========
@@ -215,108 +254,130 @@ function handleFileUpload(e) {
 
 async function processImage(file) {
     resultsArea.innerHTML = '';
+    const dropZone = document.getElementById('dropZone');
+    dropZone.classList.add('processing');
+    let loadingToast;
 
     if (isAIActive) {
         if (currentProvider === 'groq') {
-            statusDiv.innerText = "جاري الاستخراج عبر Groq... 🧠";
             const groqKey = localStorage.getItem('simah_groq_key');
             if (!groqKey) {
-                statusDiv.innerText = "مفتاح Groq مفقود ❌";
+                showToast("مفتاح Groq مفقود ❌", true);
+                dropZone.classList.remove('processing');
                 return;
             }
+            loadingToast = showToast("جاري الاستخراج عبر Groq... 🧠", false, 0);
             await extractWithGroq(file, groqKey);
         } else {
-            statusDiv.innerText = "جاري الاستخراج عبر Gemini... 🧠";
             const apiKey = localStorage.getItem('simah_ai_key');
             if (!apiKey) {
-                statusDiv.innerText = "مفتاح Gemini مفقود ❌";
+                showToast("مفتاح Gemini مفقود ❌", true);
+                dropZone.classList.remove('processing');
                 return;
             }
+            loadingToast = showToast("جاري الاستخراج عبر Gemini... 🧠", false, 0);
             await extractWithAI(file, apiKey);
         }
     } else {
-        statusDiv.innerText = "جاري استخراج البيانات... ⏳";
+        loadingToast = showToast("جاري استخراج البيانات... ⏳", false, 0);
         await extractWithTesseract(file);
     }
+    
+    if (loadingToast) loadingToast.remove();
+    dropZone.classList.remove('processing');
 }
 
 async function extractWithAI(file, apiKey) {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-        try {
-            const base64String = reader.result.split(',')[1];
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: "Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting." },
-                        { inlineData: { mimeType: file.type, data: base64String } }
-                    ]
-                }]
-            };
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            try {
+                const base64String = reader.result.split(',')[1];
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: "Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting." },
+                            { inlineData: { mimeType: file.type, data: base64String } }
+                        ]
+                    }]
+                };
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            if (!response.ok) throw new Error('API Error');
+                if (!response.ok) throw new Error('API Error');
 
-            recordUsage('gemini');
+                recordUsage('gemini');
 
-            const data = await response.json();
-            if (data.candidates && data.candidates[0].content.parts[0].text) {
-                extractAccounts(data.candidates[0].content.parts[0].text);
-            } else {
-                extractAccounts('');
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
+                    extractAccounts(data.candidates[0].content.parts[0].text);
+                } else if (data.candidates && data.candidates[0].finishReason) {
+                    showToast("تم حظر الرد من قبل AI بسبب: " + data.candidates[0].finishReason, true, 4000);
+                    extractAccounts('');
+                } else if (data.error) {
+                    showToast("خطأ API: " + data.error.message, true, 4000);
+                    extractAccounts('');
+                } else {
+                    extractAccounts('');
+                }
+            } catch (err) {
+                showToast("خطأ AI: " + err.message, true, 4000);
             }
-        } catch (err) {
-            statusDiv.innerText = "خطأ في المفتاح أو الـ AI ❌";
-        }
-    };
+            resolve();
+        };
+    });
 }
 
 async function extractWithGroq(file, groqKey) {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-        try {
-            const base64Url = reader.result;
-            const payload = {
-                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-                messages: [{
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: 'Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting.' },
-                        { type: 'image_url', image_url: { url: base64Url } }
-                    ]
-                }]
-            };
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            try {
+                const base64Url = reader.result;
+                const payload = {
+                    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: 'Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting.' },
+                            { type: 'image_url', image_url: { url: base64Url } }
+                        ]
+                    }]
+                };
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${groqKey}`
-                },
-                body: JSON.stringify(payload)
-            });
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${groqKey}`
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-            if (!response.ok) throw new Error('Groq API Error');
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error ? data.error.message : 'Unknown API Error');
+                }
 
-            recordUsage('groq');
+                recordUsage('groq');
 
-            const data = await response.json();
-            if (data.choices && data.choices[0].message.content) {
-                extractAccounts(data.choices[0].message.content);
-            } else {
-                extractAccounts('');
+                if (data.choices && data.choices[0].message && data.choices[0].message.content) {
+                    extractAccounts(data.choices[0].message.content);
+                } else {
+                    extractAccounts('');
+                }
+            } catch (err) {
+                showToast("خطأ Groq: " + err.message, true, 4000);
             }
-        } catch (err) {
-            statusDiv.innerText = "خطأ في مفتاح Groq أو الاتصال ❌";
-        }
-    };
+            resolve();
+        };
+    });
 }
 
 // === معالجة الصورة مسبقاً بـ Canvas لرفع دقة Tesseract (Grayscale + Threshold) ===
@@ -349,15 +410,13 @@ async function preprocessImageForSimah(file) {
 
 async function extractWithTesseract(file) {
     try {
-        statusDiv.innerText = "جاري معالجة الصورة... 🔧";
         const processedFile = await preprocessImageForSimah(file);
-        statusDiv.innerText = "جاري قراءة الحسابات... ⏳";
         const worker = await Tesseract.createWorker('eng');
         await worker.setParameters({ tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' });
         const { data: { text } } = await worker.recognize(processedFile);
         await worker.terminate();
         extractAccounts(text);
-    } catch (err) { statusDiv.innerText = "فشل في القراءة ❌"; }
+    } catch (err) { showToast("فشل في القراءة ❌", true); }
 }
 
 function extractAccounts(rawText) {
@@ -405,7 +464,11 @@ function extractAccounts(rawText) {
         }
     }
 
-    statusDiv.innerText = found.length > 0 ? `وجد ${found.length} حسابات` : "لم يتم العثور على حسابات ❌";
+    if (found.length > 0) {
+        showToast(`وجد ${found.length} حسابات`, false);
+    } else {
+        showToast("لم يتم العثور على حسابات ❌", true);
+    }
 }
 
 function highlightSuspectCharacters(text) {
@@ -477,7 +540,6 @@ function removeCard(cardId) {
     window.speechSynthesis.cancel();
     if (resultsArea.children.length === 0) {
         resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>';
-        statusDiv.innerText = "جاهز لسحب الحسابات";
     }
 }
 
@@ -505,12 +567,11 @@ function renderList() {
 
 function copy(val, index) {
     const proceedWithVisuals = () => {
-        statusDiv.innerText = "تم النسخ! 📋";
+        showToast("تم النسخ! 📋");
         const cardEl = document.getElementById(`fc_${index}`);
         if (cardEl && !cardEl.classList.contains('copied')) {
             cardEl.classList.add('copied');
         }
-        setTimeout(() => statusDiv.innerText = "جاهز..", 1000);
     };
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -531,7 +592,7 @@ function fallbackCopy(text, callback) {
         document.execCommand('copy');
         callback();
     } catch (err) {
-        statusDiv.innerText = "فشل النسخ ❌";
+        showToast("فشل النسخ ❌", true);
     }
     document.body.removeChild(textArea);
 }
@@ -540,8 +601,7 @@ function clearFinalList() {
     savedAccountsList = [];
     renderList();
     window.speechSynthesis.cancel();
-    statusDiv.innerText = "تم مسح القائمة 🗑️";
-    setTimeout(() => statusDiv.innerText = "جاهز..", 1000);
+    showToast("تم مسح القائمة 🗑️");
 }
 
 // Global window bindings

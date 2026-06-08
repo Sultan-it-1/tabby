@@ -280,15 +280,6 @@
                 </div>
             </div>
 
-            <div class="setting-group">
-                <div class="switch-container">
-                    <label style="margin:0;">المزامنة السحابية التلقائية (Drive)</label>
-                    <label class="switch">
-                        <input type="checkbox" id="autoSyncToggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
 
             <div class="setting-group">
                 <label>اللون الأساسي</label>
@@ -340,6 +331,10 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>Sticky Notes (tool 4):</span>
                         <button class="key-bind-btn" data-key="nav4" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">4</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>CIA Maker (tool 5):</span>
+                        <button class="key-bind-btn" data-key="nav5" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">5</button>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
                         <span>الرئيسية (Home):</span>
@@ -399,16 +394,12 @@
             const colorBtns = document.querySelectorAll('.color-btn');
             const resetBtn = document.getElementById('resetBtn');
             
-            const autoSyncToggle = document.getElementById('autoSyncToggle');
+
             const exportAllBtn = document.getElementById('exportAllBtn');
             const importAllBtn = document.getElementById('importAllBtn');
             const importAllFile = document.getElementById('importAllFile');
 
-            // Load autoSync status
-            autoSyncToggle.checked = localStorage.getItem('autoSyncGDrive') === 'true';
-            autoSyncToggle.addEventListener('change', () => {
-                localStorage.setItem('autoSyncGDrive', autoSyncToggle.checked ? 'true' : 'false');
-            });
+
 
             let selectedColor = currentSettings.themeColor;
             modeToggle.checked = (currentSettings.mode === 'light');

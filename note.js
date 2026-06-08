@@ -54,11 +54,19 @@ function render() {
 
     const containersToRender = isSearching ? ['c1', 'c2', 'c3'] : [currentContainer];
 
+    let totalNotesInTab = 0;
+    let hasSections = false;
+
     containersToRender.forEach(cId => {
         ensureContainerSafety(cId);
         const sections = storageData[cId];
 
         for (let cat in sections) {
+            if (!isSearching && cId === currentContainer) {
+                hasSections = true;
+                totalNotesInTab += sections[cat].length;
+            }
+
             const filteredItems = sections[cat].filter(item => {
                 const labelSafe = item.l ? item.l.toLowerCase() : '';
                 const textSafe = item.t ? item.t.toLowerCase() : '';
@@ -327,14 +335,39 @@ function render() {
             justify-content: center; height: 100%; gap: 8px;
             color: #333; user-select: none; padding: 10px;
         `;
-        empty.innerHTML = `
-            <div style="font-size:32px;opacity:0.3;">📋</div>
-            <div style="font-size:10px;color:#444;text-align:center;line-height:1.6;">
-                لا توجد أقسام بعد<br>
-                <span style="color:var(--accent-green);opacity:0.7;">اضغط "+ قسم" للبدء</span>
+        if (isSearching) {
+            empty.innerHTML = `
+                <div style="font-size:32px;opacity:0.3;">🔍</div>
+                <div style="font-size:10px;color:#444;text-align:center;line-height:1.6;">
+                    لا توجد نتائج مطابقة لبحثك
+                </div>
+            `;
+        } else {
+            empty.innerHTML = `
+                <div style="font-size:32px;opacity:0.3;">📋</div>
+                <div style="font-size:10px;color:#444;text-align:center;line-height:1.6;">
+                    لا توجد أقسام بعد<br>
+                    <span style="color:var(--accent-green);opacity:0.7;">اضغط "+ قسم" للبدء</span>
+                </div>
+            `;
+        }
+        container.appendChild(empty);
+    } else if (!isSearching && hasSections && totalNotesInTab === 0) {
+        // Sections exist but no notes in the entire current tab
+        const emptyNotes = document.createElement('div');
+        emptyNotes.style.cssText = `
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 20px 10px; opacity: 0.6;
+            user-select: none; margin-top: 20px;
+        `;
+        emptyNotes.innerHTML = `
+            <div style="font-size:24px; margin-bottom:4px;">📭</div>
+            <div style="font-size:10px; color:#666; text-align:center; line-height:1.6;">
+                لا توجد اختصارات في هذا التبويب<br>
+                <span style="color:var(--accent-green);opacity:0.8;">اضغط على (+) بجوار القسم للإضافة</span>
             </div>
         `;
-        container.appendChild(empty);
+        container.appendChild(emptyNotes);
     }
 
     checkBackupStatus();
@@ -597,10 +630,49 @@ function importData(e) {
 }
 window.importData = importData;
 
+function showToast(message, isError = false, duration = 2500) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return { remove: () => {}, update: () => {} };
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = message;
+    
+    if (isError) {
+        toast.style.color = '#ff4444';
+        toast.style.borderColor = 'rgba(255,68,68,0.3)';
+    }
+
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    let timeoutId;
+    const remove = () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    };
+
+    if (duration > 0) {
+        timeoutId = setTimeout(remove, duration);
+    }
+
+    return {
+        remove,
+        update: (newMessage, newIsError) => {
+            toast.innerHTML = newMessage;
+            if (newIsError !== undefined) {
+                toast.style.color = newIsError ? '#ff4444' : 'var(--accent-green)';
+                toast.style.borderColor = newIsError ? 'rgba(255,68,68,0.3)' : 'rgba(0,200,100,0.2)';
+            }
+        }
+    };
+}
+
 function showStatus(msg) {
-    const s = document.getElementById('status');
-    s.innerText = msg;
-    setTimeout(() => s.innerText = "جاهز..", 1500);
+    showToast(msg, msg.includes('❌') || msg.includes('⚠️'));
 }
 
 function openSectionModal() {
@@ -704,19 +776,9 @@ function confirmDeleteAll() {
 }
 window.confirmDeleteAll = confirmDeleteAll;
 
-let autoSyncTimeout = null;
 function saveAndRefresh() {
     localStorage.setItem('copyGridDataV6', JSON.stringify(storageData));
     render();
-
-    // المزامنة التلقائية الخلفية
-    const isAutoSync = localStorage.getItem('autoSyncGDrive') === 'true';
-    if (isAutoSync) {
-        clearTimeout(autoSyncTimeout);
-        autoSyncTimeout = setTimeout(() => {
-            triggerBackgroundCloudSync();
-        }, 2000);
-    }
 }
 
 function exportData() {
@@ -967,14 +1029,3 @@ window.toggleSortMode = toggleSortMode;
 updateCardSyncBadge();
 render();
 
-// تهيئة مربع المزامنة التلقائية
-const autoSyncCheckbox = document.getElementById('autoSyncCheckbox');
-if (autoSyncCheckbox) {
-    autoSyncCheckbox.checked = localStorage.getItem('autoSyncGDrive') === 'true';
-    autoSyncCheckbox.addEventListener('change', () => {
-        localStorage.setItem('autoSyncGDrive', autoSyncCheckbox.checked ? 'true' : 'false');
-        if (autoSyncCheckbox.checked) {
-            triggerBackgroundCloudSync();
-        }
-    });
-}

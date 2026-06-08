@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   "./simah.html",
   "./card.html",
   "./sticky.html",
+  "./cia.html",
   "./settings.html",
   "./settings.js",
   "./version.js",
@@ -16,6 +17,7 @@ const ASSETS_TO_CACHE = [
   "./card.js",
   "./simah.js",
   "./sticky.js",
+  "./cia.js",
   "./icon.png",
   "./Apple.png",
   "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"
@@ -26,9 +28,8 @@ self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
-    })
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 // Activate Event

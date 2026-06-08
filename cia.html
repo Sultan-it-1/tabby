@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIA Maker - FAST TOOLKIT</title>
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 8px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 13px;
+            color: var(--accent-green);
+            margin: 0;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            color: var(--accent-green);
+        }
+
+        .content-scroll {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .content-scroll::-webkit-scrollbar { width: 3px; }
+        .content-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .section-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+
+        .actions {
+            display: flex;
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 2px;
+            border-radius: 6px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 3px 4px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0.6;
+            filter: grayscale(0.8);
+        }
+        .icon-btn:hover {
+            opacity: 1;
+            filter: grayscale(0);
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.15);
+        }
+        .icon-btn.del:hover {
+            background: rgba(255, 68, 68, 0.15);
+        }
+
+        select {
+            width: 100%;
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 10px;
+            outline: none;
+            font-family: inherit;
+        }
+        select:focus {
+            border-color: var(--accent-green);
+        }
+
+        .generate-btn {
+            background: var(--accent-green);
+            color: #000;
+            border: none;
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: auto;
+            margin-bottom: 4px;
+            transition: 0.2s;
+        }
+        .generate-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        .backup-row {
+            display: flex;
+            gap: 4px;
+            border-top: 1px solid var(--border);
+            padding-top: 5px;
+            margin-top: 2px;
+        }
+
+        .backup-btn {
+            flex: 1;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #999;
+            padding: 6px 4px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .backup-btn:hover {
+            color: #eee;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .backup-btn.danger:hover {
+            color: #ff4444;
+            border-color: rgba(255, 68, 68, 0.3);
+            background: rgba(255, 68, 68, 0.1);
+        }
+        .backup-btn.primary:hover {
+            color: #4285f4;
+            border-color: rgba(66, 133, 244, 0.3);
+            background: rgba(66, 133, 244, 0.1);
+        }
+
+        .status {
+            display: none; /* Removed in favor of toast */
+        }
+
+        .backup-dot {
+            width: 6px;
+            height: 6px;
+            background: #ffaa00;
+            border-radius: 50%;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 0 6px #ffaa00;
+            cursor: help;
+        }
+
+        .backup-dot::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            background: #333;
+            color: #ffaa00;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.2s;
+            border: 1px solid #ffaa00;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .backup-dot:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 200;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(15, 15, 15, 0.95);
+            color: #fff;
+            border: 1px solid var(--accent-green);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.error {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        /* Drag & Drop */
+        body.drag-over .container {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 20px color-mix(in srgb, var(--accent-green) 40%, transparent);
+            transform: scale(1.02);
+            transition: all 0.3s;
+        }
+        body.drag-over::after {
+            content: '📂 أفلت ملف JSON هنا...';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-green);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 6px;
+            margin-bottom: 2px;
+        }
+        .auto-copy-label {
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            color: var(--text);
+            font-weight: bold;
+        }
+        .auto-copy-label input {
+            accent-color: var(--accent-green);
+            cursor: pointer;
+            margin: 0;
+        }
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 2px;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .clear-btn:hover {
+            color: #ff4444;
+            transform: rotate(180deg);
+        }
+
+        .modal {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            padding: 10px;
+        }
+        .modal.open { display: flex; }
+
+        .modal-content {
+            background: #1c1c1c;
+            padding: 12px;
+            border-radius: 8px;
+            width: 100%;
+            border: 1px solid var(--accent-green);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .modal-content input, .modal-content textarea {
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            outline: none;
+            font-family: inherit;
+        }
+        .modal-content textarea {
+            resize: vertical;
+        }
+        .modal-content input:focus, .modal-content textarea:focus { border-color: var(--accent-green); }
+
+        .modal-btns {
+            display: flex;
+            gap: 4px;
+        }
+        .modal-btns button {
+            flex: 1;
+            padding: 6px;
+            border-radius: 4px;
+            border: none;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-save { background: var(--accent-green); color: #000; }
+        .btn-cancel { background: #333; color: #fff; }
+
+        .confirm-box {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px;
+            background: #222;
+            border: 1px solid #ff4444;
+            border-radius: 6px;
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            right: 10px;
+            z-index: 110;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+        }
+
+        .confirm-txt {
+            font-size: 11px;
+            color: #fff;
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <h1 style="flex-grow: 1; text-align: center; padding-left: 24px; margin: 0;">CIA Maker 📋</h1>
+        </div>
+
+        <div class="content-scroll">
+
+            <div class="toolbar">
+                <label class="auto-copy-label">
+                    <input type="checkbox" id="autoCopyCb"> نسخ تلقائي ⚡
+                </label>
+                <button class="clear-btn" onclick="clearSelections()" title="تفريغ الحقول">🔄</button>
+            </div>
+            
+            <div class="section-box">
+                <div class="section-header">
+                    <div class="section-title">C : Customer Problem</div>
+                    <div class="actions">
+                        <button class="icon-btn" onclick="moveSelected('C', -1)" title="أعلى">⬆️</button>
+                        <button class="icon-btn" onclick="moveSelected('C', 1)" title="أسفل">⬇️</button>
+                        <button class="icon-btn" onclick="openEditModal('C')" title="تعديل">✏️</button>
+                        <button class="icon-btn" onclick="openAddModal('C')" title="إضافة">➕</button>
+                        <button class="icon-btn del" onclick="deleteSelected('C')" title="حذف المحدد">🗑️</button>
+                    </div>
+                </div>
+                <select id="select-C" onchange="handleProblemChange()">
+                    <option value="">-- اختر المشكلة --</option>
+                </select>
+            </div>
+
+            <div class="section-box" id="section-I">
+                <div class="section-header">
+                    <div class="section-title">I : Investigation</div>
+                    <div class="actions">
+                        <button class="icon-btn" onclick="moveSelected('I', -1)" title="أعلى">⬆️</button>
+                        <button class="icon-btn" onclick="moveSelected('I', 1)" title="أسفل">⬇️</button>
+                        <button class="icon-btn" onclick="openEditModal('I')" title="تعديل">✏️</button>
+                        <button class="icon-btn" onclick="openAddModal('I')" title="إضافة">➕</button>
+                        <button class="icon-btn del" onclick="deleteSelected('I')" title="حذف المحدد">🗑️</button>
+                    </div>
+                </div>
+                <select id="select-I" onchange="handleSubSelectChange()">
+                    <option value="">-- اختر الفحص --</option>
+                </select>
+            </div>
+
+            <div class="section-box" id="section-A">
+                <div class="section-header">
+                    <div class="section-title">A : Action</div>
+                    <div class="actions">
+                        <button class="icon-btn" onclick="moveSelected('A', -1)" title="أعلى">⬆️</button>
+                        <button class="icon-btn" onclick="moveSelected('A', 1)" title="أسفل">⬇️</button>
+                        <button class="icon-btn" onclick="openEditModal('A')" title="تعديل">✏️</button>
+                        <button class="icon-btn" onclick="openAddModal('A')" title="إضافة">➕</button>
+                        <button class="icon-btn del" onclick="deleteSelected('A')" title="حذف المحدد">🗑️</button>
+                    </div>
+                </div>
+                <select id="select-A" onchange="handleSubSelectChange()">
+                    <option value="">-- اختر الإجراء --</option>
+                </select>
+            </div>
+
+        </div>
+
+        <button class="generate-btn" onclick="generateCIA()">توليد ونسخ 📋</button>
+
+        <div class="backup-row">
+            <button class="backup-btn" onclick="exportCIAData()" title="تصدير نسخة JSON">💾</button>
+            <button class="backup-btn" onclick="document.getElementById('importFile').click()" title="استيراد ملف JSON">📂</button>
+            <button class="backup-btn danger" onclick="triggerDeleteAll()" title="مسح الكل">🗑️</button>
+            <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importCIAData(event)">
+        </div>
+        
+        <div class="backup-row" style="margin-top: 4px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
+            <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('backup')">☁️ نسخ (Drive)</button>
+            <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('restore')">☁️ استعادة (Drive)</button>
+        </div>
+
+        <div style="display: flex; justify-content: flex-start; padding-top: 4px; margin-bottom: -4px; height: 6px;">
+            <div id="backupDot" class="backup-dot" data-tooltip=""></div>
+        </div>
+
+        <div class="toast-container" id="toastContainer"></div>
+
+        <!-- Add Modal -->
+        <div class="modal" id="addModal">
+            <div class="modal-content">
+                <div style="font-size: 11px; font-weight: bold; color: var(--accent-green); margin-bottom: 4px;" id="modalTitle">إضافة جديد</div>
+                <textarea id="newItemInput" placeholder="اكتب النص هنا..." dir="auto" rows="4"></textarea>
+                <div class="modal-btns">
+                    <button class="btn-save" onclick="saveNewItem()">حفظ</button>
+                    <button class="btn-cancel" onclick="closeModal()">إلغاء</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Box (like note.html) -->
+        <div id="confirmBox" class="confirm-box">
+            <div id="confirmTxt" class="confirm-txt">هل أنت متأكد؟</div>
+            <div class="modal-btns">
+                <button class="btn-save" style="background:#ff4444;color:#fff;" id="confirmYesBtn">نعم</button>
+                <button class="btn-cancel" onclick="closeConfirmBox()">إلغاء</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Delete All Modal -->
+    <div class="modal" id="deleteAllModal">
+        <div class="modal-content" style="border-color: #ff4444 !important; max-width: 200px; align-self: center; margin: auto;">
+            <h3 style="color:#ff4444; margin: 0 0 8px 0; font-size:13px; text-align:center;">⚠️ مسح جميع البيانات؟</h3>
+            <p style="font-size:11px; color: var(--text); margin:0 0 10px 0; line-height:1.4; text-align:center; font-weight:bold;">
+                سيتم حذف جميع المشاكل والفحوصات والإجراءات نهائياً ولا يمكن استعادتها.
+            </p>
+            <p style="font-size:10px; color: var(--text); opacity: 0.9; margin:0 0 8px 0; text-align:center;">
+                اكتب <strong style="color:#ff3333; background:rgba(255, 68, 68, 0.15); padding:2px 5px; border-radius:3px; font-family:monospace; user-select:all;">delete all</strong> للتأكيد:
+            </p>
+            <input type="text" id="deleteAllConfirmInput" placeholder="اكتب التأكيد هنا..." dir="ltr" style="text-align:center; border-color:#ff4444 !important; margin-bottom:8px;">
+            <div class="modal-btns">
+                <button class="btn-save" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
+                <button class="btn-cancel" onclick="closeModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        document.write('<script src="cia.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</body>
+</html>

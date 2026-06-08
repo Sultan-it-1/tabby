@@ -10,6 +10,38 @@ const settingsModal = document.getElementById('settingsModal');
 const geminiKeyInput = document.getElementById('geminiKeyInput');
 const groqKeyInput = document.getElementById('groqKeyInput');
 
+function showToast(message, isError = false, duration = 2500) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${isError ? 'error' : ''}`;
+    toast.innerText = message;
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    if (duration > 0) {
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+    
+    return {
+        remove: () => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        },
+        update: (newMsg, newIsError = false) => {
+            toast.innerText = newMsg;
+            if (newIsError) toast.classList.add('error');
+            else toast.classList.remove('error');
+        }
+    };
+}
+
 let isEditMode = false;
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
 let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
@@ -130,39 +162,44 @@ function saveScanToHistory(data) {
 }
 
 async function processImage(file) {
-    dropZone.classList.add('active');
+    dropZone.classList.add('active', 'processing');
+    let loadingToast;
     if (isAIActive) {
         if (currentProvider === 'groq') {
-            statusDiv.innerText = "جاري الاستخراج عبر Groq... 🧠";
+            loadingToast = showToast("جاري الاستخراج عبر Groq... 🧠", false, 0);
             const groqKey = localStorage.getItem('simah_groq_key');
             if (!groqKey) {
-                statusDiv.innerText = "مفتاح Groq مفقود ❌";
-                dropZone.classList.remove('active');
+                loadingToast.remove();
+                showToast("مفتاح Groq مفقود ❌", true);
+                dropZone.classList.remove('active', 'processing');
                 return;
             }
-            await extractCardWithGroq(file, groqKey);
+            await extractCardWithGroq(file, groqKey, loadingToast);
         } else {
-            statusDiv.innerText = "جاري الاستخراج عبر Gemini... 🧠";
+            loadingToast = showToast("جاري الاستخراج عبر Gemini... 🧠", false, 0);
             const apiKey = localStorage.getItem('simah_ai_key');
             if (!apiKey) {
-                statusDiv.innerText = "مفتاح Gemini مفقود ❌";
-                dropZone.classList.remove('active');
+                loadingToast.remove();
+                showToast("مفتاح Gemini مفقود ❌", true);
+                dropZone.classList.remove('active', 'processing');
                 return;
             }
-            await extractCardWithAI(file, apiKey);
+            await extractCardWithAI(file, apiKey, loadingToast);
         }
     } else {
-        statusDiv.innerText = "جاري معالجة الصورة... 🔧";
+        loadingToast = showToast("جاري معالجة الصورة... 🔧", false, 0);
         try {
             const processedFile = await preprocessImage(file);
-            statusDiv.innerText = "جاري القراءة... ⏳";
+            loadingToast.update("جاري القراءة... ⏳");
             const { data: { text } } = await Tesseract.recognize(processedFile, 'eng+ara');
+            loadingToast.remove();
             parseData(text);
         } catch (err) {
-            statusDiv.innerText = "خطأ في القراءة ❌";
+            loadingToast.remove();
+            showToast("خطأ في القراءة ❌", true);
         }
     }
-    dropZone.classList.remove('active');
+    dropZone.classList.remove('active', 'processing');
 }
 
 function detectCardMeta(text) {
@@ -365,7 +402,7 @@ function parseData(rawText) {
     localStorage.setItem('cardScannerData', JSON.stringify(savedData));
     saveScanToHistory(savedData);
 
-    statusDiv.innerText = "تم النسخ والتحليل! ✅";
+    showToast("تم النسخ والتحليل! ✅");
     secureCopy(finalResult);
 }
 
@@ -425,7 +462,7 @@ function toggleEditMode() {
             localStorage.setItem('cardScannerData', JSON.stringify(savedData));
 
             secureCopy(updatedText);
-            statusDiv.innerText = "تم تحديث البيانات ونسخها! 💾";
+            showToast("تم تحديث البيانات ونسخها! 💾");
         } else {
             // في حال مسح النص بالكامل، أعد الحالة الافتراضية
             clearData();
@@ -447,7 +484,7 @@ function clearData() {
         editBtn.innerText = '✏️';
     }
 
-    statusDiv.innerText = "تم مسح البيانات 🗑️";
+    showToast("تم مسح البيانات 🗑️");
 }
 
 function openGateway(url, name) {
@@ -456,7 +493,7 @@ function openGateway(url, name) {
     }
     const msg = `Checking ${name} gateway`;
     secureCopy(msg).then(() => {
-        statusDiv.innerText = "نسخ: " + name;
+        showToast("نسخ: " + name);
     });
 }
 
@@ -464,7 +501,7 @@ function copyMe(element) {
     if (isEditMode) return;
     if (element.innerText === "-") return;
     secureCopy(element.innerText).then(() => {
-        statusDiv.innerText = `نسخ: ${element.innerText}`;
+        showToast(`نسخ: ${element.innerText}`);
     });
 }
 
@@ -473,7 +510,7 @@ function copyFull() {
     const text = outputDiv.innerText;
     if (text.includes("البيانات")) return;
     secureCopy(text).then(() => {
-        statusDiv.innerText = "تم نسخ السطر كاملاً";
+        showToast("تم نسخ السطر كاملاً");
     });
 }
 
@@ -485,7 +522,7 @@ function copyFriendlySummary() {
     const date = document.getElementById('chip-date').innerText.trim();
 
     if (card === "-" && amount === "-" && time === "-" && date === "-") {
-        statusDiv.innerText = "لا توجد بيانات لنسخها! ❌";
+        showToast("لا توجد بيانات لنسخها! ❌", true);
         return;
     }
 
@@ -498,10 +535,22 @@ function copyFriendlySummary() {
         }
     }
 
-    const summary = `Here are the transaction details:\nAmount: ${amount}\nCard ending in: ${card}\nTime: ${time}\nDate: ${fullDate}`;
+    let summary = `Here are the transaction details:\nAmount: ${amount}\nCard ending in: ${card}\nTime: ${time}\nDate: ${fullDate}`;
+    
+    // Add Apple Pay / Declined status as requested
+    const isApplePay = document.getElementById('networkBadge').innerHTML.includes('Apple.png');
+    const isDeclined = document.getElementById('declineBadge').style.display !== 'none';
+    
+    if (isApplePay && isDeclined) {
+        summary += `\nType: Apple Pay (Declined)`;
+    } else if (isApplePay) {
+        summary += `\nType: Apple Pay`;
+    } else if (isDeclined) {
+        summary += `\nStatus: Declined`;
+    }
+
     secureCopy(summary).then(() => {
-        statusDiv.innerText = "تم نسخ التقرير الملخص 📋";
-        setTimeout(() => statusDiv.innerText = "جاهز..", 2000);
+        showToast("تم نسخ التقرير الملخص 📋");
     });
 }
 
@@ -513,10 +562,10 @@ function toggleAI() {
     localStorage.setItem('simah_ai_pref', isAIActive);
     if (isAIActive) {
         aiBtn.className = 'ai-btn active';
-        statusDiv.innerText = "تم تفعيل الـ AI للاستخراج 🧠";
+        showToast("تم تفعيل الـ AI للاستخراج 🧠");
     } else {
         aiBtn.className = 'ai-btn';
-        statusDiv.innerText = "تم إيقاف الـ AI (استخدام القارئ المحلي) 📁";
+        showToast("تم إيقاف الـ AI (استخدام القارئ المحلي) 📁");
     }
 }
 
@@ -551,8 +600,7 @@ function saveApiKey() {
     closeSettings();
 
     const providerName = currentProvider === 'groq' ? 'Groq' : 'Gemini';
-    statusDiv.innerText = `تم الحفظ — المزود: ${providerName} ✅`;
-    setTimeout(() => statusDiv.innerText = "جاهز..", 2000);
+    showToast(`تم الحفظ — المزود: ${providerName} ✅`);
 }
 
 // ======== نظام تتبع الاستخدام المشترك ========
@@ -679,83 +727,113 @@ function refreshUsageModal() {
     }
 }
 
-async function extractCardWithAI(file, apiKey) {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-        try {
-            const base64String = reader.result.split(',')[1];
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success" },
-                        { inlineData: { mimeType: file.type, data: base64String } }
-                    ]
-                }]
-            };
+async function extractCardWithAI(file, apiKey, loadingToast) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            try {
+                const base64String = reader.result.split(',')[1];
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success" },
+                            { inlineData: { mimeType: file.type, data: base64String } }
+                        ]
+                    }]
+                };
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            if (!response.ok) throw new Error('API Error');
+                if (!response.ok) throw new Error('API Error');
 
-            recordUsage('gemini');
+                recordUsage('gemini');
 
-            const data = await response.json();
-            if (data.candidates && data.candidates[0].content.parts[0].text) {
-                parseAIResult(data.candidates[0].content.parts[0].text.trim());
-            } else {
-                parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // success // yes');
+                const data = await response.json();
+                if (loadingToast) loadingToast.remove();
+                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
+                    parseAIResult(data.candidates[0].content.parts[0].text.trim());
+                } else if (data.candidates && data.candidates[0].finishReason) {
+                    showToast("حظر AI: " + data.candidates[0].finishReason, true, 4000);
+                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // declined');
+                } else if (data.error) {
+                    showToast("خطأ API: " + data.error.message, true, 4000);
+                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // declined');
+                } else {
+                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // declined');
+                }
+                resolve();
+            } catch (err) {
+                if (loadingToast) loadingToast.remove();
+                showToast("خطأ AI: " + err.message, true, 4000);
+                resolve();
             }
-        } catch (err) {
-            statusDiv.innerText = "خطأ في مفتاح الـ AI ❌";
-        }
-    };
+        };
+        reader.onerror = () => {
+            if (loadingToast) loadingToast.remove();
+            showToast("فشل قراءة الملف ❌", true);
+            resolve();
+        };
+    });
 }
 
-async function extractCardWithGroq(file, groqKey) {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-        try {
-            const base64Url = reader.result;
-            const payload = {
-                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-                messages: [{
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success" },
-                        { type: 'image_url', image_url: { url: base64Url } }
-                    ]
-                }]
-            };
+async function extractCardWithGroq(file, groqKey, loadingToast) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            try {
+                const base64Url = reader.result;
+                const payload = {
+                    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: "Extract the payment/transaction details from this image. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success" },
+                            { type: 'image_url', image_url: { url: base64Url } }
+                        ]
+                    }]
+                };
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${groqKey}`
-                },
-                body: JSON.stringify(payload)
-            });
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${groqKey}`
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-            if (!response.ok) throw new Error('Groq API Error');
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error ? data.error.message : 'Unknown API Error');
+                }
 
-            recordUsage('groq');
+                recordUsage('groq');
 
-            const data = await response.json();
-            if (data.choices && data.choices[0].message.content) {
-                parseAIResult(data.choices[0].message.content.trim());
-            } else {
-                parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // success // yes');
+                if (loadingToast) loadingToast.remove();
+                if (data.choices && data.choices[0].message && data.choices[0].message.content) {
+                    parseAIResult(data.choices[0].message.content.trim());
+                } else {
+                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // success // yes');
+                }
+                resolve();
+            } catch (err) {
+                if (loadingToast) loadingToast.remove();
+                showToast("خطأ Groq: " + err.message, true, 5000);
+                resolve();
             }
-        } catch (err) {
-            statusDiv.innerText = "خطأ في مفتاح Groq أو الاتصال ❌";
-        }
-    };
+        };
+        reader.onerror = () => {
+            if (loadingToast) loadingToast.remove();
+            showToast("فشل قراءة الملف ❌", true);
+            resolve();
+        };
+    });
 }
 
 function parseAIResult(aiText) {
@@ -868,7 +946,7 @@ function parseAIResult(aiText) {
     localStorage.setItem('cardScannerData', JSON.stringify(savedData));
     saveScanToHistory(savedData);
 
-    statusDiv.innerText = "تم النسخ والتحليل بالـ AI! ✅";
+    showToast("تم النسخ والتحليل بالـ AI! ✅");
     secureCopy(finalResult);
 }
 
@@ -896,23 +974,25 @@ function renderHistoryModal() {
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00ff00';
     
     if (history.length === 0) {
-        modal.innerHTML = `<div style="color:#555;text-align:center;padding:20px;font-size:10px;">لا يوجد سجل مسح بعد 🕒</div><button onclick="document.getElementById('historyModal').style.display='none'" style="width:100%;padding:3px;background:#222;color:#888;border:1px solid #333;border-radius:4px;font-size:8px;font-weight:bold;cursor:pointer;margin-top:4px;">إغلاق</button>`;
+        modal.innerHTML = `<div style="color:#555;text-align:center;padding:20px;font-size:10px;">لا يوجد سجل مسح بعد 🕒</div><button onclick="document.getElementById('historyModal').style.display='none'" style="width:100%;padding:5px;background:rgba(255,255,255,0.05);color:#888;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;margin-top:4px;transition:0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.color='#888';this.style.background='rgba(255,255,255,0.05)'">إغلاق</button>`;
         return;
     }
 
     modal.innerHTML = `
-        <div style="font-size:9px;font-weight:bold;color:${accent};margin-bottom:6px;text-align:center;border-bottom:1px solid #333;padding-bottom:4px;">🕒 آخر ${history.length} عمليات مسح</div>
+        <div style="font-size:10px;font-weight:bold;color:${accent};margin-bottom:8px;text-align:center;padding-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="flex-grow:1;">🕒 آخر ${history.length} عمليات مسح</span>
+            <button onclick="localStorage.removeItem('cardScannerHistory');renderHistoryModal();showToast('تم مسح السجل 🗑️');" style="background:transparent;border:none;color:#ff4444;cursor:pointer;font-size:12px;opacity:0.6;transition:0.2s;" onmouseover="this.style.opacity=1;this.style.transform='scale(1.1)'" onmouseout="this.style.opacity=0.6;this.style.transform='scale(1)'" title="مسح السجل">🗑️</button>
+        </div>
         ${history.map((h, i) => {
             const t = new Date(h.scannedAt);
             const timeStr = t.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
             const dateStr = t.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
-            return `<div onclick="restoreFromHistory(${i})" style="cursor:pointer;background:#0a0a0a;border:1px solid #222;border-left:3px solid ${accent};border-radius:4px;padding:5px 8px;margin-bottom:3px;direction:ltr;" title="اضغط لاستعادة وتحديد">
-                <div style="font-family:monospace;font-size:10px;font-weight:bold;color:${accent};">${h.fullText}</div>
-                <div style="font-size:8px;color:#555;margin-top:2px;">${dateStr} — ${timeStr}</div>
+            return `<div onclick="restoreFromHistory(${i})" style="cursor:pointer;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-right:3px solid ${accent};border-radius:6px;padding:6px 8px;margin-bottom:4px;direction:ltr;transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.borderColor='${accent}'" onmouseout="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.05)'" title="اضغط لاستعادة وتحديد">
+                <div style="font-family:monospace;font-size:11px;font-weight:bold;color:#eee;">${h.fullText}</div>
+                <div style="font-size:8px;color:#777;margin-top:4px;display:flex;justify-content:space-between;"><span>${dateStr}</span><span>${timeStr}</span></div>
             </div>`;
         }).join('')}
-        <button onclick="localStorage.removeItem('cardScannerHistory');renderHistoryModal();" style="width:100%;padding:3px;background:#1a0505;color:#ff4444;border:1px solid #331111;border-radius:4px;font-size:8px;font-weight:bold;cursor:pointer;margin-top:4px;">مسح السجل 🗑️</button>
-        <button onclick="document.getElementById('historyModal').style.display='none'" style="width:100%;padding:3px;background:#222;color:#888;border:1px solid #333;border-radius:4px;font-size:8px;font-weight:bold;cursor:pointer;margin-top:3px;">إغلاق</button>
+        <button onclick="document.getElementById('historyModal').style.display='none'" style="width:100%;padding:5px;background:rgba(255,255,255,0.05);color:#888;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;margin-top:6px;transition:0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.color='#888';this.style.background='rgba(255,255,255,0.05)'">إغلاق</button>
     `;
 }
 
@@ -925,7 +1005,7 @@ function restoreFromHistory(index) {
     const savedData = { fullText: h.fullText, card: h.card, amount: h.amount, time: h.time, date: h.date, cleanText: h.cleanText || h.fullText };
     localStorage.setItem('cardScannerData', JSON.stringify(savedData));
     secureCopy(h.fullText);
-    statusDiv.innerText = "تم استعادة البيانات! ✅";
+    showToast("تم استعادة البيانات! ✅");
     document.getElementById('historyModal').style.display = 'none';
 }
 window.restoreFromHistory = restoreFromHistory;
