@@ -914,6 +914,11 @@
 
     // Global toggle function available to all pages
     window.fastToolkitToggleExpand = function () {
+        document.documentElement.classList.add('expanded');
+        document.querySelectorAll('.container, .app-container').forEach(el => {
+            el.classList.add('ready');
+            el.classList.add('expanded');
+        });
         return true;
     };
 

@@ -804,7 +804,7 @@ function exportData() {
     a.click();
 
     unbackedUpCount = 0;
-    localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
+    localStorage.setItem('unbackedUpCountV6', '0');
     render();
 }
 window.exportData = exportData;
