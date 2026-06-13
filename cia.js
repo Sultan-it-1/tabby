@@ -122,11 +122,11 @@ function renderSubSelects() {
     const sectionA = document.getElementById('section-A');
 
     if (selectedCIndex !== "") {
-        if(sectionI) { sectionI.style.opacity = "1"; sectionI.style.pointerEvents = "auto"; }
-        if(sectionA) { sectionA.style.opacity = "1"; sectionA.style.pointerEvents = "auto"; }
+        if (sectionI) { sectionI.style.opacity = "1"; sectionI.style.pointerEvents = "auto"; }
+        if (sectionA) { sectionA.style.opacity = "1"; sectionA.style.pointerEvents = "auto"; }
 
         const problem = ciaData.problems[selectedCIndex];
-        
+
         problem.I.forEach((item, index) => {
             const opt = document.createElement('option');
             opt.value = index;
@@ -141,8 +141,8 @@ function renderSubSelects() {
             selectA.appendChild(opt);
         });
     } else {
-        if(sectionI) { sectionI.style.opacity = "0.4"; sectionI.style.pointerEvents = "none"; }
-        if(sectionA) { sectionA.style.opacity = "0.4"; sectionA.style.pointerEvents = "none"; }
+        if (sectionI) { sectionI.style.opacity = "0.4"; sectionI.style.pointerEvents = "none"; }
+        if (sectionA) { sectionA.style.opacity = "0.4"; sectionA.style.pointerEvents = "none"; }
     }
 }
 
@@ -181,7 +181,7 @@ function openEditModal(type) {
     currentEditIndex = selectedIndex;
     const titles = { 'C': 'Customer Problem', 'I': 'Investigation', 'A': 'Action' };
     document.getElementById('modalTitle').innerText = `تعديل ${titles[type]}`;
-    
+
     let currentText = "";
     if (type === 'C') currentText = ciaData.problems[selectedIndex].name;
     else currentText = ciaData.problems[selectCIndex][type][selectedIndex];
@@ -245,7 +245,7 @@ function saveNewItem() {
         // Maintain selection for sub items if C is updated, or I/A
         if (currentAddingType === 'C') renderSubSelects();
         else document.getElementById(`select-${currentAddingType}`).value = currentEditIndex;
-        
+
         showToast('تم التعديل بنجاح ✏️');
     } else {
         // Add new
@@ -297,7 +297,7 @@ function deleteSelected(type) {
     const selectedCIndex = selectC.value;
     const targetSelect = document.getElementById(`select-${type}`);
     const selectedItemIndex = targetSelect.value;
-    
+
     if (type === 'C') {
         if (selectedCIndex === "") {
             showStatus('اختر المشكلة للحذف ⚠️');
@@ -339,7 +339,7 @@ function generateCIA() {
         if (aIndex !== "") aText = prob.A[aIndex];
     }
 
-    const outputText = `C : [ ${cText} ]\nI : [ ${iText} ]\nA : [ ${aText} ]\n#CIA`;
+    const outputText = `C : [ ${cText} ]\n\nI : [ ${iText} ]\n\nA : [ ${aText} ]\n\n#CIA`;
 
     navigator.clipboard.writeText(outputText).then(() => {
         showStatus('تم النسخ بنجاح! 📋✅');
@@ -352,18 +352,18 @@ function generateCIA() {
 function showToast(msg, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    
+
     const toast = document.createElement('div');
     toast.className = `toast ${type === 'error' ? 'error' : ''}`;
     toast.innerText = msg;
-    
+
     container.appendChild(toast);
-    
+
     // Animate in
     requestAnimationFrame(() => {
         toast.classList.add('show');
     });
-    
+
     // Remove after 2.5s
     setTimeout(() => {
         toast.classList.remove('show');
@@ -486,30 +486,30 @@ function executeDriveAction(token, action) {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(checkResponseStatus)
-    .then(res => res.json())
-    .then(data => {
-        const files = data.files || [];
-        const fileId = files.length > 0 ? files[0].id : null;
+        .then(checkResponseStatus)
+        .then(res => res.json())
+        .then(data => {
+            const files = data.files || [];
+            const fileId = files.length > 0 ? files[0].id : null;
 
-        if (action === 'backup') {
-            if (fileId) {
-                updateDriveFile(token, fileId, ciaData);
-            } else {
-                createDriveFile(token, filename, ciaData);
+            if (action === 'backup') {
+                if (fileId) {
+                    updateDriveFile(token, fileId, ciaData);
+                } else {
+                    createDriveFile(token, filename, ciaData);
+                }
+            } else if (action === 'restore') {
+                if (fileId) {
+                    restoreDriveFile(token, fileId);
+                } else {
+                    showStatus("لا توجد نسخة محفوظة ❌");
+                }
             }
-        } else if (action === 'restore') {
-            if (fileId) {
-                restoreDriveFile(token, fileId);
-            } else {
-                showStatus("لا توجد نسخة محفوظة ❌");
-            }
-        }
-    })
-    .catch(err => {
-        console.error("Drive search failed:", err);
-        if (err.message !== "Unauthorized") showStatus("فشل الاتصال بـ Drive ❌");
-    });
+        })
+        .catch(err => {
+            console.error("Drive search failed:", err);
+            if (err.message !== "Unauthorized") showStatus("فشل الاتصال بـ Drive ❌");
+        });
 }
 
 function updateDriveFile(token, fileId, content) {
@@ -522,17 +522,17 @@ function updateDriveFile(token, fileId, content) {
         },
         body: JSON.stringify(content)
     })
-    .then(checkResponseStatus)
-    .then(res => {
-        if (res.ok) {
-            unbackedUpCount = 0;
-            checkBackupStatus();
-            showStatus("تم النسخ السحابي! ☁️✅");
-        } else showStatus("فشل تحديث النسخة ❌");
-    })
-    .catch(err => {
-        if (err.message !== "Unauthorized") showStatus("فشل رفع البيانات ❌");
-    });
+        .then(checkResponseStatus)
+        .then(res => {
+            if (res.ok) {
+                unbackedUpCount = 0;
+                checkBackupStatus();
+                showStatus("تم النسخ السحابي! ☁️✅");
+            } else showStatus("فشل تحديث النسخة ❌");
+        })
+        .catch(err => {
+            if (err.message !== "Unauthorized") showStatus("فشل رفع البيانات ❌");
+        });
 }
 
 function createDriveFile(token, filename, content) {
@@ -545,20 +545,20 @@ function createDriveFile(token, filename, content) {
         },
         body: JSON.stringify({ name: filename, mimeType: 'application/json' })
     })
-    .then(checkResponseStatus)
-    .then(res => res.json())
-    .then(meta => {
-        if (meta && meta.id) {
-            updateDriveFile(token, meta.id, content);
-            unbackedUpCount = 0;
-            checkBackupStatus();
-            showStatus("تم إنشاء ملف سحابي ☁️");
-        }
-        else showStatus("فشل إنشاء الملف ❌");
-    })
-    .catch(err => {
-        if (err.message !== "Unauthorized") showStatus("فشل إنشاء الملف ❌");
-    });
+        .then(checkResponseStatus)
+        .then(res => res.json())
+        .then(meta => {
+            if (meta && meta.id) {
+                updateDriveFile(token, meta.id, content);
+                unbackedUpCount = 0;
+                checkBackupStatus();
+                showStatus("تم إنشاء ملف سحابي ☁️");
+            }
+            else showStatus("فشل إنشاء الملف ❌");
+        })
+        .catch(err => {
+            if (err.message !== "Unauthorized") showStatus("فشل إنشاء الملف ❌");
+        });
 }
 
 function restoreDriveFile(token, fileId) {
@@ -567,26 +567,26 @@ function restoreDriveFile(token, fileId) {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(checkResponseStatus)
-    .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json();
-    })
-    .then(imported => {
-        if (imported && imported.problems && Array.isArray(imported.problems)) {
-            ciaData = imported;
-            unbackedUpCount = 0;
-            saveCIAData();
-            unbackedUpCount = 0; // Because saveCIAData increments it
-            checkBackupStatus();
-            showStatus("تم الاستعادة ☁️");
-        } else {
-            showStatus("ملف غير صالح ❌");
-        }
-    })
-    .catch(err => {
-        if (err.message !== "Unauthorized") showStatus("فشل تحميل البيانات ❌");
-    });
+        .then(checkResponseStatus)
+        .then(res => {
+            if (!res.ok) throw new Error();
+            return res.json();
+        })
+        .then(imported => {
+            if (imported && imported.problems && Array.isArray(imported.problems)) {
+                ciaData = imported;
+                unbackedUpCount = 0;
+                saveCIAData();
+                unbackedUpCount = 0; // Because saveCIAData increments it
+                checkBackupStatus();
+                showStatus("تم الاستعادة ☁️");
+            } else {
+                showStatus("ملف غير صالح ❌");
+            }
+        })
+        .catch(err => {
+            if (err.message !== "Unauthorized") showStatus("فشل تحميل البيانات ❌");
+        });
 }
 
 // Initialize on load

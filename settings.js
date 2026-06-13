@@ -938,6 +938,7 @@
             nav3: "3",
             nav4: "4",
             nav5: "5",
+            nav6: "6",
             navHome: "h",
             search: "/",
             sort: "s",
@@ -1003,6 +1004,8 @@
             if (!window.location.pathname.endsWith('sticky.html')) window.location.href = 'sticky.html';
         } else if (pressedKey === shortcuts.nav5.toLowerCase()) {
             if (!window.location.pathname.endsWith('cia.html')) window.location.href = 'cia.html';
+        } else if (pressedKey === shortcuts.nav6.toLowerCase()) {
+            if (!window.location.pathname.endsWith('date.html')) window.location.href = 'date.html';
         } else if (pressedKey === shortcuts.navHome.toLowerCase()) {
             if (!window.location.pathname.endsWith('index.html') && !window.location.pathname.endsWith('/')) {
                 window.location.href = 'index.html';
@@ -1083,6 +1086,7 @@
                     { key: shortcuts.nav3, desc: 'كارد سكانر' },
                     { key: shortcuts.nav4, desc: 'الستيكي نوت' },
                     { key: shortcuts.nav5, desc: 'CIA Maker' },
+                    { key: shortcuts.nav6, desc: 'Date Helper' },
                 ]
             },
             {

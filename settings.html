@@ -257,6 +257,57 @@
         .btn-reset:hover {
             background: #c82333;
         }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 160px;
+            background-color: #222;
+            color: #eee;
+            text-align: right;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 100;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -80px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 9px;
+            font-weight: normal;
+            border: 1px solid #444;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            pointer-events: none;
+            line-height: 1.4;
+        }
+        
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #444 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .tooltip .tooltiptext ul {
+            margin: 4px 0 0 0;
+            padding-right: 16px;
+            list-style-type: disc;
+        }
     </style>
 </head>
 
@@ -297,12 +348,51 @@
             </div>
 
             <div class="setting-group">
-                <label>النسخ الاحتياطي الشامل (لكل الأدوات)</label>
+                <label style="display: flex; align-items: center; margin-bottom: 2px;">
+                    النسخ الاحتياطي للاعدادات (محلياً)
+                    <div class="tooltip">
+                        <span style="display: inline-flex; justify-content: center; align-items: center; width: 12px; height: 12px; border-radius: 50%; background: #444; color: #fff; font-size: 9px; margin-right: 4px; font-weight: normal;">?</span>
+                        <div class="tooltiptext">
+                            سيتم حفظ:
+                            <ul>
+                                <li>المظهر والألوان والاختصارات</li>
+                                <li>الملاحظات (Sticky Notes)</li>
+                                <li>سجلات وتاريخ Card Scanner</li>
+                                <li>حسابات وتاريخ Simah</li>
+                                <li>إعدادات الـ AI والمسودات</li>
+                            </ul>
+                        </div>
+                    </div>
+                </label>
                 <div style="display: flex; gap: 4px; margin-top: 4px;">
                     <button class="action-btn" id="exportAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">تصدير كامل 💾</button>
                     <button class="action-btn" id="importAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">استيراد كامل 📂</button>
                 </div>
                 <input type="file" id="importAllFile" style="display:none;" accept=".json">
+            </div>
+
+            <div class="setting-group">
+                <label style="display: flex; align-items: center; margin-bottom: 2px;">
+                    النسخ الاحتياطي للاعدادات (Drive)
+                    <div class="tooltip">
+                        <span style="display: inline-flex; justify-content: center; align-items: center; width: 12px; height: 12px; border-radius: 50%; background: #444; color: #fff; font-size: 9px; margin-right: 4px; font-weight: normal;">?</span>
+                        <div class="tooltiptext">
+                            سيتم حفظ:
+                            <ul>
+                                <li>المظهر والألوان والاختصارات</li>
+                                <li>الملاحظات (Sticky Notes)</li>
+                                <li>سجلات وتاريخ Card Scanner</li>
+                                <li>حسابات وتاريخ Simah</li>
+                                <li>إعدادات الـ AI والمسودات</li>
+                            </ul>
+                        </div>
+                    </div>
+                </label>
+                <div style="display: flex; gap: 4px; margin-top: 4px;">
+                    <button class="action-btn" id="driveBackupBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">رفع للـ Drive ☁️</button>
+                    <button class="action-btn" id="driveRestoreBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">استعادة من Drive ☁️</button>
+                </div>
+                <div id="driveStatus" style="font-size: 9px; color: #aaa; margin-top: 4px;"></div>
             </div>
 
             <div class="setting-group">
@@ -608,8 +698,191 @@
                 reader.readAsText(file);
                 e.target.value = '';
             });
+
+            // ====== Drive Unified Backup Logic ======
+            const driveBackupBtn = document.getElementById('driveBackupBtn');
+            const driveRestoreBtn = document.getElementById('driveRestoreBtn');
+            const driveStatus = document.getElementById('driveStatus');
+
+            let gDriveAccessToken = sessionStorage.getItem('gDriveAccessToken') || null;
+
+            function showDriveStatus(msg) {
+                if(driveStatus) driveStatus.innerText = msg;
+            }
+
+            function checkResponseStatus(res) {
+                if (res.status === 401) {
+                    gDriveAccessToken = null;
+                    sessionStorage.removeItem('gDriveAccessToken');
+                    showDriveStatus("انتهت جلسة Drive، يرجى تسجيل الدخول ⚠️");
+                    throw new Error("Unauthorized");
+                }
+                return res;
+            }
+
+            function triggerCloudAction(action) {
+                const clientId = window.GOOGLE_CLIENT_ID;
+                if (!clientId) {
+                    showDriveStatus("إعدادات Drive غير متوفرة ⚠️");
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+                    showDriveStatus("خطأ في مكتبة Google ❌");
+                    return;
+                }
+
+                showDriveStatus("جاري الاتصال بـ Google... ☁️");
+                try {
+                    const tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: clientId,
+                        scope: 'https://www.googleapis.com/auth/drive.file',
+                        callback: (tokenResponse) => {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                gDriveAccessToken = tokenResponse.access_token;
+                                sessionStorage.setItem('gDriveAccessToken', gDriveAccessToken);
+                                executeDriveAction(gDriveAccessToken, action);
+                            } else {
+                                showDriveStatus("فشل تسجيل الدخول ❌");
+                            }
+                        },
+                    });
+                    tokenClient.requestAccessToken({ prompt: 'consent' });
+                } catch (err) {
+                    console.error("GIS initialization failed:", err);
+                    showDriveStatus("خطأ في الاتصال ❌");
+                }
+            }
+
+            function getBackupData() {
+                const backupKeys = [
+                    'fastToolkitSettings', 'fastToolkitShortcuts', 'fastToolkitExpanded',
+                    'copyGridDataV6', 'unbackedUpCountV6', 'quick_sticky_note',
+                    'stickyNotesData', 'currentStickyNoteId', 'cardScannerData',
+                    'cardScannerHistory', 'simahApprovedAccounts', 'simahAccountsHistory',
+                    'simah_ai_provider', 'simah_ai_pref', 'simah_usage', 'autoSyncGDrive', 'cardLinkToggle'
+                ];
+                const backupData = {};
+                backupKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value !== null) backupData[key] = value;
+                });
+                return backupData;
+            }
+
+            function executeDriveAction(token, action) {
+                showDriveStatus("جاري الاتصال بـ Drive... ☁️");
+                const filename = "fast_toolkit_unified_backup_cloud.json";
+
+                fetch(`https://www.googleapis.com/drive/v3/files?q=name='${filename}'+and+trashed=false`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(checkResponseStatus)
+                .then(res => res.json())
+                .then(data => {
+                    const files = data.files || [];
+                    const fileId = files.length > 0 ? files[0].id : null;
+
+                    if (action === 'backup') {
+                        const backupData = getBackupData();
+                        if (fileId) {
+                            updateDriveFile(token, fileId, backupData);
+                        } else {
+                            createDriveFile(token, filename, backupData);
+                        }
+                    } else if (action === 'restore') {
+                        if (fileId) {
+                            restoreDriveFile(token, fileId);
+                        } else {
+                            showDriveStatus("لا توجد نسخة محفوظة ❌");
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive search failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل الاتصال بـ Drive ❌");
+                });
+            }
+
+            function updateDriveFile(token, fileId, content) {
+                showDriveStatus("جاري رفع البيانات... ☁️");
+                fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(content)
+                })
+                .then(checkResponseStatus)
+                .then(res => {
+                    if (res.ok) {
+                        showDriveStatus("تم النسخ السحابي بنجاح! ☁️✅");
+                    } else {
+                        showDriveStatus("حدث خطأ أثناء الرفع ❌");
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive update failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل رفع الملف ❌");
+                });
+            }
+
+            function createDriveFile(token, filename, content) {
+                showDriveStatus("جاري إنشاء الملف السحابي... ☁️");
+                fetch('https://www.googleapis.com/drive/v3/files', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: filename, mimeType: 'application/json' })
+                })
+                .then(checkResponseStatus)
+                .then(res => res.json())
+                .then(meta => {
+                    if (meta.id) {
+                        updateDriveFile(token, meta.id, content);
+                    } else {
+                        showDriveStatus("فشل إنشاء الملف ❌");
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive creation failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل إنشاء الملف ❌");
+                });
+            }
+
+            function restoreDriveFile(token, fileId) {
+                showDriveStatus("جاري تنزيل النسخة... ☁️");
+                fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(checkResponseStatus)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && typeof data === 'object') {
+                        Object.keys(data).forEach(key => {
+                            localStorage.setItem(key, data[key]);
+                        });
+                        showDriveStatus("تم الاستعادة بنجاح! جاري التحديث... 🔄");
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        showDriveStatus("الملف تالف أو غير صالح ❌");
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive restore failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل استعادة الملف ❌");
+                });
+            }
+
+            if(driveBackupBtn) driveBackupBtn.addEventListener('click', () => triggerCloudAction('backup'));
+            if(driveRestoreBtn) driveRestoreBtn.addEventListener('click', () => triggerCloudAction('restore'));
         });
     </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 
 </html>

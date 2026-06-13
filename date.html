@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محول التواريخ - Date Helper</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+            text-align: center;
+            flex-grow: 1;
+            padding-left: 20px;
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--accent-green);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #122212;
+            border-color: var(--accent-green);
+        }
+
+        .content-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .content-area::-webkit-scrollbar { width: 3px; }
+        .content-area::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .card-title {
+            font-size: 10px;
+            color: var(--accent-green);
+            font-weight: bold;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .input-group label {
+            font-size: 9px;
+            color: #888;
+        }
+
+        .input-group input {
+            background: transparent;
+            border: 1px dashed var(--border);
+            color: var(--text);
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 10px;
+            outline: none;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent-green);
+        }
+
+        .result-box {
+            background: transparent;
+            border: 1px dashed var(--accent-green);
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+
+        .result-box.empty {
+            border-color: var(--border);
+            color: #666;
+        }
+
+        .footer {
+            margin-top: auto;
+            font-size: 8px;
+            color: #555;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
+            text-align: center;
+        }
+
+        .btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+        }
+        .btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+        }
+
+        .current-time {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            color: var(--text);
+            margin-top: 2px;
+            margin-bottom: 2px;
+            font-family: monospace;
+        }
+        .current-date {
+            font-size: 9px;
+            text-align: center;
+            color: #888;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <h1>Date Helper</h1>
+        </div>
+
+        <div class="content-area">
+            <div class="card" style="padding: 4px;">
+                <div class="current-time" id="currentTime">00:00:00</div>
+                <div class="current-date" id="currentDate">--/--/----</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+                    حاسبة أيام عمل البنوك السعودية
+                    <span style="font-size: 8px; color: #888; font-weight: normal;">(حسب تعليمات البنك المركزي السعودي - ساما)</span>
+                </div>
+                <div style="display: flex; gap: 4px;">
+                    <div class="input-group" style="flex: 1;" dir="ltr">
+                        <label dir="rtl" style="text-align: right;">من تاريخ:</label>
+                        <input type="text" id="startDate" dir="ltr" style="font-family: Arial, sans-serif; text-align: left; cursor: pointer;" onchange="calculateBusinessDays()">
+                    </div>
+                    <div class="input-group" style="flex: 1;" dir="ltr">
+                        <label dir="rtl" style="text-align: right;">إلى تاريخ:</label>
+                        <input type="text" id="endDate" dir="ltr" style="font-family: Arial, sans-serif; text-align: left; cursor: pointer;" onchange="calculateBusinessDays()">
+                    </div>
+                </div>
+                <div class="result-box empty" id="calcResult">النتيجة ستظهر هنا</div>
+            </div>
+            
+            <button class="btn" onclick="setToday()">تحديث لتاريخ اليوم</button>
+        </div>
+
+        <div class="footer">
+            Date & Time Utility
+        </div>
+    </div>
+
+    <script>
+        document.write('<script src="date.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</body>
+</html>

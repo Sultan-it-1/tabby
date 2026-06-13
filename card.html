@@ -110,10 +110,22 @@
         }
 
         @keyframes pulseBorder {
-            0% { border-color: var(--accent-green); box-shadow: 0 0 5px var(--accent-green); }
-            50% { border-color: #555; box-shadow: none; }
-            100% { border-color: var(--accent-green); box-shadow: 0 0 5px var(--accent-green); }
+            0% {
+                border-color: var(--accent-green);
+                box-shadow: 0 0 5px var(--accent-green);
+            }
+
+            50% {
+                border-color: #555;
+                box-shadow: none;
+            }
+
+            100% {
+                border-color: var(--accent-green);
+                box-shadow: 0 0 5px var(--accent-green);
+            }
         }
+
         .paste-zone.processing {
             animation: pulseBorder 1.5s infinite;
             color: var(--accent-green);
@@ -225,7 +237,7 @@
             border-color: rgba(0, 212, 255, 0.2);
             opacity: 0.8;
         }
-        
+
         .gateway-chip:hover {
             background: rgba(0, 212, 255, 0.1);
             border-color: var(--accent-blue);
@@ -298,7 +310,8 @@
         }
 
         .status {
-            display: none; /* Replaced by toast */
+            display: none;
+            /* Replaced by toast */
         }
 
         .toast-container {
@@ -312,6 +325,7 @@
             z-index: 200;
             pointer-events: none;
         }
+
         .toast {
             background: rgba(15, 15, 15, 0.95);
             color: #fff;
@@ -320,14 +334,22 @@
             border-radius: 8px;
             font-size: 11px;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
             opacity: 0;
             transform: translateY(-10px);
             transition: all 0.3s ease;
             text-align: center;
         }
-        .toast.show { opacity: 1; transform: translateY(0); }
-        .toast.error { border-color: #ff4444; color: #ff4444; }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.error {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
 
         hr {
             border: 0;
@@ -336,7 +358,9 @@
         }
 
         /* AI styling */
-        .ai-btn, .settings-btn, .usage-btn {
+        .ai-btn,
+        .settings-btn,
+        .usage-btn {
             background: transparent;
             border: none;
             color: var(--text);
@@ -349,7 +373,9 @@
             opacity: 0.7;
         }
 
-        .ai-btn:hover, .settings-btn:hover, .usage-btn:hover {
+        .ai-btn:hover,
+        .settings-btn:hover,
+        .usage-btn:hover {
             background: rgba(255, 255, 255, 0.1);
             opacity: 1;
             transform: scale(1.1);
@@ -630,7 +656,8 @@
                 </div>
                 <input type="password" id="groqKeyInput" placeholder="Groq Key...">
             </div>
-            <div style="font-size: 8px; color: #ff9f43; text-align: right; margin-bottom: 6px; font-weight: bold; direction: rtl;">
+            <div
+                style="font-size: 8px; color: #ff9f43; text-align: right; margin-bottom: 6px; font-weight: bold; direction: rtl;">
                 🔒 مفاتيحك تُحفظ محلياً بالكامل على متصفحك ولا يتم إرسالها لأي خادم خارجي.
             </div>
             <div class="settings-modal-btns">
@@ -710,7 +737,8 @@
                 <div id="output" onclick="copyFull()">البيانات ستظهر هنا</div>
                 <input type="text" id="output-edit">
                 <button class="action-btn" id="editBtn" onclick="toggleEditMode()" title="تعديل">✏️</button>
-                <button class="action-btn" id="summaryBtn" onclick="copyFriendlySummary()" title="نسخ تقرير ملخص">📋</button>
+                <button class="action-btn" id="summaryBtn" onclick="copyFriendlySummary()"
+                    title="نسخ تقرير ملخص">📋</button>
                 <button class="action-btn" id="clearBtn" onclick="clearData()" title="مسح الكل">🗑️</button>
                 <button class="action-btn" id="historyBtn" onclick="toggleHistoryModal()" title="سجل المسح">🕒</button>
             </div>
@@ -744,6 +772,29 @@
                 </div>
                 <div class="chip gateway-chip" style="flex: 1 0 45%;"
                     onclick="openGateway('https://fort.payfort.com', 'pay fort')">Payfort</div>
+            </div>
+
+            <hr>
+
+            <div
+                style="font-size: 10px; color: var(--accent-green); font-weight: bold; margin-bottom: 4px; text-align: center;">
+                محول روابط Tabby</div>
+            <div style="display: flex; gap: 4px; margin-bottom: 6px;">
+                <input type="text" id="tabbyInput" placeholder="الصق الـ ID أو الرابط هنا..."
+                    style="flex-grow: 1; min-width: 0; box-sizing: border-box; background: transparent; border: 1px dashed var(--accent-green); color: var(--text); padding: 6px; border-radius: 4px; font-size: 10px; outline: none; text-align: center; transition: 0.2s;"
+                    onfocus="this.style.borderColor='var(--text)'" onblur="this.style.borderColor='var(--accent-green)'"
+                    oninput="processTabbyInput()">
+                <button onclick="clearTabbyInput()" title="تفريغ الحقل"
+                    style="background: transparent; border: 1px dashed var(--accent-green); color: var(--accent-green); border-radius: 4px; padding: 0 8px; cursor: pointer; transition: 0.2s;"
+                    onmouseover="this.style.color='#ff4444'; this.style.borderColor='#ff4444'"
+                    onmouseout="this.style.color='var(--accent-green)'; this.style.borderColor='var(--accent-green)'">✖</button>
+            </div>
+
+            <div class="chips-container" style="margin-bottom: 4px;">
+                <div class="chip" id="chip-tabby-id" onclick="copyTabbyId()" title="نسخ ID">ID</div>
+                <div class="chip" id="chip-tabby-link" onclick="copyTabbyLink()" title="نسخ الرابط">الرابط</div>
+                <div class="chip" style="color: var(--accent-blue); border-color: rgba(0, 212, 255, 0.2);"
+                    onclick="copyTabbyDetails()" title="نسخ التفاصيل كاملة">تفاصيل 📋</div>
             </div>
         </div>
 

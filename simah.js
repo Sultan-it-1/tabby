@@ -51,6 +51,7 @@ function showToast(message, isError = false, duration = 2500) {
 let savedAccountsList = [];
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
 let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
+let globalVoiceSpeed = localStorage.getItem('simah_voice_speed') || '1';
 let lastRateLimitInfo = {};
 if (isAIActive && aiBtn) aiBtn.className = 'ai-btn active';
 
@@ -71,6 +72,9 @@ function toggleSpeed(cardId) {
 
     btn.setAttribute('data-speed', nextSpeed);
     btn.innerText = `×${nextSpeed}`;
+
+    globalVoiceSpeed = nextSpeed;
+    localStorage.setItem('simah_voice_speed', nextSpeed);
 }
 
 function toggleAI() {
@@ -522,7 +526,7 @@ function addReviewCard(value) {
             <span id="count_${cardId}" class="char-counter">0 خانة</span>
         </div>
         <div class="card-header-left">
-            <div id="sp_${cardId}" class="speed-toggle-btn" data-speed="1" onclick="toggleSpeed('${cardId}')">×1</div>
+            <div id="sp_${cardId}" class="speed-toggle-btn" data-speed="${globalVoiceSpeed}" onclick="toggleSpeed('${cardId}')">×${globalVoiceSpeed}</div>
             <button class="play-btn" onclick="speakAccount('i_${cardId}', '${cardId}')" title="استماع للحساب">🔊</button>
         </div>
     </div>

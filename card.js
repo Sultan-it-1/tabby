@@ -1031,6 +1031,82 @@ window.handleFileUpload = async (event) => {
     }
 };
 
+// === Tabby Link Converter ===
+window.processTabbyInput = function() {
+    const input = document.getElementById('tabbyInput').value.trim();
+    const idChip = document.getElementById('chip-tabby-id');
+    const linkChip = document.getElementById('chip-tabby-link');
+
+    if (!input) {
+        idChip.innerText = "ID";
+        linkChip.innerText = "الرابط";
+        linkChip.dataset.link = "";
+        return;
+    }
+
+    let id = "";
+    if (input.includes('customers/')) {
+        const match = input.match(/customers\/([^\/\?]+)/);
+        if (match) {
+            id = match[1];
+        } else {
+            id = input.split('customers/')[1].split('?')[0].split('/')[0];
+        }
+    } else {
+        id = input.replace(/https?:\/\/[^\s]+/, '').trim(); 
+        if(!id) id = input.trim();
+        id = id.split('?')[0].split('/')[0].trim();
+    }
+
+    if (id) {
+        idChip.innerText = id;
+        linkChip.innerText = "نسخ الرابط";
+        linkChip.dataset.link = `https://backoffice.tabby.sa/customers/${id}`;
+    } else {
+        idChip.innerText = "غير صالح";
+        linkChip.innerText = "الرابط";
+        linkChip.dataset.link = "";
+    }
+}
+
+window.copyTabbyId = function() {
+    const id = document.getElementById('chip-tabby-id').innerText;
+    if (id === "ID" || id === "غير صالح") {
+        showToast("لا يوجد ID لنسخه ❌", true);
+        return;
+    }
+    secureCopy(id).then(() => showToast("تم نسخ الـ ID 📋"));
+}
+
+window.copyTabbyLink = function() {
+    const link = document.getElementById('chip-tabby-link').dataset.link;
+    if (link) {
+        secureCopy(link).then(() => showToast("تم نسخ الرابط 🔗"));
+    } else {
+        showToast("لا يوجد رابط لنسخه ❌", true);
+    }
+}
+
+window.copyTabbyDetails = function() {
+    const id = document.getElementById('chip-tabby-id').innerText;
+    const link = document.getElementById('chip-tabby-link').dataset.link;
+
+    if (id === "ID" || id === "غير صالح" || !link) {
+        showToast("لا توجد بيانات لنسخها ❌", true);
+        return;
+    }
+
+    const details = `user id :  \n${id}\n\n${link}`;
+    secureCopy(details).then(() => showToast("تم نسخ التفاصيل 📋"));
+}
+
+window.clearTabbyInput = function() {
+    const inputEl = document.getElementById('tabbyInput');
+    inputEl.value = '';
+    window.processTabbyInput();
+    inputEl.focus();
+}
+
 // Keyboard Shortcuts for Card Scan
 document.addEventListener('keydown', (e) => {
     const shortcuts = window.getFastToolkitShortcuts ? window.getFastToolkitShortcuts() : { enabled: true, ai: 'a', settings: 's', usage: 'u', clear: 'c', edit: 'e' };
