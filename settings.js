@@ -679,7 +679,77 @@
                 minBtn.onmouseout = () => { minBtn.style.background = "#1e1e1e"; };
             }
 
+            // Timer & Actions Wrapper
+            const middleWrapper = pipWindow.document.createElement("div");
+            middleWrapper.style.display = "flex";
+            middleWrapper.style.alignItems = "center";
+            middleWrapper.style.gap = "6px";
+            middleWrapper.dir = "ltr";
+            middleWrapper.style.flex = "1";
+            middleWrapper.style.justifyContent = "center";
+            middleWrapper.style.cursor = "pointer";
+            middleWrapper.title = "اضغط لتصفير العداد";
+            middleWrapper.style.transition = "opacity 0.2s";
+            middleWrapper.onmouseover = () => { middleWrapper.style.opacity = "0.8"; };
+            middleWrapper.onmouseout = () => { middleWrapper.style.opacity = "1"; };
+
+            // Timer display
+            const timerSpan = pipWindow.document.createElement("span");
+            timerSpan.style.fontFamily = "'Outfit', 'Segoe UI', monospace";
+            timerSpan.style.fontWeight = "bold";
+            timerSpan.style.fontSize = "14px";
+            timerSpan.style.letterSpacing = "0.5px";
+            timerSpan.style.color = "#00e676";
+            timerSpan.style.padding = "2px 8px";
+            timerSpan.style.borderRadius = "6px";
+            timerSpan.style.backgroundColor = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)";
+            timerSpan.style.transition = "all 0.2s";
+            timerSpan.innerText = "00:00";
+
+            middleWrapper.appendChild(timerSpan);
+
+            // Timer Logic
+            let pipTimerSeconds = 0;
+            let pipTimerInterval = null;
+
+            function updateTimerDisplay() {
+                const m = Math.floor(pipTimerSeconds / 60);
+                const s = pipTimerSeconds % 60;
+                timerSpan.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+                timerSpan.style.animation = "none";
+                if (m >= 16) {
+                    timerSpan.style.color = isLight ? "#b71c1c" : "#ff5252"; // dark red / bright red
+                    timerSpan.style.animation = "pipPulse 0.8s infinite ease-in-out"; // blink
+                } else if (m >= 14) {
+                    timerSpan.style.color = isLight ? "#d32f2f" : "#ff8a80"; // red
+                } else if (m >= 10) {
+                    timerSpan.style.color = isLight ? "#f57f17" : "#ffd600"; // yellow
+                } else if (m >= 7) {
+                    timerSpan.style.color = isLight ? "#e65100" : "#ffab40"; // orange
+                } else {
+                    timerSpan.style.color = settings.themeColor; // theme color
+                }
+            }
+
+            middleWrapper.addEventListener("click", () => {
+                pipTimerSeconds = 0;
+                updateTimerDisplay();
+                
+                // Visual feedback on click
+                timerSpan.style.transform = "scale(0.9)";
+                setTimeout(() => {
+                    timerSpan.style.transform = "scale(1)";
+                }, 150);
+            });
+
+            pipTimerInterval = setInterval(() => {
+                pipTimerSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+
             headerBar.appendChild(titleWrapper);
+            headerBar.appendChild(middleWrapper);
             headerBar.appendChild(minBtn);
             body.appendChild(headerBar);
 
@@ -759,6 +829,7 @@
             showOpenerOverlay();
 
             pipWindow.addEventListener("pagehide", () => {
+                clearInterval(pipTimerInterval);
                 window.activePipWindow = null;
                 hideOpenerOverlay();
             });
