@@ -683,30 +683,107 @@
             const middleWrapper = pipWindow.document.createElement("div");
             middleWrapper.style.display = "flex";
             middleWrapper.style.alignItems = "center";
-            middleWrapper.style.gap = "6px";
+            middleWrapper.style.gap = "4px";
             middleWrapper.dir = "ltr";
             middleWrapper.style.flex = "1";
             middleWrapper.style.justifyContent = "center";
-            middleWrapper.style.cursor = "pointer";
-            middleWrapper.title = "اضغط لتصفير العداد";
-            middleWrapper.style.transition = "opacity 0.2s";
-            middleWrapper.onmouseover = () => { middleWrapper.style.opacity = "0.8"; };
-            middleWrapper.onmouseout = () => { middleWrapper.style.opacity = "1"; };
+            middleWrapper.style.height = "100%"; // Ensures it's easily hoverable
+            
+            // Hover logic to show eye icon
+            middleWrapper.onmouseenter = () => {
+                visibilityBtn.style.opacity = "1";
+            };
+            middleWrapper.onmouseleave = () => {
+                visibilityBtn.style.opacity = "0";
+            };
 
-            // Timer display
+            // Timer display container (clickable part)
+            const timerContainer = pipWindow.document.createElement("div");
+            timerContainer.style.display = "flex";
+            timerContainer.style.alignItems = "center";
+            timerContainer.style.cursor = "pointer";
+            timerContainer.title = "اضغط لتصفير العداد";
+            timerContainer.style.transition = "transform 0.2s, filter 0.2s";
+            timerContainer.onmouseover = () => { timerContainer.style.filter = "brightness(1.2)"; };
+            timerContainer.onmouseout = () => { timerContainer.style.filter = "brightness(1)"; };
+
+            // Timer display (Premium Glassmorphic Badge)
             const timerSpan = pipWindow.document.createElement("span");
             timerSpan.style.fontFamily = "'Outfit', 'Segoe UI', monospace";
-            timerSpan.style.fontWeight = "bold";
-            timerSpan.style.fontSize = "14px";
+            timerSpan.style.fontWeight = "700";
+            timerSpan.style.fontSize = "13px";
             timerSpan.style.letterSpacing = "0.5px";
             timerSpan.style.color = "#00e676";
             timerSpan.style.padding = "2px 8px";
-            timerSpan.style.borderRadius = "6px";
-            timerSpan.style.backgroundColor = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)";
-            timerSpan.style.transition = "all 0.2s";
+            timerSpan.style.borderRadius = "8px";
+            timerSpan.style.backgroundColor = isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)";
+            timerSpan.style.border = isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.05)";
+            timerSpan.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.1)";
+            timerSpan.style.transition = "all 0.3s ease";
             timerSpan.innerText = "00:00";
 
-            middleWrapper.appendChild(timerSpan);
+            timerContainer.appendChild(timerSpan);
+
+            // Visibility Button
+            const visibilityBtn = pipWindow.document.createElement("button");
+            visibilityBtn.title = "إخفاء/إظهار العداد";
+            visibilityBtn.style.background = "none";
+            visibilityBtn.style.border = "none";
+            visibilityBtn.style.color = isLight ? "#777" : "#888";
+            visibilityBtn.style.cursor = "pointer";
+            visibilityBtn.style.padding = "4px";
+            visibilityBtn.style.borderRadius = "50%";
+            visibilityBtn.style.display = "flex";
+            visibilityBtn.style.alignItems = "center";
+            visibilityBtn.style.justifyContent = "center";
+            visibilityBtn.style.transition = "all 0.3s ease";
+            visibilityBtn.style.opacity = "0"; // hidden by default
+            
+            visibilityBtn.onmouseover = () => {
+                visibilityBtn.style.color = settings.themeColor;
+                visibilityBtn.style.backgroundColor = isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.1)";
+            };
+            visibilityBtn.onmouseout = () => {
+                visibilityBtn.style.color = isLight ? "#777" : "#888";
+                visibilityBtn.style.backgroundColor = "transparent";
+            };
+
+            const eyeOpenSVG = `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+            const eyeClosedSVG = `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+            if (typeof settings.pipTimerVisible === 'undefined') {
+                settings.pipTimerVisible = true;
+            }
+
+            function updateVisibility() {
+                if (settings.pipTimerVisible) {
+                    timerContainer.style.display = "flex";
+                    visibilityBtn.innerHTML = eyeOpenSVG;
+                    visibilityBtn.style.transform = "scale(1)";
+                } else {
+                    timerContainer.style.display = "none";
+                    visibilityBtn.innerHTML = eyeClosedSVG;
+                    visibilityBtn.style.transform = "scale(0.9)";
+                }
+                
+                // Keep visible if currently hovered
+                if (middleWrapper.matches(':hover')) {
+                    visibilityBtn.style.opacity = "1";
+                } else {
+                    visibilityBtn.style.opacity = "0";
+                }
+            }
+            updateVisibility();
+
+            visibilityBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                settings.pipTimerVisible = !settings.pipTimerVisible;
+                updateVisibility();
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(settings));
+            });
+
+            middleWrapper.appendChild(visibilityBtn);
+            middleWrapper.appendChild(timerContainer);
 
             // Timer Logic
             let pipTimerSeconds = 0;
@@ -732,7 +809,7 @@
                 }
             }
 
-            middleWrapper.addEventListener("click", () => {
+            timerContainer.addEventListener("click", () => {
                 pipTimerSeconds = 0;
                 updateTimerDisplay();
                 
