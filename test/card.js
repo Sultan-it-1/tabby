@@ -493,29 +493,56 @@ function openGateway(url, name) {
     const time = document.getElementById('chip-time').innerText.trim();
     const date = document.getElementById('chip-date').innerText.trim();
     
+    const isApplePay = document.getElementById('networkBadge').innerHTML.toLowerCase().includes('apple');
+    
     let c = (card && card !== "-" && card !== "0000") ? card : "";
     let a = (amount && amount !== "-" && amount !== "0.00") ? amount : "";
     let ti = (time && time !== "-" && time !== "00:00") ? time : "";
     let d = (date && date !== "-" && date !== "00-00") ? date : "";
     
-    let searchQuery = "";
-    if (c || a || d || ti) {
-        // Ensure consistent 4-part format: card // amount // time // date
-        searchQuery = `${c} // ${a} // ${ti} // ${d}`;
-    }
-
-    if (linkToggle.checked) {
-        window.open(url, '_blank');
+    if (name === 'checkout') {
+        let checkoutUrl = "https://dashboard.checkout.com/payments/all-payments?";
+        let dateQuery = "";
+        
+        if (d) {
+            const parts = d.split(/[-/]/);
+            let day = parts[0] || "", month = parts[1] || "", year = parts[2] || new Date().getFullYear().toString();
+            if(year.length === 2) year = "20" + year;
+            day = day.padStart(2, '0');
+            month = month.padStart(2, '0');
+            if (day && month) {
+                const formattedDate = `${year}${month}${day}`;
+                dateQuery = `&date=${formattedDate}..${formattedDate}`;
+            }
+        }
+        
+        if (isApplePay) {
+            checkoutUrl += `amount=${a}&currency=SAR${dateQuery}`;
+        } else {
+            checkoutUrl += `amount=${a}&card=${c}`;
+        }
+        
+        if (linkToggle.checked) {
+            window.open(checkoutUrl, '_blank');
+        } else {
+            secureCopy(checkoutUrl).then(() => { showToast("تم نسخ رابط Checkout المباشر 🔗"); });
+            return; // Stop here if link is copied instead of opened
+        }
+    } else {
+        if (linkToggle.checked && url) {
+            window.open(url, '_blank');
+        }
     }
     
+    let networkFlag = isApplePay ? "apple" : "normal";
+    let searchQuery = "";
+    if (c || a || d || ti) {
+        searchQuery = `${c} // ${a} // ${ti} // ${d} // ${networkFlag}`;
+    }
+
     if (searchQuery) {
         secureCopy(searchQuery).then(() => {
             showToast(`تم نسخ البيانات للبحث 🔍`);
-        });
-    } else {
-        const msg = `Checking ${name} gateway`;
-        secureCopy(msg).then(() => {
-            showToast("نسخ: " + name);
         });
     }
 }
