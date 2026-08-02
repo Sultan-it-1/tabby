@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Royal Family [DEV Mode]",
+  "version": "1.1.0.1",
+  "description": "نسخة المطور لتجربة التعديلات من الخادم المحلي http://127.0.0.1:5500/",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "sidePanel",
+    "declarativeNetRequest",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://127.0.0.1/*",
+    "*://localhost/*",
+    "*://*.sultanops.com/*",
+    "*://*.tabby.sa/*"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "افتح اللوحة الجانبية (DEV Mode)"
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://127.0.0.1/*",
+        "*://localhost/*",
+        "*://*.sultanops.com/*"
+      ],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ]
+}
