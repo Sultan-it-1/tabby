@@ -27,17 +27,41 @@
 <body>
     <iframe src="https://tabby.sultanops.com/" id="tool-frame" allow="clipboard-read; clipboard-write"></iframe>
     <script>
+        function checkActiveTab() {
+            if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    if (tabs && tabs[0] && tabs[0].url) {
+                        const url = tabs[0].url;
+                        const isTicket = url.includes('/ticket') || 
+                                         url.includes('/tickets/') || 
+                                         (url.includes('tabby.sa') && url.includes('ticket'));
+                        const iframe = document.getElementById('tool-frame');
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({
+                                action: "updateTicketState",
+                                hasTicket: isTicket,
+                                ticketUrl: isTicket ? url : ""
+                            }, "*");
+                        }
+                    }
+                });
+            }
+        }
+
         // Listen to extension background URL changes and forward to tool iframe
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
             chrome.runtime.onMessage.addListener((message) => {
-                if (message.action === "resetTicketTimer") {
+                if (message.action === "resetTicketTimer" || message.action === "updateTicketState") {
                     const iframe = document.getElementById('tool-frame');
                     if (iframe && iframe.contentWindow) {
-                        iframe.contentWindow.postMessage({ action: "resetTicketTimer", reason: message.reason }, "*");
+                        iframe.contentWindow.postMessage(message, "*");
                     }
                 }
             });
         }
+
+        window.addEventListener('load', checkActiveTab);
+        setInterval(checkActiveTab, 3000);
     </script>
 </body>
 </html>
