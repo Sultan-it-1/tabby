@@ -48,6 +48,7 @@ let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
 if (isAIActive && aiBtn) aiBtn.className = 'ai-btn active';
 
 document.addEventListener('DOMContentLoaded', () => {
+    initCheckoutActionModeUI();
     const saved = localStorage.getItem('cardScannerData');
     if (saved) {
         try {
@@ -202,7 +203,7 @@ async function processImage(file) {
     dropZone.classList.remove('active', 'processing');
 }
 
-function detectCardMeta(text) {
+function detectCardMeta(text, isNewScan = false) {
     const lowerText = text.toLowerCase();
     const badge = document.getElementById('declineBadge');
     const networkBadge = document.getElementById('networkBadge');
@@ -243,6 +244,7 @@ function detectCardMeta(text) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'normal';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(true, isNewScan);
     } else if (lowerText.includes('mada') || lowerText.includes('مدى')) {
         networkBadge.style.background = '#00c853';
         networkBadge.style.color = '#fff';
@@ -251,6 +253,7 @@ function detectCardMeta(text) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'normal';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(false, isNewScan);
     } else if (lowerText.includes('visa') || lowerText.includes('فيزا')) {
         networkBadge.style.background = '#1a1f71';
         networkBadge.style.color = '#fff';
@@ -259,6 +262,7 @@ function detectCardMeta(text) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'italic';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(false, isNewScan);
     } else if (lowerText.includes('mastercard') || lowerText.includes('ماستركارد')) {
         networkBadge.style.background = '#ff5f00';
         networkBadge.style.color = '#fff';
@@ -267,6 +271,9 @@ function detectCardMeta(text) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'normal';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(false, isNewScan);
+    } else {
+        updateCheckoutOptionsForApplePay(false, isNewScan);
     }
 }
 
@@ -389,7 +396,7 @@ function parseData(rawText) {
     const formattedAmount = formatAmount(amount);
     const finalResult = `${formattedAmount} // ${card} // ${time} // ${date}`;
     updateUI(finalResult, card, formattedAmount, time, date);
-    detectCardMeta(cleanText);
+    detectCardMeta(cleanText, true);
 
     const savedData = {
         fullText: finalResult,
@@ -487,35 +494,92 @@ function clearData() {
     showToast("تم مسح البيانات 🗑️");
 }
 
+function toggleCheckoutParam(param) {
+    const key = param.charAt(0).toUpperCase() + param.slice(1);
+    const chk = document.getElementById('chk' + key);
+    const lbl = document.getElementById('lblChk' + key);
+    if (chk && lbl) {
+        chk.checked = !chk.checked;
+        if (chk.checked) {
+            lbl.classList.add('active');
+        } else {
+            lbl.classList.remove('active');
+        }
+    }
+}
+
+function updateCheckoutOptionsForApplePay(isApplePay) {
+    const chkCard = document.getElementById('chkCard');
+    const chkDate = document.getElementById('chkDate');
+    const chkAmount = document.getElementById('chkAmount');
+    
+    const lblCard = document.getElementById('lblChkCard');
+    const lblDate = document.getElementById('lblChkDate');
+    const lblAmount = document.getElementById('lblChkAmount');
+    
+    if (isApplePay) {
+        if (chkCard) chkCard.checked = false;
+        if (chkDate) chkDate.checked = true;
+        if (chkAmount) chkAmount.checked = true;
+
+        if (lblCard) lblCard.classList.remove('active');
+        if (lblDate) lblDate.classList.add('active');
+        if (lblAmount) lblAmount.classList.add('active');
+    } else {
+        if (chkCard) chkCard.checked = true;
+        if (chkDate) chkDate.checked = true;
+        if (chkAmount) chkAmount.checked = true;
+
+        if (lblCard) lblCard.classList.add('active');
+        if (lblDate) lblDate.classList.add('active');
+        if (lblAmount) lblAmount.classList.add('active');
+    }
+}
+
 function openCheckoutDirectly(copyOnly = false) {
     const card = document.getElementById('chip-card').innerText.trim();
     const amount = document.getElementById('chip-amount').innerText.trim();
     const date = document.getElementById('chip-date').innerText.trim();
-    const isApplePay = document.getElementById('networkBadge').innerHTML.toLowerCase().includes('apple');
+    
+    const useCard = document.getElementById('chkCard')?.checked ?? true;
+    const useDate = document.getElementById('chkDate')?.checked ?? true;
+    const useAmount = document.getElementById('chkAmount')?.checked ?? true;
     
     let c = (card && card !== "-" && card !== "0000") ? card : "";
     let a = (amount && amount !== "-" && amount !== "0.00") ? amount : "";
     let d = (date && date !== "-" && date !== "00-00") ? date : "";
     
     let checkoutUrl = "https://dashboard.checkout.com/payments/all-payments?";
-    let dateQuery = "";
+    let params = [];
     
-    if (d) {
+    if (useAmount && a) {
+        params.push(`amount=${a}`);
+        const isApplePay = document.getElementById('networkBadge').innerHTML.toLowerCase().includes('apple');
+        if (isApplePay) {
+            params.push(`currency=SAR`);
+        }
+    }
+
+    if (useCard && c) {
+        params.push(`card=${c}`);
+    }
+
+    if (useDate && d) {
         const parts = d.split(/[-/]/);
         let day = parts[0] || "", month = parts[1] || "", year = parts[2] || new Date().getFullYear().toString();
-        if(year.length === 2) year = "20" + year;
+        if (year.length === 2) year = "20" + year;
         day = day.padStart(2, '0');
         month = month.padStart(2, '0');
         if (day && month) {
             const formattedDate = `${year}${month}${day}`;
-            dateQuery = `&date=${formattedDate}..${formattedDate}`;
+            params.push(`date=${formattedDate}..${formattedDate}`);
         }
     }
-    
-    if (isApplePay) {
-        checkoutUrl += `amount=${a}&currency=SAR${dateQuery}`;
+
+    if (params.length > 0) {
+        checkoutUrl += params.join('&');
     } else {
-        checkoutUrl += `amount=${a}&card=${c}`;
+        checkoutUrl = checkoutUrl.replace(/\?$/, '');
     }
     
     if (copyOnly) {
@@ -523,9 +587,54 @@ function openCheckoutDirectly(copyOnly = false) {
             showToast("تم نسخ رابط Checkout 🔗");
         });
     } else {
-        window.open(checkoutUrl, '_blank');
+        if (linkToggle && linkToggle.checked) {
+            window.open(checkoutUrl, '_blank');
+        } else {
+            secureCopy(checkoutUrl).then(() => {
+                showToast("تم نسخ رابط Checkout 🔍");
+            });
+            window.open(checkoutUrl, '_blank');
+        }
     }
 }
+
+let checkoutActionMode = localStorage.getItem('checkout_action_mode') || 'copy';
+
+function initCheckoutActionModeUI() {
+    const toggleBtn = document.getElementById('btnCheckoutMode');
+    const actionBtn = document.getElementById('btnExecuteCheckout');
+    if (!toggleBtn || !actionBtn) return;
+
+    if (checkoutActionMode === 'open') {
+        toggleBtn.innerText = '🚀 فتح';
+        toggleBtn.style.color = '#00e676';
+        toggleBtn.style.borderColor = '#00e676';
+        actionBtn.innerHTML = '🚀 فتح البحث في Checkout';
+    } else {
+        toggleBtn.innerText = '📋 نسخ';
+        toggleBtn.style.color = 'var(--accent-blue, #00d4ff)';
+        toggleBtn.style.borderColor = 'var(--accent-blue, #00d4ff)';
+        actionBtn.innerHTML = '📋 نسخ رابط البحث في Checkout';
+    }
+}
+
+function toggleCheckoutActionMode() {
+    checkoutActionMode = checkoutActionMode === 'copy' ? 'open' : 'copy';
+    localStorage.setItem('checkout_action_mode', checkoutActionMode);
+    initCheckoutActionModeUI();
+    showToast(checkoutActionMode === 'open' ? 'تم التغيير إلى: 🚀 فتح الرابط مباشرة' : 'تم التغيير إلى: 📋 نسخ الرابط');
+}
+
+function executeCheckoutAction() {
+    const copyOnly = (checkoutActionMode === 'copy');
+    openCheckoutDirectly(copyOnly);
+}
+
+window.toggleCheckoutParam = toggleCheckoutParam;
+window.updateCheckoutOptionsForApplePay = updateCheckoutOptionsForApplePay;
+window.openCheckoutDirectly = openCheckoutDirectly;
+window.toggleCheckoutActionMode = toggleCheckoutActionMode;
+window.executeCheckoutAction = executeCheckoutAction;
 
 function openGateway(url, name) {
     const card = document.getElementById('chip-card').innerText.trim();
@@ -967,6 +1076,7 @@ function parseAIResult(aiText) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'normal';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(true, true);
     } else if (lowerNetwork.includes('mada') || lowerNetwork.includes('مدى')) {
         networkBadge.style.background = '#00c853';
         networkBadge.style.color = '#fff';
@@ -975,6 +1085,7 @@ function parseAIResult(aiText) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'normal';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(false, true);
     } else if (lowerNetwork.includes('visa') || lowerNetwork.includes('فيزا')) {
         networkBadge.style.background = '#1a1f71';
         networkBadge.style.color = '#fff';
@@ -983,6 +1094,7 @@ function parseAIResult(aiText) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'italic';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(false, true);
     } else if (lowerNetwork.includes('master')) {
         networkBadge.style.background = '#ff5f00';
         networkBadge.style.color = '#fff';
@@ -991,6 +1103,9 @@ function parseAIResult(aiText) {
         networkBadge.style.display = 'inline-flex';
         networkBadge.style.fontStyle = 'normal';
         networkBadge.setAttribute('dir', 'ltr');
+        updateCheckoutOptionsForApplePay(false, true);
+    } else {
+        updateCheckoutOptionsForApplePay(false, true);
     }
 
     const savedData = {
@@ -1091,7 +1206,19 @@ window.handleFileUpload = async (event) => {
 
 // === Tabby Link Converter ===
 window.processTabbyInput = function() {
-    const input = document.getElementById('tabbyInput').value.trim();
+    const inputEl = document.getElementById('tabbyInput');
+    if (!inputEl) return;
+    
+    let input = inputEl.value;
+
+    // Automatically strip '@' and everything after '@' in input field if present
+    if (input.includes('@')) {
+        input = input.split('@')[0].trim();
+        inputEl.value = input;
+    } else {
+        input = input.trim();
+    }
+
     const idChip = document.getElementById('chip-tabby-id');
     const linkChip = document.getElementById('chip-tabby-link');
 
@@ -1112,8 +1239,13 @@ window.processTabbyInput = function() {
         }
     } else {
         id = input.replace(/https?:\/\/[^\s]+/, '').trim(); 
-        if(!id) id = input.trim();
+        if (!id) id = input.trim();
         id = id.split('?')[0].split('/')[0].trim();
+    }
+
+    // Double-ensure any remaining '@' is stripped from ID
+    if (id.includes('@')) {
+        id = id.split('@')[0].trim();
     }
 
     if (id) {

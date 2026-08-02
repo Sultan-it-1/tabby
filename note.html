@@ -561,10 +561,7 @@
         <div id="main-content" class="content-scroll"></div>
 
         <div class="backup-row">
-            <button class="backup-btn" onclick="exportData()" data-tip="تصدير نسخة JSON">💾</button>
-            <button class="backup-btn" onclick="document.getElementById('importFile').click()" data-tip="استيراد ملف JSON">📂</button>
-            <button class="backup-btn" style="color: #ff5555; border-color: #3a1818;" onclick="triggerDeleteAll()" data-tip="مسح كل البيانات">🗑️</button>
-            <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importData(event)">
+            <button class="backup-btn" style="color: #ff5555; border-color: #3a1818; flex: 1;" onclick="triggerDeleteAll()" data-tip="مسح كل البيانات">🗑️ مسح الكل</button>
         </div>
         <div class="backup-row" style="margin-top: 4px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
             <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f; flex: 1;" onclick="triggerCloudAction('backup')">☁️ نسخ (Drive)</button>
@@ -639,6 +636,26 @@
                 <button class="m-btn" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
                 <button class="m-btn" style="background:#333; color:#fff" onclick="closeModal()">إلغاء</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Conflict Resolution Modal -->
+    <div class="modal" id="conflictModal" style="z-index: 300;">
+        <div class="modal-content" style="border-color: #ffaa00 !important; max-width: 220px; text-align: center;">
+            <div style="font-size: 12px; font-weight: bold; color: #ffaa00; margin-bottom: 4px;">⚠️ تعارض استيراد عناصر مكررة</div>
+            <div id="conflictItemName" style="font-size: 10px; color: var(--text); background: rgba(255, 170, 0, 0.12); padding: 5px; border-radius: 6px; margin-bottom: 6px; word-break: break-word; font-weight: bold;"></div>
+            <p style="font-size: 10px; color: var(--text); opacity: 0.8; margin: 0 0 6px 0;">هذا العنصر موجود بالفعل، اختر الإجراء المطلوب:</p>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px;">
+                <button class="m-btn" style="background: var(--accent-green); color: #000; padding: 5px; font-size: 10px;" onclick="resolveConflict('replace')">🔄 استبدال (Replace)</button>
+                <button class="m-btn" style="background: #3b82f6; color: #fff; padding: 5px; font-size: 10px;" onclick="resolveConflict('keep_both')">📋 إبقاء كلاهما (إنشاء نسخة)</button>
+                <button class="m-btn" style="background: #444; color: #fff; padding: 5px; font-size: 10px;" onclick="resolveConflict('skip')">⏭️ تجاوز (Skip)</button>
+            </div>
+
+            <label style="font-size: 9.5px; color: var(--text); display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
+                <input type="checkbox" id="conflictApplyAllCb" style="accent-color: var(--accent-green); cursor: pointer;">
+                تطبيق الإجراء على كافة المكررات
+            </label>
         </div>
     </div>
 

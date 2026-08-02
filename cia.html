@@ -553,10 +553,7 @@
 
         <!-- Bottom Backup Row -->
         <div class="backup-row">
-            <button class="backup-btn" onclick="exportCIAData()" title="تصدير نسخة JSON">💾 تصدير</button>
-            <button class="backup-btn" onclick="document.getElementById('importFile').click()" title="استيراد ملف JSON">📂 استيراد</button>
-            <button class="backup-btn danger" onclick="triggerDeleteAll()" title="مسح الكل">🗑️ مسح</button>
-            <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importCIAData(event)">
+            <button class="backup-btn danger" style="flex: 1;" onclick="triggerDeleteAll()" title="مسح الكل">🗑️ مسح البيانات</button>
         </div>
         
         <div class="backup-row" style="margin-top: 3px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
@@ -608,6 +605,26 @@
                     <button class="btn-save" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
                     <button class="btn-cancel" onclick="closeCiaModal()">إلغاء</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Duplicate Conflict Resolution Modal -->
+        <div class="modal" id="conflictModal" style="z-index: 300;">
+            <div class="modal-content" style="border-color: #ffaa00 !important; max-width: 220px; text-align: center;">
+                <div style="font-size: 12px; font-weight: bold; color: #ffaa00; margin-bottom: 4px;">⚠️ تعارض استيراد بطاقات مكررة</div>
+                <div id="conflictItemName" style="font-size: 10px; color: var(--text); background: rgba(255, 170, 0, 0.12); padding: 5px; border-radius: 6px; margin-bottom: 6px; word-break: break-word; font-weight: bold;"></div>
+                <p style="font-size: 10px; color: var(--text); opacity: 0.8; margin: 0 0 6px 0;">هذه البطاقة موجودة بالفعل، اختر الإجراء المطلوب:</p>
+
+                <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px;">
+                    <button class="btn-save" style="background: var(--accent-green); color: #000; padding: 5px; font-size: 10px;" onclick="resolveCiaConflict('replace')">🔄 استبدال (Replace)</button>
+                    <button class="btn-save" style="background: #3b82f6; color: #fff; padding: 5px; font-size: 10px;" onclick="resolveCiaConflict('keep_both')">📋 إبقاء كلاهما (إنشاء نسخة)</button>
+                    <button class="btn-cancel" style="padding: 5px; font-size: 10px;" onclick="resolveCiaConflict('skip')">⏭️ تجاوز (Skip)</button>
+                </div>
+
+                <label style="font-size: 9.5px; color: var(--text); display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
+                    <input type="checkbox" id="conflictApplyAllCb" style="accent-color: var(--accent-green); cursor: pointer;">
+                    تطبيق الإجراء على كافة البطاقات المكررة
+                </label>
             </div>
         </div>
 

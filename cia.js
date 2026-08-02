@@ -342,26 +342,101 @@ function exportCIAData() {
     showToast('تم تصدير نسخة JSON 💾');
 }
 
+let ciaConflictQueue = [];
+let ciaConflictApplyAllAction = null;
+
 function importCIAData(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const imported = JSON.parse(e.target.result);
             if (Array.isArray(imported)) {
-                ciaCards = imported;
+                await processCiaImportWithConflicts(imported);
                 saveCIAData();
                 showToast('تم استيراد بطاقات CIA بنجاح 📂✅');
             } else {
                 showToast('ملف غير صالح ❌', true);
             }
         } catch (err) {
+            console.error("CIA import error", err);
             showToast('خطأ في قراءة الملف ❌', true);
         }
     };
     reader.readAsText(file);
     event.target.value = '';
+}
+
+async function processCiaImportWithConflicts(imported) {
+    ciaConflictQueue = [];
+    ciaConflictApplyAllAction = null;
+
+    imported.forEach(newCard => {
+        const cardTitle = newCard.c || 'بطاقة CIA';
+        const existingIndex = ciaCards.findIndex(c => c.c === newCard.c);
+
+        if (existingIndex !== -1) {
+            ciaConflictQueue.push({
+                existingIndex,
+                title: cardTitle,
+                newCard
+            });
+        } else {
+            ciaCards.push({
+                id: "card_" + Date.now() + Math.random(),
+                c: newCard.c || '-',
+                i: newCard.i || '-',
+                a: newCard.a || '-'
+            });
+        }
+    });
+
+    for (let i = 0; i < ciaConflictQueue.length; i++) {
+        const item = ciaConflictQueue[i];
+        let action = ciaConflictApplyAllAction;
+
+        if (!action) {
+            action = await promptCiaConflictModal(item.title);
+        }
+
+        if (action === 'replace') {
+            ciaCards[item.existingIndex] = {
+                id: ciaCards[item.existingIndex].id,
+                c: item.newCard.c || '-',
+                i: item.newCard.i || '-',
+                a: item.newCard.a || '-'
+            };
+        } else if (action === 'keep_both') {
+            ciaCards.push({
+                id: "card_" + Date.now() + Math.random(),
+                c: `${item.newCard.c || 'بطاقة'} (نسخة)`,
+                i: item.newCard.i || '-',
+                a: item.newCard.a || '-'
+            });
+        }
+    }
+}
+
+function promptCiaConflictModal(cardName) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('conflictModal');
+        const nameEl = document.getElementById('conflictItemName');
+        const applyCb = document.getElementById('conflictApplyAllCb');
+
+        if (nameEl) nameEl.innerText = `البطاقة: "${cardName}"`;
+        if (applyCb) applyCb.checked = false;
+
+        if (modal) modal.classList.add('open');
+
+        window.resolveCiaConflict = (choice) => {
+            if (applyCb && applyCb.checked) {
+                ciaConflictApplyAllAction = choice;
+            }
+            if (modal) modal.classList.remove('open');
+            resolve(choice);
+        };
+    });
 }
 
 function triggerDeleteAll() {

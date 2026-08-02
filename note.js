@@ -598,41 +598,117 @@ function triggerDeleteItem() {
 }
 window.triggerDeleteItem = triggerDeleteItem;
 
+let conflictQueue = [];
+let conflictApplyAllAction = null;
+
 function importData(e) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (x) => {
+    reader.onload = async (x) => {
         try {
             const imported = JSON.parse(x.target.result);
             if (!imported || typeof imported !== 'object') throw new Error();
-            ['c1', 'c2', 'c3'].forEach(cId => {
-                if (imported[cId]) {
-                    ensureContainerSafety(cId);
-                    for (let cat in imported[cId]) {
-                        if (!storageData[cId][cat]) storageData[cId][cat] = [];
-                        let existing = storageData[cId][cat].map(i => i.l);
-                        imported[cId][cat].forEach(newItem => {
-                            let finalLabel = newItem.l || 'بدون اسم';
-                            let finalText = newItem.t || '';
-                            let c = 1;
-                            while (existing.includes(finalLabel)) {
-                                finalLabel = `${newItem.l || 'بدون اسم'} (نسخة ${c})`;
-                                c++;
-                            }
-                            storageData[cId][cat].push({ id: Date.now() + Math.random(), l: finalLabel, t: finalText });
-                            existing.push(finalLabel);
-                        });
-                    }
-                }
-            });
+
+            await processNoteImportWithConflicts(imported);
+
             saveAndRefresh();
-            showStatus("تم الدمج! 📂");
-        } catch (err) { showStatus("خطأ بالملف! ❌"); }
+            showStatus("تم الاستيراد بنجاح! 📂");
+        } catch (err) { 
+            console.error("Import error", err);
+            showStatus("خطأ بالملف! ❌"); 
+        }
     };
     reader.readAsText(file);
     e.target.value = '';
 }
+
+async function processNoteImportWithConflicts(imported) {
+    conflictQueue = [];
+    conflictApplyAllAction = null;
+
+    ['c1', 'c2', 'c3'].forEach(cId => {
+        if (imported[cId]) {
+            ensureContainerSafety(cId);
+            for (let cat in imported[cId]) {
+                if (!storageData[cId][cat]) storageData[cId][cat] = [];
+                
+                imported[cId][cat].forEach(newItem => {
+                    const label = newItem.l || 'بدون اسم';
+                    const existingIndex = storageData[cId][cat].findIndex(i => i.l === label);
+                    
+                    if (existingIndex !== -1) {
+                        conflictQueue.push({
+                            cId,
+                            cat,
+                            existingIndex,
+                            label,
+                            newItem
+                        });
+                    } else {
+                        storageData[cId][cat].push({
+                            id: Date.now() + Math.random(),
+                            l: label,
+                            t: newItem.t || ''
+                        });
+                    }
+                });
+            }
+        }
+    });
+
+    for (let i = 0; i < conflictQueue.length; i++) {
+        const item = conflictQueue[i];
+        let action = conflictApplyAllAction;
+
+        if (!action) {
+            action = await promptNoteConflictModal(item.label);
+        }
+
+        if (action === 'replace') {
+            storageData[item.cId][item.cat][item.existingIndex] = {
+                id: Date.now() + Math.random(),
+                l: item.newItem.l || 'بدون اسم',
+                t: item.newItem.t || ''
+            };
+        } else if (action === 'keep_both') {
+            let finalLabel = item.newItem.l || 'بدون اسم';
+            let existingLabels = storageData[item.cId][item.cat].map(x => x.l);
+            let counter = 1;
+            while (existingLabels.includes(finalLabel)) {
+                finalLabel = `${item.newItem.l || 'بدون اسم'} (نسخة ${counter})`;
+                counter++;
+            }
+            storageData[item.cId][item.cat].push({
+                id: Date.now() + Math.random(),
+                l: finalLabel,
+                t: item.newItem.t || ''
+            });
+        }
+    }
+}
+
+function promptNoteConflictModal(itemName) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('conflictModal');
+        const nameEl = document.getElementById('conflictItemName');
+        const applyCb = document.getElementById('conflictApplyAllCb');
+        
+        if (nameEl) nameEl.innerText = `العنصر: "${itemName}"`;
+        if (applyCb) applyCb.checked = false;
+        
+        if (modal) modal.classList.add('open');
+
+        window.resolveConflict = (choice) => {
+            if (applyCb && applyCb.checked) {
+                conflictApplyAllAction = choice;
+            }
+            if (modal) modal.classList.remove('open');
+            resolve(choice);
+        };
+    });
+}
+
 window.importData = importData;
 
 function showToast(message, isError = false, duration = 2500) {

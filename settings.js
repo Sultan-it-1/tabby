@@ -112,13 +112,13 @@
         `;
 
         const tools = [
-            { href: 'index.html', icon: '🏠', title: 'الرئيسية' },
             { href: 'note.html', icon: '📝', title: 'نسخ سريع' },
             { href: 'simah.html', icon: '📊', title: 'سمة' },
             { href: 'card.html', icon: '🔍', title: 'Card Scan' },
             { href: 'sticky.html', icon: '📌', title: 'Sticky Notes' },
             { href: 'cia.html', icon: '📋', title: 'CIA Maker' },
-            { href: 'date.html', icon: '📅', title: 'Date Helper' }
+            { href: 'date.html', icon: '📅', title: 'Date Helper' },
+            { href: 'index.html', icon: '🏠', title: 'الرئيسية' }
         ];
 
         const currentPath = window.location.pathname.split('/').pop() || 'index.html';
