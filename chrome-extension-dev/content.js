@@ -1,5 +1,5 @@
-// Fast Toolkit Chrome Extension Content Script
-// Runs inside the iframe of sultanops.com to optimize layout for PiP mode
+// Fast Toolkit Chrome Extension Content Script [DEV MODE]
+// Runs inside the iframe of 127.0.0.1 / sultanops.com to optimize layout for PiP mode
 
 (function () {
   // Check if this document is loaded inside an iframe
@@ -79,8 +79,12 @@
       document.documentElement.appendChild(style);
     }
 
-    // Inject Smart Ticket Timer Widget into page header
+    // Inject Smart Ticket Timer Widget into page header (Quick Notes ONLY)
     function injectSmartTimerWidget() {
+      const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+      // Allow timer widget in قسم النسخ السريع (note.html) و قسم CIA Maker (cia.html)
+      if (currentPath !== 'note.html' && currentPath !== 'cia.html') return;
+
       if (document.getElementById("ext-smart-timer")) return;
 
       const headerRight = document.querySelector(".header-right") || 
@@ -93,7 +97,7 @@
       const timerWrapper = document.createElement("div");
       timerWrapper.id = "ext-smart-timer";
       timerWrapper.style.cssText = "display:inline-flex;align-items:center;gap:4px;cursor:pointer;margin-right:6px;user-select:none;vertical-align:middle;";
-      timerWrapper.title = "اضغط لتصفير العداد | يتصفير تلقائياً عند النسخ أو تغير رابط التكت";
+      timerWrapper.title = "عداد التكت لنسخ سريع | يشتغل فقط عند وجود تكت مفتوح في المتصفح";
 
       const eyeOpenSVG = `<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
       const eyeClosedSVG = `<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
@@ -120,21 +124,16 @@
         } else {
           timerBadge.style.display = "none";
           eyeBtn.innerHTML = eyeClosedSVG;
-          timerWrapper.style.opacity = "0"; // completamente مخفي!
+          timerWrapper.style.opacity = "0";
         }
       }
       updateEyeVisibility();
 
-      // Show subtle eye icon on header hover if hidden so user can easily restore it
       headerRight.addEventListener("mouseenter", () => {
-        if (!isTimerVisible) {
-          timerWrapper.style.opacity = "0.7";
-        }
+        if (!isTimerVisible) timerWrapper.style.opacity = "0.7";
       });
       headerRight.addEventListener("mouseleave", () => {
-        if (!isTimerVisible) {
-          timerWrapper.style.opacity = "0";
-        }
+        if (!isTimerVisible) timerWrapper.style.opacity = "0";
       });
 
       eyeBtn.onclick = (e) => {
@@ -151,30 +150,65 @@
 
       timerWrapper.appendChild(eyeBtn);
       timerWrapper.appendChild(timerBadge);
-
       headerRight.insertBefore(timerWrapper, headerRight.firstChild);
 
-
-      let seconds = 0;
-      let lastTicketTime = "00:00";
-      let totalTickets = 0;
+      // Persistent Ticket State (Requirement 1 & Requirement 2)
+      let hasActiveTicket = localStorage.getItem("fastToolkit_hasActiveTicket") === "true";
+      let timerStartTime = parseInt(localStorage.getItem("fastToolkit_timerStartTime") || "0", 10);
+      let lastTicketTime = localStorage.getItem("fastToolkit_lastTicketTime") || "00:00";
+      let totalTickets = parseInt(localStorage.getItem("fastToolkit_totalTickets") || "0", 10);
       let idleSeconds = 0;
 
+      function getElapsedSeconds() {
+        // Requirement 2: If no active ticket, return 0
+        if (!hasActiveTicket || !timerStartTime) return 0;
+        const now = Date.now();
+        return Math.max(0, Math.floor((now - timerStartTime) / 1000));
+      }
+
       function updateDisplay() {
-        const m = Math.floor(seconds / 60);
-        const s = seconds % 60;
+        const sec = getElapsedSeconds();
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
         timerBadge.innerText = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+        
+        if (!hasActiveTicket) {
+          timerBadge.style.color = "#888";
+          timerBadge.title = "لا توجد تذكرة نشطة حالياً";
+        } else {
+          timerBadge.title = totalTickets > 0 
+            ? `اضغط للتصفير | التكت السابق: ${lastTicketTime} | إجمالي التكتات: ${totalTickets}` 
+            : "اضغط لتصفير العداد";
+            
+          if (m >= 15) {
+            timerBadge.style.color = "#ff5252";
+          } else if (m >= 10) {
+            timerBadge.style.color = "#ffd600";
+          } else {
+            timerBadge.style.color = "#00e676";
+          }
+        }
       }
 
       function resetTimer(reason) {
-        if (seconds > 1) {
-          const m = Math.floor(seconds / 60);
-          const s = seconds % 60;
+        const sec = getElapsedSeconds();
+        if (sec > 1) {
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
           lastTicketTime = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
           totalTickets++;
-          timerBadge.title = `اضغط للتصفير | التكت السابق: ${lastTicketTime} | إجمالي التكتات: ${totalTickets}`;
+          localStorage.setItem("fastToolkit_lastTicketTime", lastTicketTime);
+          localStorage.setItem("fastToolkit_totalTickets", totalTickets);
         }
-        seconds = 0;
+
+        if (hasActiveTicket) {
+          timerStartTime = Date.now();
+          localStorage.setItem("fastToolkit_timerStartTime", timerStartTime);
+        } else {
+          timerStartTime = 0;
+          localStorage.removeItem("fastToolkit_timerStartTime");
+        }
+
         idleSeconds = 0;
         updateDisplay();
 
@@ -182,33 +216,69 @@
         setTimeout(() => { timerBadge.style.transform = "scale(1)"; }, 200);
       }
 
+      function updateTicketState(hasTicket, ticketUrl) {
+        const prevHasTicket = hasActiveTicket;
+        const prevUrl = localStorage.getItem("fastToolkit_activeTicketUrl") || "";
 
+        if (hasTicket) {
+          if (!prevHasTicket || (ticketUrl && ticketUrl !== prevUrl)) {
+            hasActiveTicket = true;
+            timerStartTime = Date.now();
+            localStorage.setItem("fastToolkit_hasActiveTicket", "true");
+            localStorage.setItem("fastToolkit_timerStartTime", timerStartTime);
+            if (ticketUrl) localStorage.setItem("fastToolkit_activeTicketUrl", ticketUrl);
+          }
+        } else {
+          // Requirement 2: If no active ticket, stay at 0
+          hasActiveTicket = false;
+          timerStartTime = 0;
+          localStorage.setItem("fastToolkit_hasActiveTicket", "false");
+          localStorage.removeItem("fastToolkit_timerStartTime");
+          localStorage.removeItem("fastToolkit_activeTicketUrl");
+        }
+        updateDisplay();
+      }
+
+      // 1-second update loop
       setInterval(() => {
-        idleSeconds++;
-        if (idleSeconds < 180) {
-          seconds++;
-          updateDisplay();
+        if (hasActiveTicket) {
+          idleSeconds++;
+          if (idleSeconds < 180) {
+            updateDisplay();
+          }
         }
       }, 1000);
 
       window.addEventListener("mousemove", () => { idleSeconds = 0; });
       window.addEventListener("keydown", () => { idleSeconds = 0; });
-      window.addEventListener("copy", () => resetTimer("copy"));
+      window.addEventListener("copy", () => {
+        if (hasActiveTicket) resetTimer("copy");
+      });
 
-      // Listen for message from background script when CRM Ticket URL changes
+      // Listen for message from Extension / SidePanel
       window.addEventListener("message", (e) => {
-        if (e.data && (e.data.action === "resetTicketTimer" || e.data.action === "ticketUrlChanged")) {
-          resetTimer("url_changed");
+        if (e.data) {
+          if (e.data.action === "updateTicketState") {
+            updateTicketState(e.data.hasTicket, e.data.ticketUrl);
+          } else if (e.data.action === "resetTicketTimer") {
+            resetTimer(e.data.reason || "url_changed");
+          }
         }
       });
 
       if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
         chrome.runtime.onMessage.addListener((msg) => {
-          if (msg && msg.action === "resetTicketTimer") {
-            resetTimer("url_changed");
+          if (msg) {
+            if (msg.action === "updateTicketState") {
+              updateTicketState(msg.hasTicket, msg.ticketUrl);
+            } else if (msg.action === "resetTicketTimer") {
+              resetTimer(msg.reason || "url_changed");
+            }
           }
         });
       }
+
+      updateDisplay();
     }
 
     if (document.readyState === "loading") {
