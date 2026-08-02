@@ -60,19 +60,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 outputEdit.addEventListener('input', () => {
     const parts = outputEdit.value.split('//').map(p => p.trim());
-    document.getElementById('chip-card').innerText = parts[0] !== undefined ? parts[0] : "";
-    document.getElementById('chip-amount').innerText = parts[1] !== undefined ? parts[1] : "";
+    document.getElementById('chip-amount').innerText = parts[0] !== undefined ? parts[0] : "";
+    document.getElementById('chip-card').innerText = parts[1] !== undefined ? parts[1] : "";
     document.getElementById('chip-time').innerText = parts[2] !== undefined ? parts[2] : "";
     document.getElementById('chip-date').innerText = parts[3] !== undefined ? parts[3] : "";
 });
 
 function syncFromChips() {
     if (!isEditMode) return;
-    const c = document.getElementById('chip-card').innerText.trim();
     const a = document.getElementById('chip-amount').innerText.trim();
+    const c = document.getElementById('chip-card').innerText.trim();
     const t = document.getElementById('chip-time').innerText.trim();
     const d = document.getElementById('chip-date').innerText.trim();
-    outputEdit.value = `${c} // ${a} // ${t} // ${d}`;
+    outputEdit.value = `${a} // ${c} // ${t} // ${d}`;
 }
 
 document.querySelectorAll('.chip').forEach(chip => {
@@ -387,7 +387,7 @@ function parseData(rawText) {
     }
 
     const formattedAmount = formatAmount(amount);
-    const finalResult = `${card} // ${formattedAmount} // ${time} // ${date}`;
+    const finalResult = `${formattedAmount} // ${card} // ${time} // ${date}`;
     updateUI(finalResult, card, formattedAmount, time, date);
     detectCardMeta(cleanText);
 
@@ -441,13 +441,13 @@ function toggleEditMode() {
 
         if (updatedText) {
             const parts = updatedText.split('//').map(p => p.trim());
-            const card = parts[0] || "0000";
-            const amount = parts[1] || "0.00";
+            const amount = parts[0] || "0.00";
+            const card = parts[1] || "0000";
             const time = parts[2] || "00:00";
             const date = parts[3] || "00-00";
 
             const formattedAmount = formatAmount(amount);
-            const syncedText = `${card} // ${formattedAmount} // ${time} // ${date}`;
+            const syncedText = `${formattedAmount} // ${card} // ${time} // ${date}`;
             updateUI(syncedText, card, formattedAmount, time, date);
             detectCardMeta(syncedText);
 
@@ -844,57 +844,53 @@ async function extractCardWithAI(file, apiKey, loadingToast) {
 }
 
 async function extractCardWithGroq(file, groqKey, loadingToast) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            try {
-                const base64Url = reader.result;
-                const payload = {
-                    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-                    messages: [{
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: "Extract the payment/transaction details from this image. CRITICAL TABBY RULE: If the image contains multiple transaction messages or SMS, you MUST ONLY extract the details for the transaction that explicitly mentions 'Tabby', 'تابي', or 'tabby'. Completely ignore all other transactions. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success" },
-                            { type: 'image_url', image_url: { url: base64Url } }
-                        ]
-                    }]
-                };
-
-                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${groqKey}`
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error ? data.error.message : 'Unknown API Error');
-                }
-
-                recordUsage('groq');
-
-                if (loadingToast) loadingToast.remove();
-                if (data.choices && data.choices[0].message && data.choices[0].message.content) {
-                    parseAIResult(data.choices[0].message.content.trim());
-                } else {
-                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // success // yes');
-                }
-                resolve();
-            } catch (err) {
-                if (loadingToast) loadingToast.remove();
-                showToast("خطأ Groq: " + err.message, true, 5000);
-                resolve();
+    return new Promise(async (resolve) => {
+        try {
+            let rawOcrText = "";
+            if (typeof Tesseract !== 'undefined') {
+                try {
+                    const result = await Tesseract.recognize(file, 'eng+ara');
+                    rawOcrText = result?.data?.text || "";
+                } catch(e) {}
             }
-        };
-        reader.onerror = () => {
+
+            const promptText = `Extract the payment/transaction details from this text. CRITICAL TABBY RULE: If the text contains multiple transaction messages or SMS, you MUST ONLY extract the details for the transaction that explicitly mentions 'Tabby', 'تابي', or 'tabby'. Completely ignore all other transactions. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is 2026. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '26' for 2026) and 'DD' is the day (e.g. '22'). Example: '26-08-22' means August 22, 2026. A 2-digit year of '26' is ALWAYS the current year. If the transaction year is the current year (2026 or '26'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success\n\nRAW TEXT:\n${rawOcrText}`;
+
+            const payload = {
+                model: 'llama-3.3-70b-versatile',
+                messages: [{
+                    role: 'user',
+                    content: promptText
+                }]
+            };
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${groqKey}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error ? data.error.message : 'Unknown API Error');
+            }
+
+            recordUsage('groq');
+
             if (loadingToast) loadingToast.remove();
-            showToast("فشل قراءة الملف ❌", true);
-            resolve();
-        };
+            if (data.choices && data.choices[0].message && data.choices[0].message.content) {
+                parseAIResult(data.choices[0].message.content.trim());
+            } else {
+                parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // success // yes');
+            }
+        } catch (err) {
+            if (loadingToast) loadingToast.remove();
+            showToast("خطأ Groq: " + err.message, true, 5000);
+        }
+        resolve();
     });
 }
 
@@ -929,7 +925,7 @@ function parseAIResult(aiText) {
     const status = parts[5] || "success";
 
     const formattedAmount = formatAmount(amount);
-    const finalResult = `${card} // ${formattedAmount} // ${time} // ${date}`;
+    const finalResult = `${formattedAmount} // ${card} // ${time} // ${date}`;
     updateUI(finalResult, card, formattedAmount, time, date);
 
     const badge = document.getElementById('declineBadge');

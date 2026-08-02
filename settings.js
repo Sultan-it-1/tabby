@@ -9,7 +9,7 @@
 
     const defaultSettings = {
         mode: 'light',
-        themeColor: '#007aff'
+        themeColor: '#00e676'
     };
 
     let savedSettings = null;
@@ -17,6 +17,10 @@
         const stored = localStorage.getItem('fastToolkitSettings');
         if (stored) {
             savedSettings = JSON.parse(stored);
+            if (savedSettings.themeColor === '#007aff') {
+                savedSettings.themeColor = '#00e676';
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(savedSettings));
+            }
         }
     } catch (e) { }
 
@@ -81,6 +85,114 @@
             });
         }
     }
+
+    // === Universal Quick Access Tools Navigation Bar Injection ===
+    function injectQuickToolsBar() {
+        if (document.getElementById('quickToolsBar')) return;
+
+        const container = document.querySelector('.app-container') || document.querySelector('.container');
+        if (!container) return;
+
+        const bar = document.createElement('div');
+        bar.id = 'quickToolsBar';
+        bar.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2px;
+            padding: 2px 4px;
+            margin-bottom: 4px;
+            background: transparent;
+            border: none;
+            box-sizing: border-box;
+            width: 100%;
+            flex-shrink: 0;
+            user-select: none;
+            direction: rtl;
+        `;
+
+        const tools = [
+            { href: 'index.html', icon: '🏠', title: 'الرئيسية' },
+            { href: 'note.html', icon: '📝', title: 'نسخ سريع' },
+            { href: 'simah.html', icon: '📊', title: 'سمة' },
+            { href: 'card.html', icon: '🔍', title: 'Card Scan' },
+            { href: 'sticky.html', icon: '📌', title: 'Sticky Notes' },
+            { href: 'cia.html', icon: '📋', title: 'CIA Maker' },
+            { href: 'date.html', icon: '📅', title: 'Date Helper' }
+        ];
+
+        const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+        // Don't render quick tools bar on Home page (index.html)
+        if (currentPath === 'index.html' || currentPath === '' || window.location.pathname.endsWith('/')) return;
+
+
+        tools.forEach(tool => {
+            const btn = document.createElement('a');
+            btn.href = tool.href;
+            btn.title = tool.title;
+            btn.innerHTML = tool.icon;
+            
+            const isActive = currentPath === tool.href || (currentPath === '' && tool.href === 'index.html');
+
+            btn.style.cssText = `
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 4px 0;
+                border-radius: 6px;
+                text-decoration: none;
+                font-size: 14px;
+                opacity: ${isActive ? '1' : '0.45'};
+                background: ${isActive ? 'rgba(0, 230, 118, 0.15)' : 'transparent'};
+                border: ${isActive ? '1px solid rgba(0, 230, 118, 0.35)' : '1px solid transparent'};
+                box-shadow: ${isActive ? '0 0 10px rgba(0, 230, 118, 0.2)' : 'none'};
+                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                filter: ${isActive ? 'none' : 'grayscale(30%)'};
+            `;
+
+            btn.onmouseover = () => {
+                if (!isActive) {
+                    btn.style.opacity = '1';
+                    btn.style.filter = 'none';
+                    btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                    btn.style.transform = 'translateY(-1px) scale(1.12)';
+                }
+            };
+            btn.onmouseout = () => {
+                if (!isActive) {
+                    btn.style.opacity = '0.45';
+                    btn.style.filter = 'grayscale(30%)';
+                    btn.style.background = 'transparent';
+                    btn.style.transform = 'scale(1)';
+                }
+            };
+
+            bar.appendChild(btn);
+        });
+
+        container.insertBefore(bar, container.firstChild);
+
+        // Hide duplicate original Home button in subpages since Quick Access Bar handles Home navigation
+        document.querySelectorAll('a[href="index.html"]').forEach(btn => {
+            if (btn.parentNode && btn.parentNode.id !== 'quickToolsBar') {
+                btn.style.display = 'none';
+            }
+        });
+    }
+
+
+    function initHeaderExtensions() {
+        injectQuickToolsBar();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHeaderExtensions);
+    } else {
+        initHeaderExtensions();
+    }
+
+
 
     let styleRules = `
         .container, .app-container {
@@ -785,9 +897,27 @@
             middleWrapper.appendChild(visibilityBtn);
             middleWrapper.appendChild(timerContainer);
 
-            // Timer Logic
+            // Smart Ticket Timer Logic
             let pipTimerSeconds = 0;
             let pipTimerInterval = null;
+            let lastTicketTimeStr = "00:00";
+            let ticketCount = 0;
+            let idleSeconds = 0;
+            const IDLE_LIMIT = 180; // 3 minutes idle threshold
+
+            function formatDuration(sec) {
+                const m = Math.floor(sec / 60);
+                const s = sec % 60;
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+
+            function updateTimerTooltip() {
+                if (ticketCount > 0) {
+                    timerContainer.title = `اضغط للتصفير | التكت السابق: ${lastTicketTimeStr} | إجمالي تكتات الجلسة: ${ticketCount}`;
+                } else {
+                    timerContainer.title = `اضغط لتصفير العداد | سيتم التصفير تلقائياً عند النسخ أو إنجاز التكت`;
+                }
+            }
 
             function updateTimerDisplay() {
                 const m = Math.floor(pipTimerSeconds / 60);
@@ -809,21 +939,87 @@
                 }
             }
 
-            timerContainer.addEventListener("click", () => {
+            function resetSmartTicketTimer(reason = 'manual') {
+                if (pipTimerSeconds > 1) {
+                    lastTicketTimeStr = formatDuration(pipTimerSeconds);
+                    ticketCount++;
+                }
                 pipTimerSeconds = 0;
+                idleSeconds = 0;
                 updateTimerDisplay();
-                
-                // Visual feedback on click
-                timerSpan.style.transform = "scale(0.9)";
+                updateTimerTooltip();
+
+                // Flash feedback pulse
+                timerSpan.style.transform = "scale(1.18)";
+                timerSpan.style.boxShadow = "0 0 10px rgba(0, 230, 118, 0.6)";
                 setTimeout(() => {
                     timerSpan.style.transform = "scale(1)";
-                }, 150);
+                    timerSpan.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.1)";
+                }, 200);
+            }
+
+            // Click manual reset
+            timerContainer.addEventListener("click", () => {
+                resetSmartTicketTimer('manual');
             });
 
+            // Smart Auto-Reset on Copy or Action in any window
+            const handleSmartCopy = () => {
+                resetSmartTicketTimer('copy');
+            };
+
+            window.addEventListener("copy", handleSmartCopy);
+            if (pipWindow) {
+                pipWindow.addEventListener("copy", handleSmartCopy);
+            }
+
+            // Listen to broad click events for copy buttons
+            const handleGlobalClick = (e) => {
+                const target = e.target.closest && e.target.closest('button, .copy-btn, .menu-item, [data-action="copy"]');
+                if (target) {
+                    const text = (target.innerText || '').toLowerCase();
+                    if (text.includes('نسخ') || text.includes('copy') || target.classList.contains('copy-btn')) {
+                        resetSmartTicketTimer('button');
+                    }
+                }
+            };
+            document.addEventListener('click', handleGlobalClick);
+
+            // Listen for Ticket URL Navigation / Change events from Extension or SidePanel
+            window.addEventListener("message", (e) => {
+                if (e.data && (e.data.action === "resetTicketTimer" || e.data.action === "ticketUrlChanged")) {
+                    resetSmartTicketTimer(e.data.reason || "url_changed");
+                }
+            });
+
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+                chrome.runtime.onMessage.addListener((msg) => {
+                    if (msg && msg.action === "resetTicketTimer") {
+                        resetSmartTicketTimer(msg.reason || "url_changed");
+                    }
+                });
+            }
+
+
+            // Inactivity Reset Listener
+            const resetIdle = () => {
+                idleSeconds = 0;
+            };
+            window.addEventListener("mousemove", resetIdle);
+            window.addEventListener("keydown", resetIdle);
+
+            // Main 1s Timer Loop with Inactivity Pause
             pipTimerInterval = setInterval(() => {
-                pipTimerSeconds++;
-                updateTimerDisplay();
+                idleSeconds++;
+                if (idleSeconds < IDLE_LIMIT) {
+                    pipTimerSeconds++;
+                    updateTimerDisplay();
+                } else {
+                    // Dim timer to signal auto-pause during idle
+                    timerSpan.style.opacity = "0.4";
+                }
             }, 1000);
+
 
             headerBar.appendChild(titleWrapper);
             headerBar.appendChild(middleWrapper);
@@ -1173,7 +1369,7 @@
         localStorage.setItem('fastToolkitSettings', JSON.stringify(s));
 
         const root = document.documentElement;
-        const themeColor = s.themeColor || '#007aff';
+        const themeColor = s.themeColor || '#00e676';
 
         // إعادة تطبيق الألوان فوراً
         if (newMode === 'dark') {

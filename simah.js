@@ -50,10 +50,14 @@ function showToast(message, isError = false, duration = 2500) {
 
 let savedAccountsList = [];
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
-let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
+let isAIActive = true;
+localStorage.setItem('simah_ai_pref', 'true');
 let globalVoiceSpeed = localStorage.getItem('simah_voice_speed') || '1';
 let lastRateLimitInfo = {};
-if (isAIActive && aiBtn) aiBtn.className = 'ai-btn active';
+if (aiBtn) {
+    aiBtn.className = 'ai-btn active';
+    aiBtn.title = 'الذكاء الاصطناعي مفعل دائماً لتقرير سمة';
+}
 
 const speechDictionary = {
     '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
@@ -78,10 +82,12 @@ function toggleSpeed(cardId) {
 }
 
 function toggleAI() {
-    isAIActive = !isAIActive;
-    aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
-    localStorage.setItem('simah_ai_pref', isAIActive);
-    localStorage.setItem('simah_ai_provider', currentProvider);
+    isAIActive = true;
+    if (aiBtn) {
+        aiBtn.className = 'ai-btn active';
+    }
+    localStorage.setItem('simah_ai_pref', 'true');
+    showToast("الذكاء الاصطناعي (AI) مفعل إجبارياً للحصول على دقة 100% في سمة 🧠");
 }
 
 function switchProvider(provider) {
@@ -262,29 +268,26 @@ async function processImage(file) {
     dropZone.classList.add('processing');
     let loadingToast;
 
-    if (isAIActive) {
-        if (currentProvider === 'groq') {
-            const groqKey = localStorage.getItem('simah_groq_key');
-            if (!groqKey) {
-                showToast("مفتاح Groq مفقود ❌", true);
-                dropZone.classList.remove('processing');
-                return;
-            }
-            loadingToast = showToast("جاري الاستخراج عبر Groq... 🧠", false, 0);
-            await extractWithGroq(file, groqKey);
-        } else {
-            const apiKey = localStorage.getItem('simah_ai_key');
-            if (!apiKey) {
-                showToast("مفتاح Gemini مفقود ❌", true);
-                dropZone.classList.remove('processing');
-                return;
-            }
-            loadingToast = showToast("جاري الاستخراج عبر Gemini... 🧠", false, 0);
-            await extractWithAI(file, apiKey);
+    if (currentProvider === 'groq') {
+        const groqKey = localStorage.getItem('simah_groq_key');
+        if (!groqKey) {
+            showToast("⚠️ مفتاح Groq مفقود! يرجى إدخال مفتاح الـ AI لاستخدام أداة سمة ⚙️", true, 4000);
+            openSettings();
+            dropZone.classList.remove('processing');
+            return;
         }
+        loadingToast = showToast("جاري الاستخراج بالذكاء الاصطناعي عبر Groq... 🧠", false, 0);
+        await extractWithGroq(file, groqKey);
     } else {
-        loadingToast = showToast("جاري استخراج البيانات... ⏳", false, 0);
-        await extractWithTesseract(file);
+        const apiKey = localStorage.getItem('simah_ai_key');
+        if (!apiKey) {
+            showToast("⚠️ مفتاح Gemini مفقود! يرجى إدخال مفتاح الـ AI لاستخدام أداة سمة ⚙️", true, 4000);
+            openSettings();
+            dropZone.classList.remove('processing');
+            return;
+        }
+        loadingToast = showToast("جاري الاستخراج بالذكاء الاصطناعي عبر Gemini... 🧠", false, 0);
+        await extractWithAI(file, apiKey);
     }
     
     if (loadingToast) loadingToast.remove();
@@ -338,49 +341,51 @@ async function extractWithAI(file, apiKey) {
 }
 
 async function extractWithGroq(file, groqKey) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            try {
-                const base64Url = reader.result;
-                const payload = {
-                    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-                    messages: [{
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: 'Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting.' },
-                            { type: 'image_url', image_url: { url: base64Url } }
-                        ]
-                    }]
-                };
-
-                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${groqKey}`
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error ? data.error.message : 'Unknown API Error');
-                }
-
-                recordUsage('groq');
-
-                if (data.choices && data.choices[0].message && data.choices[0].message.content) {
-                    extractAccounts(data.choices[0].message.content);
-                } else {
-                    extractAccounts('');
-                }
-            } catch (err) {
-                showToast("خطأ Groq: " + err.message, true, 4000);
+    return new Promise(async (resolve) => {
+        try {
+            let rawOcrText = "";
+            if (typeof Tesseract !== 'undefined') {
+                try {
+                    const result = await Tesseract.recognize(file, 'eng+ara');
+                    rawOcrText = result?.data?.text || "";
+                } catch(e) {}
             }
-            resolve();
-        };
+
+            const promptText = `Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting.\n\nRAW TEXT:\n${rawOcrText}`;
+
+            const payload = {
+                model: 'llama-3.3-70b-versatile',
+                messages: [{
+                    role: 'user',
+                    content: promptText
+                }]
+            };
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${groqKey}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error ? data.error.message : 'Unknown API Error');
+            }
+
+            recordUsage('groq');
+
+            if (data.choices && data.choices[0].message && data.choices[0].message.content) {
+                extractAccounts(data.choices[0].message.content);
+            } else {
+                extractAccounts(rawOcrText);
+            }
+        } catch (err) {
+            showToast("خطأ Groq: " + err.message, true, 4000);
+        }
+        resolve();
     });
 }
 

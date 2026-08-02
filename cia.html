@@ -14,7 +14,7 @@
         :root {
             --bg: #0f0f0f;
             --card-bg: #1a1a1a;
-            --accent-green: var(--accent-green);
+            --accent-green: var(--accent-green, #00e676);
             --text: #eee;
             --border: #333;
         }
@@ -49,9 +49,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             border-bottom: 1px solid var(--border);
-            padding-bottom: 5px;
+            padding-bottom: 4px;
         }
 
         .header h1 {
@@ -61,22 +61,27 @@
             text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
         }
 
-        .nav-btn {
-            background: #252525;
-            border: 1px solid #444;
-            color: var(--text);
-            padding: 3px 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-            text-decoration: none;
-            transition: 0.2s;
+        .search-box {
+            width: 100%;
+            margin-bottom: 6px;
         }
 
-        .nav-btn:hover {
+        .search-input {
+            width: 100%;
+            background: var(--card-bg, #181818);
+            border: 1px solid var(--border, #333);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--text);
+            outline: none;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
             border-color: var(--accent-green);
-            background: #122212;
-            color: var(--accent-green);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 25%, transparent);
         }
 
         .content-scroll {
@@ -91,96 +96,238 @@
         .content-scroll::-webkit-scrollbar { width: 3px; }
         .content-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
-        .section-box {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 6px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
         }
 
-        .section-header {
+        /* Category Card (Main C Card) */
+        .category-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 8px 10px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
         }
 
-        .section-title {
+        .category-card:hover {
+            background: rgba(0, 230, 118, 0.08);
+            border-color: var(--accent-green);
+            transform: translateY(-1px);
+        }
+
+        .category-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        .category-title {
             font-size: 11px;
             font-weight: bold;
-            color: var(--accent-green);
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .actions {
+        .category-count {
+            font-size: 9px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #aaa;
+            padding: 2px 5px;
+            border-radius: 10px;
+            font-weight: normal;
+        }
+
+        .card-actions {
             display: flex;
-            gap: 2px;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 2px;
-            border-radius: 6px;
+            gap: 3px;
+            opacity: 0.5;
+            transition: 0.2s;
         }
 
-        .icon-btn {
+        .category-card:hover .card-actions, .cia-full-card:hover .card-actions {
+            opacity: 1;
+        }
+
+        .card-act-btn {
             background: transparent;
             border: none;
-            color: var(--text);
+            color: #aaa;
+            font-size: 10px;
+            padding: 2px 4px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 11px;
-            padding: 3px 4px;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            opacity: 0.6;
-            filter: grayscale(0.8);
+            transition: 0.2s;
         }
-        .icon-btn:hover {
-            opacity: 1;
-            filter: grayscale(0);
-            background: rgba(255, 255, 255, 0.1);
-            transform: scale(1.15);
+
+        .card-act-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
         }
-        .icon-btn.del:hover {
+
+        .card-act-btn.del:hover {
+            color: #ff4444;
             background: rgba(255, 68, 68, 0.15);
         }
 
-        select {
-            width: 100%;
-            background: var(--card-bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 4px;
-            font-size: 10px;
-            outline: none;
-            font-family: inherit;
-        }
-        select:focus {
-            border-color: var(--accent-green);
-        }
-
-        .generate-btn {
-            background: var(--accent-green);
-            color: #000;
-            border: none;
-            padding: 6px;
-            border-radius: 6px;
+        /* Prominent Add Button */
+        .add-card-btn {
+            background: transparent;
+            border: 1px dashed rgba(0, 230, 118, 0.4);
+            color: var(--accent-green);
+            border-radius: 8px;
+            padding: 8px;
             font-size: 11px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: auto;
-            margin-bottom: 4px;
-            transition: 0.2s;
-        }
-        .generate-btn:hover {
-            filter: brightness(1.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
         }
 
+        .add-card-btn:hover {
+            background: rgba(0, 230, 118, 0.12);
+            border-color: var(--accent-green);
+        }
+
+        /* Sub-View Header Bar */
+        .sub-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 4px 6px;
+            margin-bottom: 6px;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-green);
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 230, 118, 0.15);
+        }
+
+        .sub-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--text);
+            max-width: 100px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Full CIA Card (C + I + A) */
+        .cia-full-card {
+            background: var(--card-bg, #181818);
+            border: 1px solid var(--border, #282828);
+            color: var(--text, #eee);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            max-height: 155px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .cia-full-card:hover {
+            border-color: var(--accent-green);
+            background: color-mix(in srgb, var(--accent-green) 12%, var(--card-bg));
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
+
+        .cia-row {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            overflow: hidden;
+        }
+
+        .cia-badge {
+            font-size: 8.5px;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 3px;
+            display: inline-block;
+            width: fit-content;
+        }
+        .cia-badge.c { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); border: 1px solid rgba(0, 230, 118, 0.3); }
+        .cia-badge.i { background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.3); }
+        .cia-badge.a { background: rgba(255, 159, 67, 0.15); color: #ff9f43; border: 1px solid rgba(255, 159, 67, 0.3); }
+
+        .cia-text {
+            font-size: 9.5px;
+            color: var(--text, #eee);
+            line-height: 1.3;
+            max-height: 32px;
+            overflow-y: auto;
+            word-break: break-word;
+            padding-left: 2px;
+            text-align: start;
+            unicode-bidi: plaintext;
+        }
+
+        .cia-text::-webkit-scrollbar {
+            width: 2px;
+        }
+        .cia-text::-webkit-scrollbar-thumb {
+            background: rgba(0, 230, 118, 0.4);
+            border-radius: 4px;
+        }
+
+
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 4px;
+            margin-top: 2px;
+        }
+
+        .copy-hint {
+            font-size: 9px;
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        /* Bottom Action Bar */
         .backup-row {
             display: flex;
             gap: 4px;
             border-top: 1px solid var(--border);
             padding-top: 5px;
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         .backup-btn {
@@ -188,9 +335,9 @@
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.08);
             color: #999;
-            padding: 6px 4px;
+            padding: 5px 4px;
             border-radius: 6px;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -210,190 +357,66 @@
             background: rgba(66, 133, 244, 0.1);
         }
 
-        .status {
-            display: none; /* Removed in favor of toast */
-        }
-
-        .backup-dot {
-            width: 6px;
-            height: 6px;
-            background: #ffaa00;
-            border-radius: 50%;
-            display: none;
-            z-index: 10;
-            box-shadow: 0 0 6px #ffaa00;
-            cursor: help;
-        }
-
-        .backup-dot::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 10px;
-            left: 0;
-            background: #333;
-            color: #ffaa00;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 9px;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: 0.2s;
-            border: 1px solid #ffaa00;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        }
-
-        .backup-dot:hover::after {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        /* Toast Notification */
-        .toast-container {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            z-index: 200;
-            pointer-events: none;
-        }
-        .toast {
-            background: rgba(15, 15, 15, 0.95);
-            color: #fff;
-            border: 1px solid var(--accent-green);
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .toast.error {
-            border-color: #ff4444;
-            color: #ff4444;
-        }
-
-        /* Drag & Drop */
-        body.drag-over .container {
-            border-color: var(--accent-green);
-            box-shadow: 0 0 20px color-mix(in srgb, var(--accent-green) 40%, transparent);
-            transform: scale(1.02);
-            transition: all 0.3s;
-        }
-        body.drag-over::after {
-            content: '📂 أفلت ملف JSON هنا...';
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(4px);
-            z-index: 300;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--accent-green);
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        /* Toolbar */
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 4px 6px;
-            margin-bottom: 2px;
-        }
-        .auto-copy-label {
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-            color: var(--text);
-            font-weight: bold;
-        }
-        .auto-copy-label input {
-            accent-color: var(--accent-green);
-            cursor: pointer;
-            margin: 0;
-        }
-        .clear-btn {
-            background: none;
-            border: none;
-            color: #888;
-            cursor: pointer;
-            font-size: 12px;
-            padding: 2px;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .clear-btn:hover {
-            color: #ff4444;
-            transform: rotate(180deg);
-        }
-
+        /* Modal Overlay & Fields */
         .modal {
             display: none;
             position: absolute;
             inset: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.88);
             backdrop-filter: blur(4px);
             z-index: 100;
             align-items: center;
             justify-content: center;
             border-radius: 12px;
-            padding: 10px;
+            padding: 8px;
         }
         .modal.open { display: flex; }
 
         .modal-content {
-            background: #1c1c1c;
-            padding: 12px;
+            background: #1a1a1a;
+            padding: 10px;
             border-radius: 8px;
             width: 100%;
             border: 1px solid var(--accent-green);
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .modal-label {
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--accent-green);
+            margin-top: 2px;
         }
 
         .modal-content input, .modal-content textarea {
-            background: var(--card-bg);
+            background: var(--card-bg, #111);
             color: var(--text);
-            border: 1px solid var(--border);
-            padding: 6px;
+            border: 1px solid var(--border, #333);
+            padding: 5px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: 10px;
             outline: none;
             font-family: inherit;
+            box-sizing: border-box;
+            width: 100%;
+            text-align: start;
+            unicode-bidi: plaintext;
         }
-        .modal-content textarea {
-            resize: vertical;
-        }
+        .modal-content textarea { resize: vertical; min-height: 38px; }
         .modal-content input:focus, .modal-content textarea:focus { border-color: var(--accent-green); }
 
         .modal-btns {
             display: flex;
             gap: 4px;
+            margin-top: 4px;
         }
         .modal-btns button {
             flex: 1;
-            padding: 6px;
+            padding: 5px;
             border-radius: 4px;
             border: none;
             font-size: 10px;
@@ -403,28 +426,103 @@
         .btn-save { background: var(--accent-green); color: #000; }
         .btn-cancel { background: #333; color: #fff; }
 
+        /* Toast Container */
+        .toast-container {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 200;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(15, 15, 15, 0.95);
+            color: #fff;
+            border: 1px solid var(--accent-green);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { border-color: #ff4444; color: #ff4444; }
+        /* Filter Chips Bar */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            overflow-x: auto;
+            padding: 2px 0 6px 0;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            user-select: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            height: 2px;
+        }
+        .filter-bar::-webkit-scrollbar-thumb {
+            background: rgba(0, 230, 118, 0.4);
+            border-radius: 4px;
+        }
+
+        .filter-chip {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 9.5px;
+            font-weight: bold;
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+
+        .filter-chip:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .filter-chip.active {
+            color: #111;
+            background: var(--accent-green, #00e676);
+            border-color: var(--accent-green, #00e676);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 35%, transparent);
+        }
+        /* In-App Confirm Box */
         .confirm-box {
             display: none;
             flex-direction: column;
-            gap: 6px;
-            padding: 8px;
-            background: #222;
+            gap: 8px;
+            padding: 10px;
+            background: var(--card-bg, #1c1c1c);
             border: 1px solid #ff4444;
-            border-radius: 6px;
+            border-radius: 8px;
             position: absolute;
             bottom: 30px;
             left: 10px;
             right: 10px;
-            z-index: 110;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+            z-index: 150;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
         }
 
         .confirm-txt {
             font-size: 11px;
-            color: #fff;
+            color: var(--text, #fff);
             text-align: center;
+            font-weight: bold;
         }
-
     </style>
 </head>
 <body>
@@ -437,127 +535,82 @@
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
             </a>
-            <h1 style="flex-grow: 1; text-align: center; padding-left: 24px; margin: 0;">CIA Maker 📋</h1>
+            <h1 style="flex-grow: 1; text-align: center; margin: 0; font-size: 13px;">بطاقات CIA الجاهزة 📋</h1>
         </div>
 
-        <div class="content-scroll">
-
-            <div class="toolbar">
-                <label class="auto-copy-label">
-                    <input type="checkbox" id="autoCopyCb"> نسخ تلقائي ⚡
-                </label>
-                <button class="clear-btn" onclick="clearSelections()" title="تفريغ الحقول">🔄</button>
-            </div>
-            
-            <div class="section-box">
-                <div class="section-header">
-                    <div class="section-title">C : Customer Problem</div>
-                    <div class="actions">
-                        <button class="icon-btn" onclick="moveSelected('C', -1)" title="أعلى">⬆️</button>
-                        <button class="icon-btn" onclick="moveSelected('C', 1)" title="أسفل">⬇️</button>
-                        <button class="icon-btn" onclick="openEditModal('C')" title="تعديل">✏️</button>
-                        <button class="icon-btn" onclick="openAddModal('C')" title="إضافة">➕</button>
-                        <button class="icon-btn del" onclick="deleteSelected('C')" title="حذف المحدد">🗑️</button>
-                    </div>
-                </div>
-                <select id="select-C" onchange="handleProblemChange()">
-                    <option value="">-- اختر المشكلة --</option>
-                </select>
-            </div>
-
-            <div class="section-box" id="section-I">
-                <div class="section-header">
-                    <div class="section-title">I : Investigation</div>
-                    <div class="actions">
-                        <button class="icon-btn" onclick="moveSelected('I', -1)" title="أعلى">⬆️</button>
-                        <button class="icon-btn" onclick="moveSelected('I', 1)" title="أسفل">⬇️</button>
-                        <button class="icon-btn" onclick="openEditModal('I')" title="تعديل">✏️</button>
-                        <button class="icon-btn" onclick="openAddModal('I')" title="إضافة">➕</button>
-                        <button class="icon-btn del" onclick="deleteSelected('I')" title="حذف المحدد">🗑️</button>
-                    </div>
-                </div>
-                <select id="select-I" onchange="handleSubSelectChange()">
-                    <option value="">-- اختر الفحص --</option>
-                </select>
-            </div>
-
-            <div class="section-box" id="section-A">
-                <div class="section-header">
-                    <div class="section-title">A : Action</div>
-                    <div class="actions">
-                        <button class="icon-btn" onclick="moveSelected('A', -1)" title="أعلى">⬆️</button>
-                        <button class="icon-btn" onclick="moveSelected('A', 1)" title="أسفل">⬇️</button>
-                        <button class="icon-btn" onclick="openEditModal('A')" title="تعديل">✏️</button>
-                        <button class="icon-btn" onclick="openAddModal('A')" title="إضافة">➕</button>
-                        <button class="icon-btn del" onclick="deleteSelected('A')" title="حذف المحدد">🗑️</button>
-                    </div>
-                </div>
-                <select id="select-A" onchange="handleSubSelectChange()">
-                    <option value="">-- اختر الإجراء --</option>
-                </select>
-            </div>
-
+        <!-- Search Bar -->
+        <div class="search-box">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 ابحث في بطاقات CIA..." oninput="filterCards()">
         </div>
 
-        <button class="generate-btn" onclick="generateCIA()">توليد ونسخ 📋</button>
+        <!-- Filter Bar -->
+        <div class="filter-bar" id="filterBar"></div>
 
+        <!-- Main Content Area -->
+        <div class="content-scroll" id="contentScroll">
+            <!-- Rendered Dynamically -->
+        </div>
+
+        <!-- Bottom Backup Row -->
         <div class="backup-row">
-            <button class="backup-btn" onclick="exportCIAData()" title="تصدير نسخة JSON">💾</button>
-            <button class="backup-btn" onclick="document.getElementById('importFile').click()" title="استيراد ملف JSON">📂</button>
-            <button class="backup-btn danger" onclick="triggerDeleteAll()" title="مسح الكل">🗑️</button>
+            <button class="backup-btn" onclick="exportCIAData()" title="تصدير نسخة JSON">💾 تصدير</button>
+            <button class="backup-btn" onclick="document.getElementById('importFile').click()" title="استيراد ملف JSON">📂 استيراد</button>
+            <button class="backup-btn danger" onclick="triggerDeleteAll()" title="مسح الكل">🗑️ مسح</button>
             <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importCIAData(event)">
         </div>
         
-        <div class="backup-row" style="margin-top: 4px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
+        <div class="backup-row" style="margin-top: 3px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
             <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('backup')">☁️ نسخ (Drive)</button>
             <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('restore')">☁️ استعادة (Drive)</button>
         </div>
 
-        <div style="display: flex; justify-content: flex-start; padding-top: 4px; margin-bottom: -4px; height: 6px;">
-            <div id="backupDot" class="backup-dot" data-tooltip=""></div>
-        </div>
-
         <div class="toast-container" id="toastContainer"></div>
 
-        <!-- Add Modal -->
-        <div class="modal" id="addModal">
-            <div class="modal-content">
-                <div style="font-size: 11px; font-weight: bold; color: var(--accent-green); margin-bottom: 4px;" id="modalTitle">إضافة جديد</div>
-                <textarea id="newItemInput" placeholder="اكتب النص هنا..." dir="auto" rows="4"></textarea>
-                <div class="modal-btns">
-                    <button class="btn-save" onclick="saveNewItem()">حفظ</button>
-                    <button class="btn-cancel" onclick="closeModal()">إلغاء</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Confirm Box (like note.html) -->
+        <!-- Custom In-App Delete Confirmation Modal -->
         <div id="confirmBox" class="confirm-box">
-            <div id="confirmTxt" class="confirm-txt">هل أنت متأكد؟</div>
+            <div id="confirmTxt" class="confirm-txt">هل أنت متأكد من حذف هذه البطاقة؟</div>
             <div class="modal-btns">
-                <button class="btn-save" style="background:#ff4444;color:#fff;" id="confirmYesBtn">نعم</button>
+                <button class="btn-save" style="background:#ff4444; color:#fff;" id="confirmYesBtn">حذف</button>
                 <button class="btn-cancel" onclick="closeConfirmBox()">إلغاء</button>
             </div>
         </div>
 
-    </div>
+        <!-- Add/Edit CIA Card Modal (C + I + A) -->
+        <div class="modal" id="ciaCardModal">
+            <div class="modal-content">
+                <div style="font-size: 11px; font-weight: bold; color: var(--accent-green); text-align:center;" id="modalTitle">إضافة بطاقة CIA جديدة</div>
+                
+                <div class="modal-label">C : Customer Problem (المشكلة)</div>
+                <input type="text" id="inputC" placeholder="Customer's view: why they contacted, in their own words..." dir="auto">
 
-    <!-- Delete All Modal -->
-    <div class="modal" id="deleteAllModal">
-        <div class="modal-content" style="border-color: #ff4444 !important; max-width: 200px; align-self: center; margin: auto;">
-            <h3 style="color:#ff4444; margin: 0 0 8px 0; font-size:13px; text-align:center;">⚠️ مسح جميع البيانات؟</h3>
-            <p style="font-size:11px; color: var(--text); margin:0 0 10px 0; line-height:1.4; text-align:center; font-weight:bold;">
-                سيتم حذف جميع المشاكل والفحوصات والإجراءات نهائياً ولا يمكن استعادتها.
-            </p>
-            <p style="font-size:10px; color: var(--text); opacity: 0.9; margin:0 0 8px 0; text-align:center;">
-                اكتب <strong style="color:#ff3333; background:rgba(255, 68, 68, 0.15); padding:2px 5px; border-radius:3px; font-family:monospace; user-select:all;">delete all</strong> للتأكيد:
-            </p>
-            <input type="text" id="deleteAllConfirmInput" placeholder="اكتب التأكيد هنا..." dir="ltr" style="text-align:center; border-color:#ff4444 !important; margin-bottom:8px;">
-            <div class="modal-btns">
-                <button class="btn-save" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
-                <button class="btn-cancel" onclick="closeModal()">إلغاء</button>
+                <div class="modal-label">I : Investigation (الفحص / التحقق)</div>
+                <textarea id="inputI" placeholder="What you checked, what you found, what you think the issue is..." rows="2" dir="auto"></textarea>
+
+                <div class="modal-label">A : Action (الإجراء / الحل)</div>
+                <textarea id="inputA" placeholder="What's next: resolution, escalation, or what the customer must do..." rows="2" dir="auto"></textarea>
+
+                <div class="modal-btns">
+                    <button class="btn-save" onclick="saveCiaCardModal()">حفظ البطاقة</button>
+                    <button class="btn-cancel" onclick="closeCiaModal()">إلغاء</button>
+                </div>
             </div>
         </div>
+
+        <!-- Delete All Confirmation Modal -->
+        <div class="modal" id="deleteAllModal">
+            <div class="modal-content" style="border-color: #ff4444 !important;">
+                <h3 style="color:#ff4444; margin: 0 0 4px 0; font-size:12px; text-align:center;">⚠️ مسح جميع البطاقات؟</h3>
+                <p style="font-size:10px; color: var(--text); margin:0 0 6px 0; text-align:center;">
+                    سيتم حذف جميع بطاقات CIA نهائياً. اكتب <strong style="color:#ff3333;">delete all</strong> للتأكيد:
+                </p>
+                <input type="text" id="deleteAllConfirmInput" placeholder="اكتب التأكيد هنا..." dir="ltr" style="text-align:center; border-color:#ff4444 !important; margin-bottom:6px;">
+                <div class="modal-btns">
+                    <button class="btn-save" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
+                    <button class="btn-cancel" onclick="closeCiaModal()">إلغاء</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async defer></script>
