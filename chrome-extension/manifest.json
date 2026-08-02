@@ -1,21 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "Royal Family",
-  "version": "1.0.0",
-  "description": "صنعت لك خصيصا",
+  "name": "Royal Family - Fast Toolkit",
+  "version": "1.1.0",
+  "description": "لوحة الأدوات السريعة تفتح كشريط جانبي بجوار موقع العمل مباشرة",
   "background": {
     "service_worker": "background.js"
   },
-  "action": {
-    "default_title": "افتح نافذة Royal Family العائمة"
-  },
   "permissions": [
+    "sidePanel",
     "declarativeNetRequest",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
-    "*://*.sultanops.com/*"
+    "*://*.sultanops.com/*",
+    "*://*.tabby.sa/*"
   ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "افتح اللوحة الجانبية Fast Toolkit"
+  },
   "icons": {
     "16": "icon.png",
     "48": "icon.png",
@@ -30,3 +36,4 @@
     }
   ]
 }
+

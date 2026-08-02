@@ -9,7 +9,8 @@ chrome.runtime.onInstalled.addListener(() => {
       action: {
         type: "modifyHeaders",
         responseHeaders: [
-          { header: "X-Frame-Options", operation: "remove" }
+          { header: "X-Frame-Options", operation: "remove" },
+          { header: "Frame-Options", operation: "remove" }
         ]
       },
       condition: {
@@ -32,23 +33,28 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// 2. Open or focus launcher.html when clicking the extension icon
-chrome.action.onClicked.addListener(async () => {
-  const launcherUrl = chrome.runtime.getURL("launcher.html");
+// 2. Open side panel when clicking the extension icon
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((error) => console.error("Error setting side panel behavior:", error));
 
-  // Query all open tabs to check if launcher is already open
-  chrome.tabs.query({}, (tabs) => {
-    const existingTab = tabs.find(tab => tab.url === launcherUrl);
-
-    if (existingTab) {
-      // Focus existing tab
-      chrome.tabs.update(existingTab.id, { active: true });
-      if (existingTab.windowId) {
-        chrome.windows.update(existingTab.windowId, { focused: true });
-      }
-    } else {
-      // Create a new tab with the launcher page
-      chrome.tabs.create({ url: "launcher.html" });
+// 3. Monitor Active Tab URL Changes for CRM Tickets (e.g., crm.tabby.sa/ticket/...)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url) {
+    const isTicketUrl = changeInfo.url.includes('/ticket') || 
+                        changeInfo.url.includes('tabby.sa') ||
+                        changeInfo.url.includes('/tickets/');
+    if (isTicketUrl) {
+      console.log("Fast Toolkit: Detected Ticket URL change ->", changeInfo.url);
+      chrome.runtime.sendMessage({
+        action: "resetTicketTimer",
+        reason: "url_changed",
+        newUrl: changeInfo.url
+      }).catch(() => {
+        // Ignore if sidepanel is not listening
+      });
     }
-  });
+  }
 });
+
+

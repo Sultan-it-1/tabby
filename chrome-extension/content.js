@@ -8,39 +8,46 @@
     const style = document.createElement("style");
     style.id = "pip-optimizer";
     style.textContent = `
-      /* Force body to fit the PiP viewport exactly */
+      /* Force body to fit the SidePanel viewport seamlessly with no gaps */
       html, body {
-        width: 100vw !important;
-        height: 100vh !important;
+        width: 100% !important;
+        height: 100% !important;
         overflow: hidden !important;
-        background: #0f0f0f !important;
         margin: 0 !important;
         padding: 0 !important;
       }
 
-      /* Force main container to occupy 100% of the PiP window with no borders/margins */
+      /* Force main container to occupy 100% of the SidePanel window with zero borders/margins */
       .container, .app-container {
-        width: 100vw !important;
-        height: 100vh !important;
-        max-width: 100vw !important;
-        max-height: 100vh !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
         border: none !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         margin: 0 !important;
-        padding: 10px !important;
+        padding: 16px !important;
         box-sizing: border-box !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: space-between !important;
       }
 
-      /* Adjust internal scroll grids and area heights to fit the 480px height perfectly */
+      /* Seamless background sync to eliminate any dark border gaps */
+      body {
+        background: inherit !important;
+      }
+
+      /* Adjust internal scroll grids and area heights to fit SidePanel viewport */
       .menu-grid {
         flex-grow: 1 !important;
         height: auto !important;
-        max-height: calc(100vh - 75px) !important;
+        max-height: calc(100vh - 80px) !important;
         overflow-y: auto !important;
+        padding: 4px 2px !important;
       }
 
       /* Adjust sub-tool layouts (like note.html, card.html, simah.html, sticky.html) */
@@ -54,14 +61,15 @@
         max-height: calc(100vh - 140px) !important;
       }
 
-      /* Ensure modals inside PiP are centered and highly readable */
+      /* Ensure modals inside SidePanel are centered and highly readable */
       .settings-modal, .usage-modal {
-        top: 20px !important;
+        top: 10px !important;
         left: 10px !important;
         right: 10px !important;
-        bottom: 20px !important;
-        max-height: calc(100vh - 40px) !important;
+        bottom: 10px !important;
+        max-height: calc(100vh - 20px) !important;
       }
+
     `;
 
     // Append styles
@@ -70,6 +78,145 @@
     } else {
       document.documentElement.appendChild(style);
     }
+
+    // Inject Smart Ticket Timer Widget into page header
+    function injectSmartTimerWidget() {
+      if (document.getElementById("ext-smart-timer")) return;
+
+      const headerRight = document.querySelector(".header-right") || 
+                          document.querySelector(".header-actions") || 
+                          document.querySelector(".header-row") ||
+                          document.querySelector(".header");
+
+      if (!headerRight) return;
+
+      const timerWrapper = document.createElement("div");
+      timerWrapper.id = "ext-smart-timer";
+      timerWrapper.style.cssText = "display:inline-flex;align-items:center;gap:4px;cursor:pointer;margin-right:6px;user-select:none;vertical-align:middle;";
+      timerWrapper.title = "اضغط لتصفير العداد | يتصفير تلقائياً عند النسخ أو تغير رابط التكت";
+
+      const eyeOpenSVG = `<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+      const eyeClosedSVG = `<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+      const eyeBtn = document.createElement("button");
+      eyeBtn.style.cssText = "background:none;border:none;color:inherit;cursor:pointer;padding:2px;display:inline-flex;align-items:center;opacity:0.75;transition:all 0.2s;outline:none;";
+      eyeBtn.title = "إخفاء / إظهار العداد";
+      eyeBtn.innerHTML = eyeOpenSVG;
+
+      const timerBadge = document.createElement("span");
+      timerBadge.id = "ext-smart-timer-text";
+      timerBadge.title = "اضغط لتصفير العداد";
+      timerBadge.style.cssText = "font-family:'Outfit','Segoe UI',monospace;font-weight:700;font-size:12px;color:#00e676;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);transition:all 0.3s ease;cursor:pointer;";
+      timerBadge.innerText = "00:00";
+
+      let isTimerVisible = localStorage.getItem("fastToolkit_timer_visible") !== "false";
+
+      function updateEyeVisibility() {
+        if (isTimerVisible) {
+          timerBadge.style.display = "inline-block";
+          eyeBtn.innerHTML = eyeOpenSVG;
+          timerWrapper.style.opacity = "1";
+          timerWrapper.style.pointerEvents = "auto";
+        } else {
+          timerBadge.style.display = "none";
+          eyeBtn.innerHTML = eyeClosedSVG;
+          timerWrapper.style.opacity = "0"; // completamente مخفي!
+        }
+      }
+      updateEyeVisibility();
+
+      // Show subtle eye icon on header hover if hidden so user can easily restore it
+      headerRight.addEventListener("mouseenter", () => {
+        if (!isTimerVisible) {
+          timerWrapper.style.opacity = "0.7";
+        }
+      });
+      headerRight.addEventListener("mouseleave", () => {
+        if (!isTimerVisible) {
+          timerWrapper.style.opacity = "0";
+        }
+      });
+
+      eyeBtn.onclick = (e) => {
+        e.stopPropagation();
+        isTimerVisible = !isTimerVisible;
+        localStorage.setItem("fastToolkit_timer_visible", isTimerVisible);
+        updateEyeVisibility();
+      };
+
+      timerBadge.onclick = (e) => {
+        e.stopPropagation();
+        resetTimer("manual");
+      };
+
+      timerWrapper.appendChild(eyeBtn);
+      timerWrapper.appendChild(timerBadge);
+
+      headerRight.insertBefore(timerWrapper, headerRight.firstChild);
+
+
+      let seconds = 0;
+      let lastTicketTime = "00:00";
+      let totalTickets = 0;
+      let idleSeconds = 0;
+
+      function updateDisplay() {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        timerBadge.innerText = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+      }
+
+      function resetTimer(reason) {
+        if (seconds > 1) {
+          const m = Math.floor(seconds / 60);
+          const s = seconds % 60;
+          lastTicketTime = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+          totalTickets++;
+          timerBadge.title = `اضغط للتصفير | التكت السابق: ${lastTicketTime} | إجمالي التكتات: ${totalTickets}`;
+        }
+        seconds = 0;
+        idleSeconds = 0;
+        updateDisplay();
+
+        timerBadge.style.transform = "scale(1.2)";
+        setTimeout(() => { timerBadge.style.transform = "scale(1)"; }, 200);
+      }
+
+
+      setInterval(() => {
+        idleSeconds++;
+        if (idleSeconds < 180) {
+          seconds++;
+          updateDisplay();
+        }
+      }, 1000);
+
+      window.addEventListener("mousemove", () => { idleSeconds = 0; });
+      window.addEventListener("keydown", () => { idleSeconds = 0; });
+      window.addEventListener("copy", () => resetTimer("copy"));
+
+      // Listen for message from background script when CRM Ticket URL changes
+      window.addEventListener("message", (e) => {
+        if (e.data && (e.data.action === "resetTicketTimer" || e.data.action === "ticketUrlChanged")) {
+          resetTimer("url_changed");
+        }
+      });
+
+      if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.addListener((msg) => {
+          if (msg && msg.action === "resetTicketTimer") {
+            resetTimer("url_changed");
+          }
+        });
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", injectSmartTimerWidget);
+    } else {
+      injectSmartTimerWidget();
+    }
+
 
     // 2. Intercept and bypass Document PiP download restriction
     // ONLY activate inside a real Document PiP window (not regular iframes)
