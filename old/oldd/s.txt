@@ -37,6 +37,8 @@ function doGet(e) {
   else if (page === "card") targetFile = "card";
   else if (page === "cia") targetFile = "cia";
   else if (page === "simah") targetFile = "simah";
+  else if (page === "sticky") targetFile = "sticky";
+  else if (page === "date") targetFile = "date";
 
   try {
     var template = HtmlService.createTemplateFromFile(targetFile);
