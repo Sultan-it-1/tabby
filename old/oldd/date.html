@@ -7,6 +7,16 @@
     <script>
         const APP_VERSION = "2.0.14";
         (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageParam = urlParams.get('page');
+            const isAppsScript = window.location.hostname.includes('script.google.com') || window.location.hostname.includes('googleusercontent.com');
+            if (pageParam && pageParam !== 'date' && !isAppsScript) {
+                const validPages = ['settings', 'note', 'card', 'cia', 'simah', 'sticky', 'date', 'index'];
+                if (validPages.includes(pageParam)) {
+                    window.location.href = (pageParam === 'index' ? 'index.html' : pageParam + '.html') + window.location.search;
+                    return;
+                }
+            }
             document.documentElement.classList.add('expanded');
             try {
                 const stored = localStorage.getItem('fastToolkitSettings');

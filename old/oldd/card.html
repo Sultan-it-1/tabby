@@ -8,6 +8,16 @@
     <script>
         const APP_VERSION = "2.0.14";
         (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageParam = urlParams.get('page');
+            const isAppsScript = window.location.hostname.includes('script.google.com') || window.location.hostname.includes('googleusercontent.com');
+            if (pageParam && pageParam !== 'card' && !isAppsScript) {
+                const validPages = ['settings', 'note', 'card', 'cia', 'simah', 'sticky', 'date', 'index'];
+                if (validPages.includes(pageParam)) {
+                    window.location.href = (pageParam === 'index' ? 'index.html' : pageParam + '.html') + window.location.search;
+                    return;
+                }
+            }
             document.documentElement.classList.add('expanded');
             try {
                 const stored = localStorage.getItem('fastToolkitSettings');
@@ -1092,9 +1102,269 @@ function parseData(rawText) {
     const timeMatch = cleanText.match(/\d{2}:\d{2}/);
     const time = timeMatch ? timeMatch[0] : "00:00";
     const fullText = `${amount} // ${card} // ${time}`;
+    if (outputDiv) outputDiv.innerText = fullText;
     updateUI(fullText, card, amount, time, "");
     localStorage.setItem('cardScannerData', JSON.stringify({ fullText, card, amount, time, date: "" }));
+    showToast("تم استخراج البيانات بنجاح! ⚡");
 }
+
+function copyFull() {
+    const text = isEditMode && outputEdit ? outputEdit.value : (outputDiv ? outputDiv.innerText : '');
+    if (!text || text === 'البيانات ستظهر هنا') {
+        showToast('لا توجد بيانات للنسخ! ⚠️', true);
+        return;
+    }
+    secureCopy(text).then(() => showToast('تم نسخ البيانات كاملة! 📋'));
+}
+
+function toggleEditMode() {
+    isEditMode = !isEditMode;
+    if (isEditMode) {
+        if (outputDiv) outputDiv.style.display = 'none';
+        if (outputEdit) {
+            outputEdit.style.display = 'block';
+            outputEdit.value = outputDiv ? outputDiv.innerText : '';
+            outputEdit.focus();
+        }
+        if (editBtn) editBtn.innerText = '💾';
+    } else {
+        if (outputEdit) {
+            outputEdit.style.display = 'none';
+            if (outputDiv) outputDiv.innerText = outputEdit.value || 'البيانات ستظهر هنا';
+        }
+        if (outputDiv) outputDiv.style.display = 'block';
+        if (editBtn) editBtn.innerText = '✏️';
+
+        const parts = (outputEdit ? outputEdit.value : '').split('//').map(s => s.trim());
+        const amount = parts[0] || '';
+        const card = parts[1] || '';
+        const time = parts[2] || '';
+        updateUI(outputEdit ? outputEdit.value : '', card, amount, time, '');
+        localStorage.setItem('cardScannerData', JSON.stringify({
+            fullText: outputEdit ? outputEdit.value : '', card, amount, time, date: ''
+        }));
+        showToast('تم حفظ التعديلات 💾');
+    }
+}
+
+function copyFriendlySummary() {
+    const card = document.getElementById('chip-card')?.innerText || '';
+    const amount = document.getElementById('chip-amount')?.innerText || '';
+    const time = document.getElementById('chip-time')?.innerText || '';
+
+    if (!card || card === '-') {
+        showToast('لا توجد بيانات لملخص العميل ⚠️', true);
+        return;
+    }
+
+    const summary = `تم التحقق من العملية:\n💳 البطاقة: ${card}\n💰 المبلغ: ${amount}\n⏰ الوقت: ${time}`;
+    secureCopy(summary).then(() => showToast('تم نسخ التقرير الملخص! 📋'));
+}
+
+function clearData() {
+    if (outputDiv) outputDiv.innerText = 'البيانات ستظهر هنا';
+    if (outputEdit) outputEdit.value = '';
+    updateUI('البيانات ستظهر هنا', '-', '-', '-', '-');
+    localStorage.removeItem('cardScannerData');
+    showToast('تم مسح البيانات 🗑️');
+}
+
+function toggleHistoryModal() {
+    showToast('سجل المسح متاح محلياً 📜');
+}
+
+function copyMe(el) {
+    if (!el) return;
+    const txt = el.innerText.trim();
+    if (txt && txt !== '-') {
+        secureCopy(txt).then(() => showToast(`تم نسخ: ${txt} 📋`));
+    }
+}
+
+function openGateway(baseUrl, type) {
+    const amount = document.getElementById('chip-amount')?.innerText || '';
+    const card = document.getElementById('chip-card')?.innerText || '';
+    let targetUrl = baseUrl;
+    if (card && card !== '-') {
+        targetUrl += `?card=${encodeURIComponent(card)}`;
+    }
+    const autoOpen = linkToggle && linkToggle.checked;
+    if (autoOpen) {
+        window.open(targetUrl, '_blank');
+    } else {
+        secureCopy(targetUrl).then(() => showToast(`تم نسخ رابط ${type} 🔗`));
+    }
+}
+
+let checkoutModeIsCopy = true;
+function toggleCheckoutActionMode() {
+    checkoutModeIsCopy = !checkoutModeIsCopy;
+    const btn = document.getElementById('btnCheckoutMode');
+    const execBtn = document.getElementById('btnExecuteCheckout');
+    if (btn) btn.innerText = checkoutModeIsCopy ? '📋 نسخ' : '🌐 فتح';
+    if (execBtn) execBtn.innerText = checkoutModeIsCopy ? '📋 نسخ رابط البحث في Checkout' : '🌐 فتح رابط البحث في Checkout';
+    showToast(checkoutModeIsCopy ? 'تم تفعيل وضع النسخ 📋' : 'تم تفعيل وضع الفتح التلقائي 🌐');
+}
+
+function toggleCheckoutParam(param) {
+    const chk = document.getElementById(param === 'card' ? 'chkCard' : param === 'date' ? 'chkDate' : 'chkAmount');
+    const lbl = document.getElementById(param === 'card' ? 'lblChkCard' : param === 'date' ? 'lblChkDate' : 'lblChkAmount');
+    if (chk) {
+        chk.checked = !chk.checked;
+        if (lbl) {
+            if (chk.checked) lbl.classList.add('active');
+            else lbl.classList.remove('active');
+        }
+    }
+}
+
+function executeCheckoutAction() {
+    const card = document.getElementById('chkCard')?.checked ? (document.getElementById('chip-card')?.innerText || '') : '';
+    const amount = document.getElementById('chkAmount')?.checked ? (document.getElementById('chip-amount')?.innerText || '') : '';
+    const baseUrl = 'https://dashboard.checkout.com/payments/all-payments';
+    const params = new URLSearchParams();
+    if (card && card !== '-') params.set('card_last4', card);
+    if (amount && amount !== '-') params.set('amount', amount);
+    const fullUrl = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+
+    if (checkoutModeIsCopy) {
+        secureCopy(fullUrl).then(() => showToast('تم نسخ رابط Checkout 📋'));
+    } else {
+        window.open(fullUrl, '_blank');
+    }
+}
+
+let currentTabbyData = { id: '', link: '' };
+function processTabbyInput() {
+    const input = document.getElementById('tabbyInput');
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) {
+        clearTabbyInput();
+        return;
+    }
+    const uuidMatch = val.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+    const tabbyId = uuidMatch ? uuidMatch[0] : val.replace(/[^a-zA-Z0-9_-]/g, '');
+    const tabbyLink = `https://backoffice.tabby.ai/orders/${tabbyId}`;
+    currentTabbyData = { id: tabbyId, link: tabbyLink };
+
+    const chipId = document.getElementById('chip-tabby-id');
+    const chipLink = document.getElementById('chip-tabby-link');
+    if (chipId) chipId.innerText = tabbyId ? `ID: ${tabbyId.slice(0, 8)}...` : 'ID';
+    if (chipLink) chipLink.innerText = tabbyLink ? 'الرابط 🔗' : 'الرابط';
+}
+
+function clearTabbyInput() {
+    const input = document.getElementById('tabbyInput');
+    if (input) input.value = '';
+    currentTabbyData = { id: '', link: '' };
+    const chipId = document.getElementById('chip-tabby-id');
+    const chipLink = document.getElementById('chip-tabby-link');
+    if (chipId) chipId.innerText = 'ID';
+    if (chipLink) chipLink.innerText = 'الرابط';
+    showToast('تم تفريغ حقل Tabby ✖');
+}
+
+function copyTabbyId() {
+    if (!currentTabbyData.id) {
+        showToast('يرجى إدخال ID أولاً ⚠️', true);
+        return;
+    }
+    secureCopy(currentTabbyData.id).then(() => showToast('تم نسخ Tabby ID 📋'));
+}
+
+function copyTabbyLink() {
+    if (!currentTabbyData.link) {
+        showToast('يرجى إدخال الرابط/ID أولاً ⚠️', true);
+        return;
+    }
+    secureCopy(currentTabbyData.link).then(() => showToast('تم نسخ رابط Tabby 🔗'));
+}
+
+function copyTabbyDetails() {
+    if (!currentTabbyData.id) {
+        showToast('لا توجد تفاصيل للنسخ ⚠️', true);
+        return;
+    }
+    const details = `Tabby Order ID: ${currentTabbyData.id}\nLink: ${currentTabbyData.link}`;
+    secureCopy(details).then(() => showToast('تم نسخ التفاصيل كاملة 📋'));
+}
+
+function toggleAI() {
+    isAIActive = !isAIActive;
+    localStorage.setItem('simah_ai_pref', isAIActive);
+    if (aiBtn) aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
+    showToast(isAIActive ? 'تم تفعيل الـ AI 🤖' : 'تم إيقاف الـ AI ⏸️');
+}
+
+function openSettings() {
+    if (settingsModal) {
+        settingsModal.style.display = 'block';
+        if (geminiKeyInput) geminiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+        if (groqKeyInput) groqKeyInput.value = localStorage.getItem('groq_api_key') || '';
+    }
+}
+
+function closeSettings() {
+    if (settingsModal) settingsModal.style.display = 'none';
+}
+
+function switchProvider(prov) {
+    currentProvider = prov;
+    localStorage.setItem('simah_ai_provider', prov);
+    const tabG = document.getElementById('tabGemini');
+    const tabGr = document.getElementById('tabGroq');
+    const secG = document.getElementById('sectionGemini');
+    const secGr = document.getElementById('sectionGroq');
+    if (prov === 'gemini') {
+        if (tabG) tabG.classList.add('active');
+        if (tabGr) tabGr.classList.remove('active');
+        if (secG) secG.classList.add('active');
+        if (secGr) secGr.classList.remove('active');
+    } else {
+        if (tabGr) tabGr.classList.add('active');
+        if (tabG) tabG.classList.remove('active');
+        if (secGr) secGr.classList.add('active');
+        if (secG) secG.classList.remove('active');
+    }
+}
+
+function saveApiKey() {
+    if (geminiKeyInput) localStorage.setItem('gemini_api_key', geminiKeyInput.value.trim());
+    if (groqKeyInput) localStorage.setItem('groq_api_key', groqKeyInput.value.trim());
+    showToast('تم حفظ المفاتيح 🔑');
+    closeSettings();
+}
+
+function toggleUsageModal() {
+    const modal = document.getElementById('usageModal');
+    if (modal) {
+        const isShown = modal.style.display === 'block';
+        modal.style.display = isShown ? 'none' : 'block';
+    }
+}
+
+window.copyFull = copyFull;
+window.toggleEditMode = toggleEditMode;
+window.copyFriendlySummary = copyFriendlySummary;
+window.clearData = clearData;
+window.toggleHistoryModal = toggleHistoryModal;
+window.copyMe = copyMe;
+window.openGateway = openGateway;
+window.toggleCheckoutActionMode = toggleCheckoutActionMode;
+window.toggleCheckoutParam = toggleCheckoutParam;
+window.executeCheckoutAction = executeCheckoutAction;
+window.processTabbyInput = processTabbyInput;
+window.clearTabbyInput = clearTabbyInput;
+window.copyTabbyId = copyTabbyId;
+window.copyTabbyLink = copyTabbyLink;
+window.copyTabbyDetails = copyTabbyDetails;
+window.toggleAI = toggleAI;
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.switchProvider = switchProvider;
+window.saveApiKey = saveApiKey;
+window.toggleUsageModal = toggleUsageModal;
     </script>
 
 </body>

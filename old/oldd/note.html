@@ -8,6 +8,16 @@
     <script>
         const APP_VERSION = "2.0.14";
         (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageParam = urlParams.get('page');
+            const isAppsScript = window.location.hostname.includes('script.google.com') || window.location.hostname.includes('googleusercontent.com');
+            if (pageParam && pageParam !== 'note' && !isAppsScript) {
+                const validPages = ['settings', 'note', 'card', 'cia', 'simah', 'sticky', 'date', 'index'];
+                if (validPages.includes(pageParam)) {
+                    window.location.href = (pageParam === 'index' ? 'index.html' : pageParam + '.html') + window.location.search;
+                    return;
+                }
+            }
             document.documentElement.classList.add('expanded');
             try {
                 const stored = localStorage.getItem('fastToolkitSettings');
@@ -738,6 +748,106 @@ function ensureContainerSafety(containerId) {
     if (!storageData[containerId]) storageData[containerId] = {};
 }
 
+// ── Toast Notification ──────────────────────────────────────────────────
+function showStatus(msg, isError = false, duration = 2200) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast' + (isError ? ' toast-error' : '');
+    toast.innerText = msg;
+    toast.style.cssText = `
+        background: rgba(15,15,15,0.95);
+        color: ${isError ? '#ff5555' : '#fff'};
+        border: 1px solid ${isError ? '#ff4444' : 'var(--accent-green, #00e676)'};
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        opacity: 0;
+        transform: translateY(-8px);
+        transition: all 0.25s ease;
+        text-align: center;
+        pointer-events: none;
+    `;
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    });
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-8px)';
+        setTimeout(() => toast.remove(), 260);
+    }, duration);
+}
+
+// ── Backup Status Dot ────────────────────────────────────────────────────
+function checkBackupStatus() {
+    const dot = document.getElementById('backupDot');
+    if (!dot) return;
+    if (unbackedUpCount === 0) {
+        dot.style.background = 'var(--accent-green, #00e676)';
+        dot.title = 'كل شيء محفوظ ✅';
+    } else {
+        dot.style.background = '#ff9f43';
+        dot.title = `${unbackedUpCount} تغيير غير محفوظ على Drive`;
+    }
+}
+
+// ── Cloud Backup / Restore (Drive) ───────────────────────────────────────
+async function triggerCloudAction(type) {
+    if (!window.FastToolkitAuth) {
+        showStatus('FastToolkitAuth غير متاح ❌', true);
+        return;
+    }
+    const email = window.FastToolkitAuth.getEmail();
+    const webUrl = window.FastToolkitAuth.getWebAppUrl();
+    if (!email || !webUrl) {
+        showStatus('يرجى إعداد البريد ورابط Web App في الإعدادات أولاً ⚙️', true);
+        return;
+    }
+    showStatus(type === 'backup' ? 'جاري النسخ الاحتياطي على Drive... ☁️' : 'جاري الاستعادة من Drive... ☁️', false, 3000);
+    try {
+        if (type === 'backup') {
+            const payload = {
+                copyGridDataV6: localStorage.getItem('copyGridDataV6'),
+                noteTabLabels: localStorage.getItem('noteTabLabels')
+            };
+            const res = await window.FastToolkitAuth.backupData(payload);
+            if (res && res.status === 'ok') {
+                unbackedUpCount = 0;
+                localStorage.setItem('unbackedUpCountV6', '0');
+                checkBackupStatus();
+                showStatus('تم النسخ الاحتياطي بنجاح ✅');
+            } else {
+                showStatus('فشل النسخ: ' + (res && res.message ? res.message : 'خطأ غير معروف') + ' ❌', true);
+            }
+        } else {
+            const res = await window.FastToolkitAuth.restoreData();
+            if (res && res.payload) {
+                if (res.payload.copyGridDataV6) {
+                    localStorage.setItem('copyGridDataV6', res.payload.copyGridDataV6);
+                    storageData = JSON.parse(res.payload.copyGridDataV6) || defaultData;
+                }
+                if (res.payload.noteTabLabels) {
+                    localStorage.setItem('noteTabLabels', res.payload.noteTabLabels);
+                    tabLabels = { ...DEFAULT_TAB_LABELS, ...JSON.parse(res.payload.noteTabLabels || '{}') };
+                }
+                unbackedUpCount = 0;
+                localStorage.setItem('unbackedUpCountV6', '0');
+                checkBackupStatus();
+                render();
+                showStatus('تمت الاستعادة من Drive بنجاح ✅');
+            } else {
+                showStatus('لا توجد بيانات محفوظة على Drive ⚠️', true);
+            }
+        }
+    } catch (err) {
+        showStatus('خطأ في الاتصال: ' + (err.message || err) + ' ❌', true);
+    }
+}
+
 function render() {
     const container = document.getElementById('main-content');
     if (!container) return;
@@ -849,51 +959,270 @@ function render() {
     checkBackupStatus();
 }
 
-function showStatus(msg) {
-    const el = document.getElementById('statusMsg');
-    if (el) el.innerText = msg;
+function saveData() {
+    localStorage.setItem('copyGridDataV6', JSON.stringify(storageData));
+    unbackedUpCount++;
+    localStorage.setItem('unbackedUpCountV6', unbackedUpCount.toString());
 }
 
-function checkBackupStatus() {
-    const dot = document.getElementById('backupDot');
-    if (dot) {
-        dot.style.background = '#00e676';
+function handleSearch() {
+    const input = document.getElementById('searchInput');
+    if (input) searchQuery = input.value.trim().toLowerCase();
+    render();
+}
+
+function openSearch() {
+    const bar = document.getElementById('searchBar');
+    const input = document.getElementById('searchInput');
+    if (bar) bar.style.display = 'flex';
+    if (input) { input.value = ''; input.focus(); searchQuery = ''; }
+    render();
+}
+
+function closeSearch() {
+    const bar = document.getElementById('searchBar');
+    const input = document.getElementById('searchInput');
+    if (bar) bar.style.display = 'none';
+    if (input) input.value = '';
+    searchQuery = '';
+    render();
+}
+
+function toggleSortMode() {
+    isSortMode = !isSortMode;
+    render();
+}
+
+function openSectionModal() {
+    const modal = document.getElementById('sectionModal');
+    const input = document.getElementById('sectionName');
+    if (input) input.value = '';
+    if (modal) modal.classList.add('open');
+    setTimeout(() => { if (input) input.focus(); }, 50);
+}
+
+function addSection() {
+    const input = document.getElementById('sectionName');
+    const name = input ? input.value.trim() : '';
+    if (!name) return;
+    ensureContainerSafety(currentContainer);
+    if (!storageData[currentContainer][name]) {
+        storageData[currentContainer][name] = [];
+        saveData();
+        render();
     }
+    closeModal();
 }
 
-async function triggerCloudAction(action) {
-    if (window.FastToolkitAuth && window.FastToolkitAuth.getWebAppUrl()) {
-        showStatus("جاري الاتصال بخادم الشركة... ☁️");
-        try {
-            if (action === 'backup') {
-                const payload = {
-                    copyGridDataV6: localStorage.getItem('copyGridDataV6') || '{}',
-                    noteTabLabels: localStorage.getItem('noteTabLabels') || '{}'
-                };
-                await window.FastToolkitAuth.backupData(payload);
-                showStatus("تم حفظ الملاحظات في Drive الشركة بنجاح! ☁️✅");
-            } else if (action === 'restore') {
-                const res = await window.FastToolkitAuth.restoreData();
-                if (res.payload && typeof res.payload === 'object') {
-                    if (res.payload.copyGridDataV6) localStorage.setItem('copyGridDataV6', res.payload.copyGridDataV6);
-                    if (res.payload.noteTabLabels) localStorage.setItem('noteTabLabels', res.payload.noteTabLabels);
-                    showStatus("تم استعادة الملاحظات بنجاح! 🔄");
-                    setTimeout(() => window.location.reload(), 1200);
-                } else {
-                    showStatus(res.message || "لا توجد نسخة سحابية محفوظة ❌");
-                }
-            }
-        } catch (err) {
-            showStatus("فشل المزامنة السحابية ❌");
+function openEditSectionModal(cat) {
+    activeCat = cat;
+    const modal = document.getElementById('editSectionModal');
+    const input = document.getElementById('editSectionName');
+    if (input) input.value = cat;
+    if (modal) modal.classList.add('open');
+    setTimeout(() => { if (input) input.focus(); }, 50);
+}
+
+function saveSectionName() {
+    const input = document.getElementById('editSectionName');
+    const newName = input ? input.value.trim() : '';
+    if (!newName || !activeCat || newName === activeCat) {
+        closeModal();
+        return;
+    }
+    ensureContainerSafety(currentContainer);
+    if (storageData[currentContainer][activeCat]) {
+        const items = storageData[currentContainer][activeCat];
+        delete storageData[currentContainer][activeCat];
+        storageData[currentContainer][newName] = items;
+        saveData();
+        render();
+    }
+    closeModal();
+}
+
+function triggerDeleteSection(cat) {
+    const confirmBox = document.getElementById('confirmBox');
+    const txt = document.getElementById('confirmTxt');
+    const yesBtn = document.getElementById('confirmYesBtn');
+    if (txt) txt.innerText = `هل أنت متأكد من حذف قسم "${cat}"؟`;
+    if (yesBtn) {
+        yesBtn.onclick = () => {
+            ensureContainerSafety(currentContainer);
+            delete storageData[currentContainer][cat];
+            saveData();
+            closeConfirmBox();
+            render();
+        };
+    }
+    if (confirmBox) confirmBox.style.display = 'flex';
+}
+
+function switchContainer() {
+    if (currentContainer === 'c1') currentContainer = 'c2';
+    else if (currentContainer === 'c2') currentContainer = 'c3';
+    else currentContainer = 'c1';
+    render();
+}
+
+function openItemModal(cId, cat, item) {
+    modalTargetContainer = cId || currentContainer;
+    activeCat = cat;
+    const modal = document.getElementById('editModal');
+    const nameInput = document.getElementById('itemName');
+    const textInput = document.getElementById('itemText');
+    const delBtn = document.getElementById('delItemBtn');
+
+    if (item) {
+        activeId = item.id;
+        if (nameInput) nameInput.value = item.l || '';
+        if (textInput) textInput.value = item.t || '';
+        if (delBtn) delBtn.style.display = 'block';
+    } else {
+        activeId = null;
+        if (nameInput) nameInput.value = '';
+        if (textInput) textInput.value = '';
+        if (delBtn) delBtn.style.display = 'none';
+    }
+
+    if (modal) modal.classList.add('open');
+    setTimeout(() => { if (nameInput) nameInput.focus(); }, 50);
+}
+
+function saveItem() {
+    const nameInput = document.getElementById('itemName');
+    const textInput = document.getElementById('itemText');
+    const l = nameInput ? nameInput.value.trim() : '';
+    const t = textInput ? textInput.value.trim() : '';
+    if (!l && !t) { closeModal(); return; }
+
+    ensureContainerSafety(modalTargetContainer);
+    if (!storageData[modalTargetContainer][activeCat]) {
+        storageData[modalTargetContainer][activeCat] = [];
+    }
+
+    const items = storageData[modalTargetContainer][activeCat];
+    if (activeId) {
+        const idx = items.findIndex(x => x.id === activeId);
+        if (idx !== -1) {
+            items[idx].l = l || 'بدون اسم';
+            items[idx].t = t;
         }
     } else {
-        showStatus("يرجى إدخال رابط خادم الشركة (Web App URL) أولاً! ⚠️");
+        items.push({ id: 'item_' + Date.now() + Math.random(), l: l || 'بدون اسم', t: t });
     }
+
+    saveData();
+    closeModal();
+    render();
+}
+
+function triggerDeleteItem() {
+    if (!activeId || !activeCat) return;
+    ensureContainerSafety(modalTargetContainer);
+    const items = storageData[modalTargetContainer][activeCat];
+    if (items) {
+        storageData[modalTargetContainer][activeCat] = items.filter(x => x.id !== activeId);
+        saveData();
+    }
+    closeModal();
+    render();
+}
+
+function closeModal() {
+    ['editModal', 'sectionModal', 'editSectionModal', 'deleteAllModal', 'conflictModal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('open');
+    });
+    activeId = null;
+}
+
+function closeConfirmBox() {
+    const box = document.getElementById('confirmBox');
+    if (box) box.style.display = 'none';
+}
+
+function triggerDeleteAll() {
+    const input = document.getElementById('deleteAllConfirmInput');
+    if (input) input.value = '';
+    const modal = document.getElementById('deleteAllModal');
+    if (modal) modal.classList.add('open');
+}
+
+function confirmDeleteAll() {
+    const input = document.getElementById('deleteAllConfirmInput');
+    if (input && input.value.trim() === 'delete all') {
+        storageData = { c1: {}, c2: {}, c3: {} };
+        saveData();
+        closeModal();
+        render();
+        showStatus('تم مسح جميع الملاحظات 🗑️');
+    } else {
+        showStatus('التأكيد غير صحيح ❌');
+    }
+}
+
+function moveSection(cat, dir) {
+    ensureContainerSafety(currentContainer);
+    const keys = Object.keys(storageData[currentContainer]);
+    const idx = keys.indexOf(cat);
+    if (idx === -1) return;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= keys.length) return;
+
+    const temp = keys[idx];
+    keys[idx] = keys[newIdx];
+    keys[newIdx] = temp;
+
+    const newSecData = {};
+    keys.forEach(k => { newSecData[k] = storageData[currentContainer][k]; });
+    storageData[currentContainer] = newSecData;
+    saveData();
+    render();
+}
+
+function moveSectionToTab(cat, targetContainer) {
+    ensureContainerSafety(currentContainer);
+    ensureContainerSafety(targetContainer);
+    if (storageData[currentContainer][cat]) {
+        storageData[targetContainer][cat] = storageData[currentContainer][cat];
+        delete storageData[currentContainer][cat];
+        saveData();
+        render();
+    }
+}
+
+function resolveConflict(choice) {
+    const modal = document.getElementById('conflictModal');
+    if (modal) modal.classList.remove('open');
 }
 
 document.addEventListener('DOMContentLoaded', () => { render(); });
+
 window.render = render;
+window.showStatus = showStatus;
+window.checkBackupStatus = checkBackupStatus;
 window.triggerCloudAction = triggerCloudAction;
+window.handleSearch = handleSearch;
+window.openSearch = openSearch;
+window.closeSearch = closeSearch;
+window.toggleSortMode = toggleSortMode;
+window.openSectionModal = openSectionModal;
+window.addSection = addSection;
+window.openEditSectionModal = openEditSectionModal;
+window.saveSectionName = saveSectionName;
+window.triggerDeleteSection = triggerDeleteSection;
+window.switchContainer = switchContainer;
+window.openItemModal = openItemModal;
+window.saveItem = saveItem;
+window.triggerDeleteItem = triggerDeleteItem;
+window.closeModal = closeModal;
+window.closeConfirmBox = closeConfirmBox;
+window.triggerDeleteAll = triggerDeleteAll;
+window.confirmDeleteAll = confirmDeleteAll;
+window.moveSection = moveSection;
+window.moveSectionToTab = moveSectionToTab;
+window.resolveConflict = resolveConflict;
     </script>
 </body>
 
