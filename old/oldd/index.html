@@ -8,8 +8,74 @@
     <meta name="theme-color" content="#0f0f0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>بوابة الأدوات الذكية - الرئيسية</title>
-    <!-- Centralized Auth & Access Guard -->
-    <script src="auth-guard.js"></script>
+    <script>
+        const APP_VERSION = "2.0.14";
+        (function () {
+            const STORAGE_KEY_EMAIL = 'fastToolkitCompanyEmail';
+            const STORAGE_KEY_WEBAPP_URL = 'fastToolkitCompanyWebAppUrl';
+            const STORAGE_KEY_AUTH_STATUS = 'fastToolkitAuthStatus';
+            const DEFAULT_WEB_APP_URL = localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || '';
+
+            window.FastToolkitAuth = {
+                getEmail: function () { return localStorage.getItem(STORAGE_KEY_EMAIL) || ''; },
+                setEmail: function (email) {
+                    if (email) localStorage.setItem(STORAGE_KEY_EMAIL, email.toLowerCase().trim());
+                    else localStorage.removeItem(STORAGE_KEY_EMAIL);
+                },
+                getWebAppUrl: function () { return localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || DEFAULT_WEB_APP_URL; },
+                setWebAppUrl: function (url) {
+                    if (url) localStorage.setItem(STORAGE_KEY_WEBAPP_URL, url.trim());
+                    else localStorage.removeItem(STORAGE_KEY_WEBAPP_URL);
+                },
+                isAuthorized: function () { return sessionStorage.getItem(STORAGE_KEY_AUTH_STATUS) === 'true'; },
+                verifyAccess: async function (email, customUrl) {
+                    const targetUrl = customUrl || this.getWebAppUrl();
+                    if (!targetUrl) return { allowed: false, error: 'NO_WEBAPP_URL', message: 'لم يتم إعداد رابط خادم الشركة (Web App URL).' };
+                    if (!email) return { allowed: false, error: 'NO_EMAIL', message: 'يرجى إدخال البريد الإلكتروني.' };
+                    try {
+                        const response = await fetch(targetUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ action: 'check_access', userEmail: email.toLowerCase().trim() })
+                        });
+                        const data = await response.json();
+                        if (data.allowed) {
+                            this.setEmail(email);
+                            sessionStorage.setItem(STORAGE_KEY_AUTH_STATUS, 'true');
+                            return { allowed: true, message: data.message || 'تم التحقق بنجاح' };
+                        } else {
+                            sessionStorage.removeItem(STORAGE_KEY_AUTH_STATUS);
+                            return { allowed: false, message: data.message || 'عذراً، البريد غير مصرح له.' };
+                        }
+                    } catch (err) {
+                        return { allowed: false, error: 'NETWORK_ERROR', message: 'فشل الاتصال بخادم الشركة.' };
+                    }
+                },
+                backupData: async function (payload) {
+                    const targetUrl = this.getWebAppUrl();
+                    const email = this.getEmail();
+                    if (!targetUrl || !email) throw new Error('يرجى تسجيل الدخول وإعداد رابط Web App أولاً.');
+                    const response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'backup', userEmail: email, payload: payload })
+                    });
+                    return await response.json();
+                },
+                restoreData: async function () {
+                    const targetUrl = this.getWebAppUrl();
+                    const email = this.getEmail();
+                    if (!targetUrl || !email) throw new Error('يرجى تسجيل الدخول وإعداد رابط Web App أولاً.');
+                    const response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'restore', userEmail: email })
+                    });
+                    return await response.json();
+                }
+            };
+        })();
+    </script>
     <style>
         :root {
             --bg: #0f0f0f;
