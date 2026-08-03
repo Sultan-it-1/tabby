@@ -1,202 +1,152 @@
 /**
- * ==============================================================================
- * FAST TOOLKIT - Company Google Apps Script All-in-One Backend & Host
- * خادم حماية الصلاحيات والنسخ السحابي واستضافة المشروع بالكامل
- * ==============================================================================
+ * Fast Toolkit - Google Apps Script Backend Engine
  * 
- * طريقة الاستخدام والتشغيل:
- * 1. افتح https://script.google.com بحساب الشركة وانشئ مشروعاً جديداً.
- * 2. انسخ هذا الكود بالكامل واستبدل به الكود في ملف Code.gs.
- * 3. ضع إيميلات الموظفين المصرح لهم في القائمة ALLOWED_EMAILS أدناه.
- * 4. قم بإنشاء ملفات HTML بنفس الأسماء (index, settings, note, card, cia, simah) داخل Apps Script.
- * 5. اضغط Deploy -> New deployment -> اختر Web app:
- *    - Execute as: Me (حساب الشركة)
- *    - Who has access: Anyone
- * 6. انسخ رابط الـ Web App URL واستخدمه في إضافة المتصفح (Chrome Extension).
+ * طريقة الاستخدام:
+ * 1. افتح https://script.google.com وقم بإنشاء مشروع جديد باسم "Fast Toolkit Engine".
+ * 2. انسخ هذا الكود بالكامل واستبدل الكود الموجود في الملف Code.gs.
+ * 3. انقر على Deploy -> New Deployment.
+ * 4. اختر النوع: Web App.
+ * 5. اضبط المالك: Execute as: Me.
+ * 6. اضبط الوصول: Who has access: Anyone.
+ * 7. انقر Deploy وانسخ رابط الـ Web App وضعه في ملف config.js بالإضافة.
  */
 
-// 📋 قائمة الإيميلات المصرح لها باستخدام البرنامج وتنسيق بياناتها
-const ALLOWED_EMAILS = [
-  "admin@company.com",
-  "employee1@company.com",
-  "employee2@company.com"
-];
-
-// اسم مجلد النسخ الاحتياطية في Google Drive الخاص بالشركة
-const BACKUP_FOLDER_NAME = "FAST_TOOLKIT_COMPANY_BACKUPS";
-
-/**
- * 🌐 1. دالة تقديم واجهات الـ HTML واستضافة صفحات التطبيق كاملاً (GET)
- */
 function doGet(e) {
-  var page = (e && e.parameter && e.parameter.page) ? e.parameter.page.toLowerCase() : "index";
-  
-  var targetFile = "index";
-  if (page === "settings") targetFile = "settings";
-  else if (page === "note") targetFile = "note";
-  else if (page === "card") targetFile = "card";
-  else if (page === "cia") targetFile = "cia";
-  else if (page === "simah") targetFile = "simah";
-  else if (page === "sticky") targetFile = "sticky";
-  else if (page === "date") targetFile = "date";
+  var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "getConfig";
 
-  try {
-    var output = HtmlService.createHtmlOutputFromFile(targetFile);
-    
-    output.setTitle("FAST TOOLKIT - " + targetFile.toUpperCase())
-          .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-          
-    return output;
-  } catch (err) {
-    if (e && e.parameter && e.parameter.api === "true") {
-      return createJsonResponse({
-        status: "online",
-        service: "FAST TOOLKIT Company Backend",
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    return HtmlService.createHtmlOutput(`
-      <div style="font-family: sans-serif; text-align: center; padding: 40px; background: #111; color: #fff; height: 100vh;">
-        <h2>FAST TOOLKIT - Web App Server ☁️</h2>
-        <p>الخادم يعمل بنجاح!</p>
-        <p style="color: #ff5e57; font-weight: bold;">تنبيه: يرجى التأكد من إضافة ملف الـ HTML باسم [${targetFile}] داخل السكريبت.</p>
-      </div>
-    `).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  if (action === "getConfig") {
+    return handleGetConfig();
+  } else if (action === "getNotes") {
+    return handleGetNotes();
   }
+
+  return createJsonResponse({ status: "error", message: "Action not recognized" });
 }
 
-/**
- * دالة تضمين الملفات الجزئية (Include HTML/JS/CSS in Apps Script templates)
- */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
-/**
- * 🔒 2. دالة استقبال الطلبات الخارجية للتحقق والنسخ والاسترداد (POST)
- */
 function doPost(e) {
   try {
-    if (!e || !e.postData || !e.postData.contents) {
-      return createJsonResponse({ allowed: false, error: "Empty request body" });
+    var contents = e.postData ? e.postData.contents : "{}";
+    var payload = JSON.parse(contents);
+    var action = payload.action || "saveData";
+
+    if (action === "saveData" || action === "logEvent") {
+      return handleSaveData(payload);
+    } else if (action === "saveNote") {
+      return handleSaveNote(payload);
     }
 
-    var requestData = JSON.parse(e.postData.contents);
-    var action = requestData.action; // 'check_access' | 'backup' | 'restore'
-    var userEmail = (requestData.userEmail || "").toLowerCase().trim();
-
-    // 🔒 1. التحقق من صلاحية البريد الإلكتروني
-    if (!userEmail || !isEmailAllowed(userEmail)) {
-      return createJsonResponse({
-        allowed: false,
-        message: "⛔ عذراً، هذا البريد غير مصرح له باستخدام التطبيق. يرجى التواصل مع الإدارة."
-      });
-    }
-
-    // إذا كان الطلب فقط للتحقق من الصلاحية (Access Check)
-    if (action === "check_access") {
-      return createJsonResponse({
-        allowed: true,
-        userEmail: userEmail,
-        message: "✅ البريد مصرح له بالاستخدام."
-      });
-    }
-
-    // ☁️ 2. إجراء النسخ الاحتياطي (Backup)
-    if (action === "backup") {
-      var payload = requestData.payload;
-      if (!payload) {
-        return createJsonResponse({ allowed: true, status: "error", message: "لا توجد بيانات للرفع" });
-      }
-
-      var folder = getOrCreateBackupFolder();
-      var fileName = "fast_toolkit_backup_" + sanitizeEmail(userEmail) + ".json";
-      var files = folder.getFilesByName(fileName);
-
-      var backupContent = JSON.stringify({
-        updatedAt: new Date().toISOString(),
-        userEmail: userEmail,
-        data: payload
-      }, null, 2);
-
-      if (files.hasNext()) {
-        var existingFile = files.next();
-        existingFile.setContent(backupContent);
-      } else {
-        folder.createFile(fileName, backupContent, MimeType.PLAIN_TEXT);
-      }
-
-      return createJsonResponse({
-        allowed: true,
-        status: "success",
-        message: "تم حفظ النسخة الاحتياطية بنجاح على Drive الشركة ☁️",
-        updatedAt: new Date().toLocaleString("ar-SA")
-      });
-    }
-
-    // ☁️ 3. إجراء استرداد النسخة الاحتياطية (Restore)
-    if (action === "restore") {
-      var folder = getOrCreateBackupFolder();
-      var fileName = "fast_toolkit_backup_" + sanitizeEmail(userEmail) + ".json";
-      var files = folder.getFilesByName(fileName);
-
-      if (files.hasNext()) {
-        var backupFile = files.next();
-        var fileContent = backupFile.getBlob().getDataAsString();
-        var parsedBackup = JSON.parse(fileContent);
-
-        return createJsonResponse({
-          allowed: true,
-          status: "success",
-          payload: parsedBackup.data || parsedBackup,
-          updatedAt: parsedBackup.updatedAt || backupFile.getLastUpdated()
-        });
-      } else {
-        return createJsonResponse({
-          allowed: true,
-          status: "not_found",
-          message: "لا توجد نسخة احتياطية محفوظة لهذا البريد ❌"
-        });
-      }
-    }
-
-    return createJsonResponse({ allowed: true, error: "Invalid action" });
-
+    return createJsonResponse({ status: "error", message: "Post action not recognized" });
   } catch (err) {
-    return createJsonResponse({ allowed: false, error: err.toString() });
+    return createJsonResponse({ status: "error", message: err.toString() });
   }
 }
 
-// ==============================================================================
-// 🛠️ الدوال المساعدة (Helper Functions)
-// ==============================================================================
-
-function isEmailAllowed(email) {
-  var cleanEmail = email.toLowerCase().trim();
-  for (var i = 0; i < ALLOWED_EMAILS.length; i++) {
-    if (ALLOWED_EMAILS[i].toLowerCase().trim() === cleanEmail) {
-      return true;
+/**
+ * 1. إرجاع الإعدادات والقواعد الديناميكية للإضافة
+ */
+function handleGetConfig() {
+  var config = {
+    status: "success",
+    version: "1.2.0",
+    announcement: {
+      active: true,
+      text: "مرحباً بكم في Fast Toolkit - النسخة المحلية المعتمدة",
+      type: "info"
+    },
+    features: {
+      cardScanEnabled: true,
+      simahEnabled: true,
+      noteEnabled: true,
+      ciaEnabled: true,
+      dateEnabled: true,
+      stickyEnabled: true
+    },
+    rules: {
+      vatRate: 0.15,
+      simahMaxRecords: 100
     }
+  };
+
+  return createJsonResponse(config);
+}
+
+/**
+ * 2. حفظ البيانات أو السجلات في شيت جوجل
+ */
+function handleSaveData(payload) {
+  var ss = getOrCreateSpreadsheet();
+  var sheet = ss.getSheetByName("Logs") || ss.insertSheet("Logs");
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["Timestamp", "User", "Action", "Details"]);
   }
-  return false;
+
+  sheet.appendRow([
+    new Date(),
+    payload.user || "Anonymous",
+    payload.action || "general",
+    JSON.stringify(payload.data || {})
+  ]);
+
+  return createJsonResponse({ status: "success", message: "Data logged successfully" });
 }
 
-function sanitizeEmail(email) {
-  return email.replace(/[^a-zA-Z0-9]/g, "_");
+/**
+ * 3. حفظ الملاحظات السريعة
+ */
+function handleSaveNote(payload) {
+  var ss = getOrCreateSpreadsheet();
+  var sheet = ss.getSheetByName("Notes") || ss.insertSheet("Notes");
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["Timestamp", "Title", "Content"]);
+  }
+
+  sheet.appendRow([
+    new Date(),
+    payload.title || "بدون عنوان",
+    payload.content || ""
+  ]);
+
+  return createJsonResponse({ status: "success", message: "Note saved successfully" });
 }
 
-function getOrCreateBackupFolder() {
-  var folders = DriveApp.getFoldersByName(BACKUP_FOLDER_NAME);
-  if (folders.hasNext()) {
-    return folders.next();
+function handleGetNotes() {
+  var ss = getOrCreateSpreadsheet();
+  var sheet = ss.getSheetByName("Notes");
+  if (!sheet) return createJsonResponse({ status: "success", notes: [] });
+
+  var rows = sheet.getDataRange().getValues();
+  var notes = [];
+  for (var i = 1; i < rows.length; i++) {
+    notes.push({
+      timestamp: rows[i][0],
+      title: rows[i][1],
+      content: rows[i][2]
+    });
+  }
+
+  return createJsonResponse({ status: "success", notes: notes });
+}
+
+/**
+ * Helper: الحصول على شيت الحفظ أو إنشائه تلقائياً
+ */
+function getOrCreateSpreadsheet() {
+  var files = DriveApp.getFilesByName("Fast_Toolkit_Database");
+  if (files.hasNext()) {
+    var file = files.next();
+    return SpreadsheetApp.open(file);
   } else {
-    return DriveApp.createFolder(BACKUP_FOLDER_NAME);
+    var ss = SpreadsheetApp.create("Fast_Toolkit_Database");
+    return ss;
   }
 }
 
-function createJsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
+/**
+ * Helper: تنسيق الاستجابة كـ JSON متوافق مع CORS
+ */
+function createJsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
