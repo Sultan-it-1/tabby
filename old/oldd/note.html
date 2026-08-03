@@ -16,6 +16,46 @@
                     if (s.themeColor) document.documentElement.style.setProperty('--accent-green', s.themeColor);
                 }
             } catch(e) {}
+
+            const STORAGE_KEY_EMAIL = 'fastToolkitCompanyEmail';
+            const STORAGE_KEY_WEBAPP_URL = 'fastToolkitCompanyWebAppUrl';
+            const STORAGE_KEY_AUTH_STATUS = 'fastToolkitAuthStatus';
+
+            window.FastToolkitAuth = {
+                getEmail: function() { return localStorage.getItem(STORAGE_KEY_EMAIL) || ''; },
+                setEmail: function(email) {
+                    if (email) localStorage.setItem(STORAGE_KEY_EMAIL, email.toLowerCase().trim());
+                    else localStorage.removeItem(STORAGE_KEY_EMAIL);
+                },
+                getWebAppUrl: function() { return localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || ''; },
+                setWebAppUrl: function(url) {
+                    if (url) localStorage.setItem(STORAGE_KEY_WEBAPP_URL, url.trim());
+                    else localStorage.removeItem(STORAGE_KEY_WEBAPP_URL);
+                },
+                isAuthorized: function() { return sessionStorage.getItem(STORAGE_KEY_AUTH_STATUS) === 'true'; },
+                backupData: async function(payload) {
+                    const targetUrl = this.getWebAppUrl();
+                    const email = this.getEmail();
+                    if (!targetUrl || !email) throw new Error('يرجى إعداد رابط Web App أولاً.');
+                    const response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'backup', userEmail: email, payload: payload })
+                    });
+                    return await response.json();
+                },
+                restoreData: async function() {
+                    const targetUrl = this.getWebAppUrl();
+                    const email = this.getEmail();
+                    if (!targetUrl || !email) throw new Error('يرجى إعداد رابط Web App أولاً.');
+                    const response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'restore', userEmail: email })
+                    });
+                    return await response.json();
+                }
+            };
         })();
     </script>
     <style>
