@@ -18,6 +18,8 @@ function doGet(e) {
     return handleGetConfig();
   } else if (action === "getNotes") {
     return handleGetNotes();
+  } else if (action === "getBackup") {
+    return handleGetBackup(e.parameter ? e.parameter.key : "fast_copy_backup");
   }
 
   return createJsonResponse({ status: "error", message: "Action not recognized" });
@@ -33,6 +35,8 @@ function doPost(e) {
       return handleSaveData(payload);
     } else if (action === "saveNote") {
       return handleSaveNote(payload);
+    } else if (action === "saveBackup") {
+      return handleSaveBackup(payload);
     }
 
     return createJsonResponse({ status: "error", message: "Post action not recognized" });
@@ -71,7 +75,61 @@ function handleGetConfig() {
 }
 
 /**
- * 2. حفظ البيانات أو السجلات في شيت جوجل
+ * 2. حفظ النسخ الاحتياطية (Backup) في شيت جوجل
+ */
+function handleSaveBackup(payload) {
+  var ss = getOrCreateSpreadsheet();
+  var sheet = ss.getSheetByName("Backups") || ss.insertSheet("Backups");
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["Timestamp", "Key", "BackupContent"]);
+  }
+
+  var key = payload.key || "fast_copy_backup";
+  var contentStr = typeof payload.data === "string" ? payload.data : JSON.stringify(payload.data || {});
+
+  sheet.appendRow([
+    new Date(),
+    key,
+    contentStr
+  ]);
+
+  return createJsonResponse({ status: "success", message: "Backup saved successfully" });
+}
+
+/**
+ * 3. جلب آخر نسخة احتياطية (Restore) من شيت جوجل
+ */
+function handleGetBackup(key) {
+  var ss = getOrCreateSpreadsheet();
+  var sheet = ss.getSheetByName("Backups");
+  if (!sheet) return createJsonResponse({ status: "error", message: "No backups sheet found" });
+
+  var targetKey = key || "fast_copy_backup";
+  var rows = sheet.getDataRange().getValues();
+  var latestBackup = null;
+
+  for (var i = rows.length - 1; i >= 1; i--) {
+    if (rows[i][1] === targetKey) {
+      latestBackup = rows[i][2];
+      break;
+    }
+  }
+
+  if (latestBackup) {
+    try {
+      var parsed = JSON.parse(latestBackup);
+      return createJsonResponse({ status: "success", data: parsed });
+    } catch (e) {
+      return createJsonResponse({ status: "success", data: latestBackup });
+    }
+  }
+
+  return createJsonResponse({ status: "error", message: "No backup found for key: " + targetKey });
+}
+
+/**
+ * 4. حفظ البيانات أو السجلات العامة
  */
 function handleSaveData(payload) {
   var ss = getOrCreateSpreadsheet();
@@ -92,7 +150,7 @@ function handleSaveData(payload) {
 }
 
 /**
- * 3. حفظ الملاحظات السريعة
+ * 5. حفظ الملاحظات السريعة
  */
 function handleSaveNote(payload) {
   var ss = getOrCreateSpreadsheet();
