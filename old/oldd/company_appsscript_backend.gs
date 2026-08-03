@@ -41,16 +41,14 @@ function doGet(e) {
   else if (page === "date") targetFile = "date";
 
   try {
-    var template = HtmlService.createTemplateFromFile(targetFile);
-    var output = template.evaluate();
+    var output = HtmlService.createHtmlOutputFromFile(targetFile);
     
     output.setTitle("FAST TOOLKIT - " + targetFile.toUpperCase())
           .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // للسماح بالفتح داخل SidePanel iframe في إضافة كروم
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
           
     return output;
   } catch (err) {
-    // في حال عدم وجود ملف الصفحة أو في طلب فحص الـ API
     if (e && e.parameter && e.parameter.api === "true") {
       return createJsonResponse({
         status: "online",
@@ -62,7 +60,8 @@ function doGet(e) {
     return HtmlService.createHtmlOutput(`
       <div style="font-family: sans-serif; text-align: center; padding: 40px; background: #111; color: #fff; height: 100vh;">
         <h2>FAST TOOLKIT - Web App Server ☁️</h2>
-        <p>الخادم يعمل بنجاح! صفحة [<b>${targetFile}</b>] جاهزة.</p>
+        <p>الخادم يعمل بنجاح!</p>
+        <p style="color: #ff5e57; font-weight: bold;">تنبيه: يرجى التأكد من إضافة ملف الـ HTML باسم [${targetFile}] داخل السكريبت.</p>
       </div>
     `).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
