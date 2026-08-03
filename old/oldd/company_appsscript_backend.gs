@@ -1,227 +1,107 @@
 /**
- * Fast Toolkit - Google Apps Script Backend Engine
+ * ==============================================================================
+ * Fast Toolkit — Google Apps Script (Code.gs)
+ * ==============================================================================
+ * هذا الملف مخصص للرفع على خادم Google Apps Script (https://script.google.com)
+ * للعمل كخلفية برمجية (Backend Web App) لحفظ ومزامنة جميع بيانات وملاحظات Fast Toolkit.
  * 
- * طريقة الاستخدام والتشغيل:
- * 1. افتح https://script.google.com وقم بإنشاء مشروع جديد باسم "Fast Toolkit Engine".
- * 2. انسخ هذا الكود بالكامل واستبدل الكود الموجود في الملف Code.gs.
- * 3. انقر على Deploy -> New Deployment.
- * 4. اختر النوع: Web App.
- * 5. اضبط المالك: Execute as: Me.
- * 6. هام جداً!! اضبط الوصول: Who has access: Anyone (أي شخص).
- * 7. انقر Deploy وانسخ رابط الـ Web App وضعه في ملف config.js بالإضافة.
+ * 📌 خطوات النشر والتشغيل:
+ * 1. افتح https://script.google.com وأنشئ مشروعاً جديداً.
+ * 2. انسخ الكود الموجود في هذا الملف ولصقه في المحرر البرمجي Code.gs.
+ * 3. اضغط على نشر (Deploy) -> نشر جديد (New deployment).
+ * 4. اختر نوع النشر: تطبيق ويب (Web app).
+ * 5. اضبط التقييد إلى:
+ *    - تنفيذ بصفتي: أنا (Me)
+ *    - من يملك حرية الوصول: أي شخص (Anyone)
+ * 6. احفظ رابط الـ Web App URL للاستخدام في تطبيق Fast Toolkit.
+ * ==============================================================================
  */
 
+// === 1. التعامل مع طلبات GET (القراءة والفحص) ===
 function doGet(e) {
-  var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "getConfig";
-  
-  var payload = {};
-  if (e && e.parameter && e.parameter.payload) {
-    try {
-      payload = JSON.parse(e.parameter.payload);
-    } catch(err) {}
-  }
+  try {
+    const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'read';
+    const store = PropertiesService.getScriptProperties();
 
-  if (action === "getConfig") {
-    return handleGetConfig();
-  } else if (action === "getNotes") {
-    return handleGetNotes();
-  } else if (action === "getBackup") {
-    var backupKey = (e.parameter && e.parameter.key) ? e.parameter.key : (payload.key || "fast_copy_backup");
-    return handleGetBackup(backupKey);
-  } else if (action === "saveBackup") {
-    return handleSaveBackup({
-      key: payload.key || (e.parameter ? e.parameter.key : "fast_copy_backup"),
-      data: payload.data || (e.parameter ? e.parameter.data : {})
-    });
-  } else if (action === "saveNote") {
-    return handleSaveNote(payload);
-  }
+    if (action === 'ping') {
+      return jsonResponse({ status: 'success', message: 'Fast Toolkit Backend API is Online 🚀' });
+    }
 
-  return createJsonResponse({ status: "error", message: "Action not recognized" });
+    if (action === 'read' || action === 'get_all') {
+      const allData = store.getProperties();
+      const parsedData = {};
+      
+      for (const key in allData) {
+        try {
+          parsedData[key] = JSON.parse(allData[key]);
+        } catch (err) {
+          parsedData[key] = allData[key];
+        }
+      }
+
+      return jsonResponse({
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        data: parsedData
+      });
+    }
+
+    return jsonResponse({ status: 'error', message: 'إجراء غير معروف' });
+  } catch (error) {
+    return jsonResponse({ status: 'error', message: error.toString() });
+  }
 }
 
+// === 2. التعامل مع طلبات POST (الحفظ والمزامنة) ===
 function doPost(e) {
   try {
-    var contents = e.postData ? e.postData.contents : "{}";
-    var payload = JSON.parse(contents);
-    var action = payload.action || (e.parameter ? e.parameter.action : "saveData");
-
-    if (action === "saveData" || action === "logEvent") {
-      return handleSaveData(payload);
-    } else if (action === "saveNote") {
-      return handleSaveNote(payload);
-    } else if (action === "saveBackup") {
-      return handleSaveBackup(payload);
-    } else if (action === "getBackup") {
-      return handleGetBackup(payload.key || "fast_copy_backup");
+    let payload = {};
+    
+    if (e && e.postData && e.postData.contents) {
+      try {
+        payload = JSON.parse(e.postData.contents);
+      } catch (parseErr) {
+        payload = e.parameter || {};
+      }
+    } else {
+      payload = (e && e.parameter) ? e.parameter : {};
     }
 
-    return createJsonResponse({ status: "error", message: "Post action not recognized" });
-  } catch (err) {
-    return createJsonResponse({ status: "error", message: err.toString() });
-  }
-}
+    const action = payload.action || 'sync';
+    const store = PropertiesService.getScriptProperties();
 
-/**
- * 1. إرجاع الإعدادات والقواعد الديناميكية للإضافة
- */
-function handleGetConfig() {
-  var config = {
-    status: "success",
-    version: "1.2.0",
-    announcement: {
-      active: true,
-      text: "مرحباً بكم في Fast Toolkit - النسخة المحلية المعتمدة",
-      type: "info"
-    },
-    features: {
-      cardScanEnabled: true,
-      simahEnabled: true,
-      noteEnabled: true,
-      ciaEnabled: true,
-      dateEnabled: true,
-      stickyEnabled: true
-    },
-    rules: {
-      vatRate: 0.15,
-      simahMaxRecords: 100
+    if (action === 'sync' || action === 'save') {
+      const dataToSave = payload.data || payload;
+      
+      // حفظ كل مفتاح مستلم من التطبيق
+      for (const key in dataToSave) {
+        if (key !== 'action') {
+          const val = typeof dataToSave[key] === 'object' ? JSON.stringify(dataToSave[key]) : dataToSave[key];
+          store.setProperty(key, val);
+        }
+      }
+
+      return jsonResponse({
+        status: 'success',
+        message: 'تم حفظ البيانات بنجاح في Google Apps Script! ☁️',
+        updatedKeys: Object.keys(dataToSave).filter(k => k !== 'action'),
+        timestamp: new Date().toISOString()
+      });
     }
-  };
 
-  return createJsonResponse(config);
-}
-
-/**
- * 2. حفظ النسخ الاحتياطية (Backup) في شيت جوجل
- */
-function handleSaveBackup(payload) {
-  var ss = getOrCreateSpreadsheet();
-  var sheet = ss.getSheetByName("Backups") || ss.insertSheet("Backups");
-
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["Timestamp", "Key", "BackupContent"]);
-  }
-
-  var key = payload.key || "fast_copy_backup";
-  var contentStr = typeof payload.data === "string" ? payload.data : JSON.stringify(payload.data || {});
-
-  sheet.appendRow([
-    new Date(),
-    key,
-    contentStr
-  ]);
-
-  return createJsonResponse({ status: "success", message: "Backup saved successfully" });
-}
-
-/**
- * 3. جلب آخر نسخة احتياطية (Restore) من شيت جوجل
- */
-function handleGetBackup(key) {
-  var ss = getOrCreateSpreadsheet();
-  var sheet = ss.getSheetByName("Backups");
-  if (!sheet) return createJsonResponse({ status: "error", message: "No backups sheet found" });
-
-  var targetKey = key || "fast_copy_backup";
-  var rows = sheet.getDataRange().getValues();
-  var latestBackup = null;
-
-  for (var i = rows.length - 1; i >= 1; i--) {
-    if (rows[i][1] === targetKey) {
-      latestBackup = rows[i][2];
-      break;
+    if (action === 'clear_all') {
+      store.deleteAllProperties();
+      return jsonResponse({ status: 'success', message: 'تم مسح جميع البيانات بنجاح.' });
     }
-  }
 
-  if (latestBackup) {
-    try {
-      var parsed = JSON.parse(latestBackup);
-      return createJsonResponse({ status: "success", data: parsed });
-    } catch (e) {
-      return createJsonResponse({ status: "success", data: latestBackup });
-    }
-  }
-
-  return createJsonResponse({ status: "error", message: "No backup found for key: " + targetKey });
-}
-
-/**
- * 4. حفظ البيانات أو السجلات العامة
- */
-function handleSaveData(payload) {
-  var ss = getOrCreateSpreadsheet();
-  var sheet = ss.getSheetByName("Logs") || ss.insertSheet("Logs");
-
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["Timestamp", "User", "Action", "Details"]);
-  }
-
-  sheet.appendRow([
-    new Date(),
-    payload.user || "Anonymous",
-    payload.action || "general",
-    JSON.stringify(payload.data || {})
-  ]);
-
-  return createJsonResponse({ status: "success", message: "Data logged successfully" });
-}
-
-/**
- * 5. حفظ الملاحظات السريعة
- */
-function handleSaveNote(payload) {
-  var ss = getOrCreateSpreadsheet();
-  var sheet = ss.getSheetByName("Notes") || ss.insertSheet("Notes");
-
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["Timestamp", "Title", "Content"]);
-  }
-
-  sheet.appendRow([
-    new Date(),
-    payload.title || "بدون عنوان",
-    payload.content || ""
-  ]);
-
-  return createJsonResponse({ status: "success", message: "Note saved successfully" });
-}
-
-function handleGetNotes() {
-  var ss = getOrCreateSpreadsheet();
-  var sheet = ss.getSheetByName("Notes");
-  if (!sheet) return createJsonResponse({ status: "success", notes: [] });
-
-  var rows = sheet.getDataRange().getValues();
-  var notes = [];
-  for (var i = 1; i < rows.length; i++) {
-    notes.push({
-      timestamp: rows[i][0],
-      title: rows[i][1],
-      content: rows[i][2]
-    });
-  }
-
-  return createJsonResponse({ status: "success", notes: notes });
-}
-
-/**
- * Helper: الحصول على شيت الحفظ أو إنشائه تلقائياً
- */
-function getOrCreateSpreadsheet() {
-  var files = DriveApp.getFilesByName("Fast_Toolkit_Database");
-  if (files.hasNext()) {
-    var file = files.next();
-    return SpreadsheetApp.open(file);
-  } else {
-    var ss = SpreadsheetApp.create("Fast_Toolkit_Database");
-    return ss;
+    return jsonResponse({ status: 'error', message: 'إجراء غامض أو غير مدعوم' });
+  } catch (error) {
+    return jsonResponse({ status: 'error', message: error.toString() });
   }
 }
 
-/**
- * Helper: تنسيق الاستجابة كـ JSON متوافق مع CORS
- */
-function createJsonResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
+// === 3. دالة مساعدة لتشكيل استجابة JSON يدعم CORS ===
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
