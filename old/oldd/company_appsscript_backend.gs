@@ -40,6 +40,7 @@ function getSheet() {
     }
     return sheet;
   } catch (err) {
+    Logger.log("getSheet Error: " + err);
     return null;
   }
 }
@@ -50,12 +51,12 @@ function saveUserToSheet(userId, dataObj) {
     const sheet = getSheet();
     if (!sheet) return;
 
-    const dataJsonStr = JSON.stringify(dataObj);
+    const dataJsonStr = typeof dataObj === 'string' ? dataObj : JSON.stringify(dataObj);
     const data = sheet.getDataRange().getValues();
     let userRowIndex = -1;
 
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(userId)) {
+      if (String(data[i][0]).trim() === String(userId).trim()) {
         userRowIndex = i + 1; // 1-based index
         break;
       }
@@ -82,7 +83,7 @@ function readUserFromSheet(userId) {
 
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(userId)) {
+      if (String(data[i][0]).trim() === String(userId).trim()) {
         const rawJson = data[i][2];
         try {
           return JSON.parse(rawJson);
@@ -97,7 +98,28 @@ function readUserFromSheet(userId) {
   return null;
 }
 
-// === 4. التعامل مع طلبات GET (القراءة والجلب لكل مستخدم) ===
+// === 4. دالة ترحيل وفحص جميع المستخدمين القدامى إلى جدول الشيت فوراً ===
+function migrateAllUsersToSheet() {
+  const store = PropertiesService.getScriptProperties();
+  const allProps = store.getProperties();
+  let count = 0;
+  
+  for (const key in allProps) {
+    if (key.startsWith('user_data_')) {
+      const userId = key.replace('user_data_', '');
+      try {
+        const dataObj = JSON.parse(allProps[key]);
+        saveUserToSheet(userId, dataObj);
+      } catch(e) {
+        saveUserToSheet(userId, allProps[key]);
+      }
+      count++;
+    }
+  }
+  Logger.log("تم ترحيل " + count + " مستخدمين إلى جدول قوقل شيت بنجاح! 📊🎉");
+}
+
+// === 5. التعامل مع طلبات GET (القراءة والجلب لكل مستخدم) ===
 function doGet(e) {
   try {
     const params = (e && e.parameter) ? e.parameter : {};
@@ -134,7 +156,7 @@ function doGet(e) {
   }
 }
 
-// === 5. التعامل مع طلبات POST (الحفظ والمزامنة لكل مستخدم) ===
+// === 6. التعامل مع طلبات POST (الحفظ والمزامنة لكل مستخدم) ===
 function doPost(e) {
   try {
     let payload = {};
@@ -191,7 +213,7 @@ function doPost(e) {
   }
 }
 
-// === 6. دالة إدارية لرؤية جميع المستخدمين وبياناتهم ===
+// === 7. دالة إدارية لرؤية جميع المستخدمين وبياناتهم ===
 function viewAllUsersData() {
   const store = PropertiesService.getScriptProperties();
   const allProperties = store.getProperties();
@@ -214,7 +236,7 @@ function viewAllUsersData() {
   }
 }
 
-// === 7. دالة مساعدة لتشكيل استجابة JSON مدعومة بـ CORS ===
+// === 8. دالة مساعدة لتشكيل استجابة JSON مدعومة بـ CORS ===
 function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
