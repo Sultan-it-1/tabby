@@ -1,0 +1,255 @@
+
+/**
+ * ==============================================================================
+ * FAST TOOLKIT - All-In-One Single Script Backend & Host
+ * خادم حماية الصلاحيات والنسخ السحابي واستضافة المشروع بملف واحد فقط (Code.gs)
+ * ==============================================================================
+ * 
+ * 🚀 طريقة التشغيل والرفع البسيطة (بدون أي أوامر وبدون ملفات متعددة):
+ * 1. افتح https://script.google.com بحساب الشركة وانشئ مشروعاً جديداً.
+ * 2. امسح أي كود موجود في Code.gs، واعمل نسخ لهذا الملف بالكامل واعمل له لصق.
+ * 3. ضع إيميلات الموظفين المصرح لهم في القائمة ALLOWED_EMAILS أدناه (السطر 18).
+ * 4. اضغط Deploy (نشر) -> New deployment -> اختر Web app:
+ *    - Execute as: Me (حساب الشركة)
+ *    - Who has access: Anyone
+ * 5. انسخ رابط الـ Web App URL واستخدمه في إضافة المتصفح (Chrome Extension).
+ */
+
+// 📋 1. قائمة الإيميلات المصرح لها بالدخول واستخدام البرنامج
+const ALLOWED_EMAILS = [
+  "admin@company.com",
+  "employee1@company.com",
+  "employee2@company.com"
+];
+
+// اسم مجلد النسخ الاحتياطية في Google Drive الخاص بالشركة
+const BACKUP_FOLDER_NAME = "FAST_TOOLKIT_COMPANY_BACKUPS";
+
+/**
+ * 🌐 2. دالة تقديم واجهات التطبيق ومزود الصفحات (GET)
+ */
+function doGet(e) {
+  var page = (e && e.parameter && e.parameter.page) ? e.parameter.page.toLowerCase() : "index";
+  var htmlContent = getPageHtml(page);
+
+  var output = HtmlService.createHtmlOutput(htmlContent)
+        .setTitle("FAST TOOLKIT - " + page.toUpperCase())
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // للسماح بالعرض داخل SidePanel بالمتصفح
+
+  return output;
+}
+
+/**
+ * 🔒 3. دالة استقبال عمليات التحقق والنسخ والاسترداد السحابي (POST)
+ */
+function doPost(e) {
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return createJsonResponse({ allowed: false, error: "Empty request body" });
+    }
+
+    var requestData = JSON.parse(e.postData.contents);
+    var action = requestData.action; // 'check_access' | 'backup' | 'restore'
+    var userEmail = (requestData.userEmail || "").toLowerCase().trim();
+
+    // 🔒 التحقق من البريد الإلكتروني
+    if (!userEmail || !isEmailAllowed(userEmail)) {
+      return createJsonResponse({
+        allowed: false,
+        message: "⛔ عذراً، هذا البريد غير مصرح له باستخدام التطبيق. يرجى التواصل مع الإدارة."
+      });
+    }
+
+    // طلب فحص الصلاحية فقط
+    if (action === "check_access") {
+      return createJsonResponse({
+        allowed: true,
+        userEmail: userEmail,
+        message: "✅ البريد مصرح له بالاستخدام."
+      });
+    }
+
+    // ☁️ حفظ النسخة الاحتياطية
+    if (action === "backup") {
+      var payload = requestData.payload;
+      if (!payload) {
+        return createJsonResponse({ allowed: true, status: "error", message: "لا توجد بيانات للرفع" });
+      }
+
+      var folder = getOrCreateBackupFolder();
+      var fileName = "fast_toolkit_backup_" + sanitizeEmail(userEmail) + ".json";
+      var files = folder.getFilesByName(fileName);
+
+      var backupContent = JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        userEmail: userEmail,
+        data: payload
+      }, null, 2);
+
+      if (files.hasNext()) {
+        var existingFile = files.next();
+        existingFile.setContent(backupContent);
+      } else {
+        folder.createFile(fileName, backupContent, MimeType.PLAIN_TEXT);
+      }
+
+      return createJsonResponse({
+        allowed: true,
+        status: "success",
+        message: "تم حفظ النسخة الاحتياطية بنجاح على Drive الشركة ☁️",
+        updatedAt: new Date().toLocaleString("ar-SA")
+      });
+    }
+
+    // ☁️ استرداد النسخة الاحتياطية
+    if (action === "restore") {
+      var folder = getOrCreateBackupFolder();
+      var fileName = "fast_toolkit_backup_" + sanitizeEmail(userEmail) + ".json";
+      var files = folder.getFilesByName(fileName);
+
+      if (files.hasNext()) {
+        var backupFile = files.next();
+        var fileContent = backupFile.getBlob().getDataAsString();
+        var parsedBackup = JSON.parse(fileContent);
+
+        return createJsonResponse({
+          allowed: true,
+          status: "success",
+          payload: parsedBackup.data || parsedBackup,
+          updatedAt: parsedBackup.updatedAt || backupFile.getLastUpdated()
+        });
+      } else {
+        return createJsonResponse({
+          allowed: true,
+          status: "not_found",
+          message: "لا توجد نسخة احتياطية محفوظة لهذا البريد ❌"
+        });
+      }
+    }
+
+    return createJsonResponse({ allowed: true, error: "Invalid action" });
+
+  } catch (err) {
+    return createJsonResponse({ allowed: false, error: err.toString() });
+  }
+}
+
+// ==============================================================================
+// 🛠️ الدوال المساعدة
+// ==============================================================================
+
+function isEmailAllowed(email) {
+  var cleanEmail = email.toLowerCase().trim();
+  for (var i = 0; i < ALLOWED_EMAILS.length; i++) {
+    if (ALLOWED_EMAILS[i].toLowerCase().trim() === cleanEmail) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function sanitizeEmail(email) {
+  return email.replace(/[^a-zA-Z0-9]/g, "_");
+}
+
+function getOrCreateBackupFolder() {
+  var folders = DriveApp.getFoldersByName(BACKUP_FOLDER_NAME);
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    return DriveApp.createFolder(BACKUP_FOLDER_NAME);
+  }
+}
+
+function createJsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getPageHtml(pageName) {
+  var authGuardScript = `
+    <script>
+      (function() {
+        const STORAGE_KEY_EMAIL = 'fastToolkitCompanyEmail';
+        const STORAGE_KEY_WEBAPP_URL = 'fastToolkitCompanyWebAppUrl';
+        const STORAGE_KEY_AUTH_STATUS = 'fastToolkitAuthStatus';
+        window.FastToolkitAuth = {
+          getEmail: function() { return localStorage.getItem(STORAGE_KEY_EMAIL) || ''; },
+          setEmail: function(e) { if(e) localStorage.setItem(STORAGE_KEY_EMAIL, e.toLowerCase().trim()); else localStorage.removeItem(STORAGE_KEY_EMAIL); },
+          getWebAppUrl: function() { return localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || window.location.href.split('?')[0]; },
+          setWebAppUrl: function(u) { if(u) localStorage.setItem(STORAGE_KEY_WEBAPP_URL, u.trim()); },
+          isAuthorized: function() { return sessionStorage.getItem(STORAGE_KEY_AUTH_STATUS) === 'true'; },
+          verifyAccess: async function(email, customUrl) {
+            const targetUrl = customUrl || this.getWebAppUrl();
+            try {
+              const res = await fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'check_access', userEmail: email })
+              });
+              const data = await res.json();
+              if (data.allowed) { this.setEmail(email); sessionStorage.setItem(STORAGE_KEY_AUTH_STATUS, 'true'); return { allowed: true }; }
+              else { sessionStorage.removeItem(STORAGE_KEY_AUTH_STATUS); return { allowed: false, message: data.message }; }
+            } catch(e) { return { allowed: false, message: 'فشل الاتصال بخادم الشركة' }; }
+          },
+          backupData: async function(payload) {
+            const targetUrl = this.getWebAppUrl();
+            const email = this.getEmail();
+            const res = await fetch(targetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'backup', userEmail: email, payload: payload })
+            });
+            return await res.json();
+          },
+          restoreData: async function() {
+            const targetUrl = this.getWebAppUrl();
+            const email = this.getEmail();
+            const res = await fetch(targetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'restore', userEmail: email })
+            });
+            return await res.json();
+          }
+        };
+      })();
+    </script>
+  `;
+
+  return `
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>FAST TOOLKIT</title>
+      ${authGuardScript}
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f0f; color: #eee; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; }
+        .card { background: #18181c; border: 1px solid #2a2a32; border-radius: 14px; padding: 24px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        h1 { color: #00e676; margin-top: 0; font-size: 20px; }
+        .btn { display: inline-block; background: #00e676; color: #000; font-weight: bold; padding: 10px 16px; border-radius: 8px; text-decoration: none; margin: 6px; cursor: pointer; border: none; font-size: 13px; }
+        .btn-blue { background: #00d4ff; color: #000; }
+        .btn-yellow { background: #ffcc00; color: #000; }
+        .menu { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>FAST TOOLKIT 🚀</h1>
+        <p style="font-size: 12px; color: #aaa;">خادم الشركة الموحد والمضيّف السحابي</p>
+        <hr style="border: 0; border-top: 1px solid #222; margin: 16px 0;">
+        <div class="menu">
+          <a href="${ScriptApp.getService().getUrl()}?page=note" class="btn">📝 النسخ السريع (Sticky Notes)</a>
+          <a href="${ScriptApp.getService().getUrl()}?page=simah" class="btn btn-yellow">📊 أداة سمة</a>
+          <a href="${ScriptApp.getService().getUrl()}?page=card" class="btn btn-blue">🔍 Card Scanner</a>
+          <a href="${ScriptApp.getService().getUrl()}?page=cia" class="btn">📋 CIA Maker</a>
+          <a href="${ScriptApp.getService().getUrl()}?page=settings" class="btn" style="background: #333; color: #fff;">⚙️ الإعدادات والمزامنة</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
