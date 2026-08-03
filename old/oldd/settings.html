@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الإعدادات - FAST TOOLKIT</title>
+    <script>
+        const APP_VERSION = "2.0.14";
+    </script>
+    <script>
+(function () {
+    const GOOGLE_CLIENT_ID = "";
+    window.GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID;
+
+    document.documentElement.classList.add('expanded');
+
+    const defaultSettings = { mode: 'light', themeColor: '#00e676' };
+    let savedSettings = null;
+    try {
+        const stored = localStorage.getItem('fastToolkitSettings');
+        if (stored) savedSettings = JSON.parse(stored);
+    } catch (e) { }
+
+    const settings = { ...defaultSettings, ...savedSettings };
+    const root = document.documentElement;
+    root.style.setProperty('--accent-green', settings.themeColor);
+
+    function injectQuickToolsBar() {
+        if (document.getElementById('quickToolsBar')) return;
+        const container = document.querySelector('.app-container') || document.querySelector('.container');
+        if (!container) return;
+
+        const bar = document.createElement('div');
+        bar.id = 'quickToolsBar';
+        bar.style.cssText = `
+            display: flex; align-items: center; justify-content: space-around;
+            padding: 4px; background: rgba(0,0,0,0.3); border-radius: 8px;
+            margin-bottom: 8px; border: 1px solid var(--border);
+        `;
+
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        const tools = [
+            { name: 'نسخ', file: 'note.html', icon: '📋' },
+            { name: 'بطاقات', file: 'card.html', icon: '💳' },
+            { name: 'سمة', file: 'simah.html', icon: '📊' },
+            { name: 'CIA', file: 'cia.html', icon: '🏷️' },
+            { name: 'إعدادات', file: 'settings.html', icon: '⚙️' }
+        ];
+
+        tools.forEach(t => {
+            const a = document.createElement('a');
+            a.href = t.file;
+            a.innerText = `${t.icon} ${t.name}`;
+            a.style.cssText = `
+                color: ${currentPage === t.file ? 'var(--accent-green)' : '#aaa'};
+                text-decoration: none; font-size: 10px; font-weight: bold;
+                padding: 2px 5px; border-radius: 4px;
+                background: ${currentPage === t.file ? 'rgba(0,230,118,0.1)' : 'transparent'};
+            `;
+            bar.appendChild(a);
+        });
+
+        container.insertBefore(bar, container.firstChild);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', injectQuickToolsBar);
+    } else {
+        injectQuickToolsBar();
+    }
+})();
+    </script>
+    <script>
+(function () {
+    const STORAGE_KEY_EMAIL = 'fastToolkitCompanyEmail';
+    const STORAGE_KEY_WEBAPP_URL = 'fastToolkitCompanyWebAppUrl';
+    const STORAGE_KEY_AUTH_STATUS = 'fastToolkitAuthStatus';
+
+    const DEFAULT_WEB_APP_URL = localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || '';
+
+    window.FastToolkitAuth = {
+        getEmail: function () {
+            return localStorage.getItem(STORAGE_KEY_EMAIL) || '';
+        },
+        setEmail: function (email) {
+            if (email) localStorage.setItem(STORAGE_KEY_EMAIL, email.toLowerCase().trim());
+            else localStorage.removeItem(STORAGE_KEY_EMAIL);
+        },
+        getWebAppUrl: function () {
+            return localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || DEFAULT_WEB_APP_URL;
+        },
+        setWebAppUrl: function (url) {
+            if (url) localStorage.setItem(STORAGE_KEY_WEBAPP_URL, url.trim());
+            else localStorage.removeItem(STORAGE_KEY_WEBAPP_URL);
+        },
+        isAuthorized: function () {
+            return sessionStorage.getItem(STORAGE_KEY_AUTH_STATUS) === 'true';
+        },
+        verifyAccess: async function (email, customUrl) {
+            const targetUrl = customUrl || this.getWebAppUrl();
+            if (!targetUrl) return { allowed: false, error: 'NO_WEBAPP_URL', message: 'لم يتم إعداد رابط خادم الشركة (Web App URL).' };
+            if (!email) return { allowed: false, error: 'NO_EMAIL', message: 'يرجى إدخال البريد الإلكتروني.' };
+
+            try {
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'check_access', userEmail: email.toLowerCase().trim() })
+                });
+
+                const data = await response.json();
+                if (data.allowed) {
+                    this.setEmail(email);
+                    sessionStorage.setItem(STORAGE_KEY_AUTH_STATUS, 'true');
+                    return { allowed: true, message: data.message || 'تم التحقق بنجاح' };
+                } else {
+                    sessionStorage.removeItem(STORAGE_KEY_AUTH_STATUS);
+                    return { allowed: false, message: data.message || 'عذراً، البريد غير مصرح له.' };
+                }
+            } catch (err) {
+                return { allowed: false, error: 'NETWORK_ERROR', message: 'فشل الاتصال بخادم الشركة.' };
+            }
+        },
+        backupData: async function (payload) {
+            const targetUrl = this.getWebAppUrl();
+            const email = this.getEmail();
+            if (!targetUrl || !email) throw new Error('يرجى تسجيل الدخول وإعداد رابط Web App أولاً.');
+
+            const response = await fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'backup', userEmail: email, payload: payload })
+            });
+            return await response.json();
+        },
+        restoreData: async function () {
+            const targetUrl = this.getWebAppUrl();
+            const email = this.getEmail();
+            if (!targetUrl || !email) throw new Error('يرجى تسجيل الدخول وإعداد رابط Web App أولاً.');
+
+            const response = await fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'restore', userEmail: email })
+            });
+            return await response.json();
+        }
+    };
+})();
+    </script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 0;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            color: var(--accent-green);
+        }
+
+        .settings-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            text-align: right;
+            padding-right: 2px;
+        }
+
+        .settings-content::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .settings-content::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .setting-group {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 6px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        /* Toggle switch */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 16px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .3s;
+            border-radius: 16px;
+            border: 1px solid #444;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "🌙";
+            font-size: 9px;
+            height: 12px;
+            width: 12px;
+            left: 2px;
+            bottom: 1px;
+            transition: .3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input:checked+.slider {
+            background-color: #eee;
+            border-color: #ccc;
+        }
+
+        input:checked+.slider:before {
+            content: "☀️";
+            transform: translateX(12px);
+            color: #f39c12;
+        }
+
+        /* Range Sliders */
+        .range-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .range-wrapper span {
+            font-size: 10px;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .range-wrapper b {
+            color: var(--accent-green);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            cursor: pointer;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Colors */
+        .color-options {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 4px;
+        }
+
+        .color-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .color-btn.active {
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        .footer-btns {
+            margin-top: auto;
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-reset {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        .btn-reset:hover {
+            background: #c82333;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 160px;
+            background-color: #222;
+            color: #eee;
+            text-align: right;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 100;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -80px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 9px;
+            font-weight: normal;
+            border: 1px solid #444;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            pointer-events: none;
+            line-height: 1.4;
+        }
+        
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #444 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .tooltip .tooltiptext ul {
+            margin: 4px 0 0 0;
+            padding-right: 16px;
+            list-style-type: disc;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-btn">🔙 رجوع</a>
+            <h1>الإعدادات ⚙️</h1>
+        </div>
+
+        <div class="settings-content">
+
+            <div class="setting-group">
+                <div class="switch-container">
+                    <label style="margin:0;">الوضع العام</label>
+                    <label class="switch">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+
+            <div class="setting-group">
+                <label>اللون الأساسي</label>
+                <div class="color-options">
+                    <div class="color-btn" style="background:#00ff00" data-color="#00ff00" title="أخضر"></div>
+                    <div class="color-btn" style="background:#ff3399" data-color="#ff3399" title="وردي"></div>
+                    <div class="color-btn" style="background:#00e5ff" data-color="#00e5ff" title="تركوازي"></div>
+                    <div class="color-btn" style="background:#ff9f43" data-color="#ff9f43" title="برتقالي"></div>
+                    <div class="color-btn" style="background:#007aff" data-color="#007aff" title="أزرق"></div>
+                    <label class="color-btn" id="customColorBtn" style="background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-sizing: border-box;" title="لون مخصص">
+                        <input type="color" id="customColorInput" style="opacity: 0; position: absolute; inset: 0; width: 200%; height: 200%; top: -50%; left: -50%; cursor: pointer;">
+                        <span style="color: white; font-size: 16px; font-weight: bold; text-shadow: 0 0 4px rgba(0,0,0,0.8); pointer-events: none; margin-top: -2px;">+</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label style="display: flex; align-items: center; margin-bottom: 2px;">
+                    النسخ الاحتياطي للاعدادات (محلياً)
+                    <div class="tooltip">
+                        <span style="display: inline-flex; justify-content: center; align-items: center; width: 12px; height: 12px; border-radius: 50%; background: #444; color: #fff; font-size: 9px; margin-right: 4px; font-weight: normal;">?</span>
+                        <div class="tooltiptext">
+                            سيتم حفظ:
+                            <ul>
+                                <li>المظهر والألوان والاختصارات</li>
+                                <li>الملاحظات (Sticky Notes)</li>
+                                <li>سجلات وتاريخ Card Scanner</li>
+                                <li>حسابات وتاريخ Simah</li>
+                                <li>إعدادات الـ AI والمسودات</li>
+                            </ul>
+                        </div>
+                    </div>
+                </label>
+                <div style="display: flex; gap: 4px; margin-top: 4px;">
+                    <button class="action-btn" id="exportAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">تصدير كامل 💾</button>
+                    <button class="action-btn" id="importAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">استيراد كامل 📂</button>
+                </div>
+                <input type="file" id="importAllFile" style="display:none;" accept=".json">
+            </div>
+
+            <div class="setting-group">
+                <label style="display: flex; align-items: center; margin-bottom: 2px;">
+                    النسخ الاحتياطي للاعدادات (Drive)
+                    <div class="tooltip">
+                        <span style="display: inline-flex; justify-content: center; align-items: center; width: 12px; height: 12px; border-radius: 50%; background: #444; color: #fff; font-size: 9px; margin-right: 4px; font-weight: normal;">?</span>
+                        <div class="tooltiptext">
+                            سيتم حفظ:
+                            <ul>
+                                <li>المظهر والألوان والاختصارات</li>
+                                <li>الملاحظات (Sticky Notes)</li>
+                                <li>سجلات وتاريخ Card Scanner</li>
+                                <li>حسابات وتاريخ Simah</li>
+                                <li>إعدادات الـ AI والمسودات</li>
+                            </ul>
+                        </div>
+                    </div>
+                </label>
+                <div style="display: flex; gap: 4px; margin-top: 4px;">
+                    <button class="action-btn" id="driveBackupBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">رفع للـ Drive ☁️</button>
+                    <button class="action-btn" id="driveRestoreBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">استعادة من Drive ☁️</button>
+                </div>
+                <div id="driveStatus" style="font-size: 9px; color: #aaa; margin-top: 4px;"></div>
+            </div>
+
+            <div class="setting-group">
+                <div class="switch-container" style="margin-bottom: 4px;">
+                    <label style="margin:0; font-size: 10px; font-weight: bold;">اختصارات لوحة المفاتيح</label>
+                    <label class="switch">
+                        <input type="checkbox" id="shortcutsToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div id="shortcutsConfig" style="display: none; flex-direction: column; gap: 4px; margin-top: 8px; border-top: 1px solid #222; padding-top: 6px;">
+                    <div style="font-size: 7px; color: #888; text-align: center; margin-bottom: 4px;">اضغط على الزر واكتب المفتاح الجديد للحفظ</div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>نسخ سريع (tool 1):</span>
+                        <button class="key-bind-btn" data-key="nav1" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">1</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>سمة (tool 2):</span>
+                        <button class="key-bind-btn" data-key="nav2" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">2</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>Card Scan (tool 3):</span>
+                        <button class="key-bind-btn" data-key="nav3" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">3</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>Sticky Notes (tool 4):</span>
+                        <button class="key-bind-btn" data-key="nav4" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">4</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>CIA Maker (tool 5):</span>
+                        <button class="key-bind-btn" data-key="nav5" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">5</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>الرئيسية (Home):</span>
+                        <button class="key-bind-btn" data-key="navHome" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">H</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>البحث (Search):</span>
+                        <button class="key-bind-btn" data-key="search" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">/</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>ترتيب الأقسام (Sort):</span>
+                        <button class="key-bind-btn" data-key="sort" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تبديل المجموعات (Tab):</span>
+                        <button class="key-bind-btn" data-key="tab" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">T</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تحليل الـ AI (Toggle AI):</span>
+                        <button class="key-bind-btn" data-key="ai" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">A</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>إعدادات الـ API (Settings):</span>
+                        <button class="key-bind-btn" data-key="settings" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">S</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>إحصائيات (Usage):</span>
+                        <button class="key-bind-btn" data-key="usage" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">U</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>مسح البيانات (Clear):</span>
+                        <button class="key-bind-btn" data-key="clear" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">C</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تعديل المخرجات (Edit):</span>
+                        <button class="key-bind-btn" data-key="edit" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">E</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0;">
+                        <span>تصغير/توسيع النافذة (Toggle PiP):</span>
+                        <button class="key-bind-btn" data-key="pipToggle" style="min-width: 35px; font-size: 9px; padding: 2px 4px; border: 1px solid #ddd; background: #fff; color: #222; border-radius: 3px; cursor: pointer; font-weight: bold;">P</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer-btns">
+            <button class="action-btn btn-reset" id="resetBtn">استعادة الافتراضي 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentSettings = window.fastToolkitSettings;
+
+            const modeToggle = document.getElementById('modeToggle');
+            const colorBtns = document.querySelectorAll('.color-btn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            const importAllBtn = document.getElementById('importAllBtn');
+            const importAllFile = document.getElementById('importAllFile');
+
+
+
+            let selectedColor = currentSettings.themeColor;
+            modeToggle.checked = (currentSettings.mode === 'light');
+
+            function updateColorSelection() {
+                let foundMatch = false;
+                colorBtns.forEach(btn => {
+                    if (btn.id === 'customColorBtn') return;
+                    if (btn.dataset.color && btn.dataset.color.toLowerCase() === selectedColor.toLowerCase()) {
+                        btn.classList.add('active');
+                        foundMatch = true;
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+
+                const customBtn = document.getElementById('customColorBtn');
+                if (customBtn) {
+                    if (!foundMatch) {
+                        customBtn.classList.add('active');
+                    } else {
+                        customBtn.classList.remove('active');
+                    }
+                }
+            }
+            updateColorSelection();
+
+            const autoSave = () => {
+                const newSettings = {
+                    mode: modeToggle.checked ? 'light' : 'dark',
+                    themeColor: selectedColor
+                };
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(newSettings));
+                window.location.reload();
+            };
+
+            // Event Listeners for auto-save
+            modeToggle.addEventListener('change', autoSave);
+
+            colorBtns.forEach(btn => {
+                if (btn.id === 'customColorBtn') return;
+                btn.addEventListener('click', () => {
+                    selectedColor = btn.dataset.color;
+                    autoSave();
+                });
+            });
+
+            const customColorInput = document.getElementById('customColorInput');
+            if (customColorInput) {
+                const isHex = /^#[0-9A-F]{6}$/i.test(selectedColor);
+                if (isHex) customColorInput.value = selectedColor;
+                
+                customColorInput.addEventListener('change', (e) => {
+                    selectedColor = e.target.value;
+                    autoSave();
+                });
+            }
+
+            // Keyboard Shortcuts Config
+            const shortcuts = window.getFastToolkitShortcuts ? window.getFastToolkitShortcuts() : {
+                enabled: true,
+                nav1: "1", nav2: "2", nav3: "3", nav4: "4", navHome: "h",
+                search: "/", sort: "s", tab: "t", ai: "a", settings: "s",
+                usage: "u", clear: "c", edit: "e", pipToggle: "p"
+            };
+
+            const shortcutsToggle = document.getElementById('shortcutsToggle');
+            const shortcutsConfig = document.getElementById('shortcutsConfig');
+            const bindBtns = document.querySelectorAll('.key-bind-btn');
+
+            shortcutsToggle.checked = shortcuts.enabled;
+            shortcutsConfig.style.display = shortcuts.enabled ? 'flex' : 'none';
+
+            bindBtns.forEach(btn => {
+                const key = btn.dataset.key;
+                btn.innerText = shortcuts[key].toUpperCase();
+            });
+
+            shortcutsToggle.addEventListener('change', () => {
+                shortcuts.enabled = shortcutsToggle.checked;
+                shortcutsConfig.style.display = shortcutsToggle.checked ? 'flex' : 'none';
+                localStorage.setItem('fastToolkitShortcuts', JSON.stringify(shortcuts));
+            });
+
+            let activeBindBtn = null;
+            let tempKeyListener = null;
+
+            bindBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (activeBindBtn) {
+                        activeBindBtn.innerText = shortcuts[activeBindBtn.dataset.key].toUpperCase();
+                        activeBindBtn.style.borderColor = '#444';
+                    }
+
+                    activeBindBtn = btn;
+                    btn.innerText = '⏳';
+                    btn.style.borderColor = 'var(--accent-green)';
+
+                    if (tempKeyListener) {
+                        document.removeEventListener('keydown', tempKeyListener);
+                    }
+
+                    tempKeyListener = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (['control', 'shift', 'alt', 'meta', 'escape'].includes(e.key.toLowerCase())) {
+                            return;
+                        }
+
+                        const newKey = e.key.toLowerCase();
+                        shortcuts[btn.dataset.key] = newKey;
+                        btn.innerText = newKey.toUpperCase();
+                        btn.style.borderColor = '#444';
+
+                        localStorage.setItem('fastToolkitShortcuts', JSON.stringify(shortcuts));
+                        activeBindBtn = null;
+                        document.removeEventListener('keydown', tempKeyListener);
+                        tempKeyListener = null;
+                    };
+
+                    document.addEventListener('keydown', tempKeyListener);
+                });
+            });
+
+            resetBtn.addEventListener('click', () => {
+                const newDefaults = {
+                    mode: 'light',
+                    themeColor: '#00e676'
+                };
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(newDefaults));
+                localStorage.removeItem('fastToolkitExpanded');
+                localStorage.removeItem('fastToolkitShortcuts');
+                window.location.reload();
+            });
+
+            // Unified Backup Export
+            exportAllBtn.addEventListener('click', () => {
+                const backupKeys = [
+                    'fastToolkitSettings',
+                    'fastToolkitShortcuts',
+                    'fastToolkitExpanded',
+                    'copyGridDataV6',
+                    'unbackedUpCountV6',
+                    'quick_sticky_note',
+                    'stickyNotesData',
+                    'currentStickyNoteId',
+                    'cardScannerData',
+                    'cardScannerHistory',
+                    'simahApprovedAccounts',
+                    'simahAccountsHistory',
+                    'simah_ai_provider',
+                    'simah_ai_pref',
+                    'simah_usage',
+                    'autoSyncGDrive',
+                    'cardLinkToggle'
+                ];
+                const backupData = {};
+                backupKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value !== null) {
+                        backupData[key] = value;
+                    }
+                });
+                
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const filename = `fast_toolkit_all_backup_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.json`;
+
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+            });
+
+            // Unified Backup Import
+            importAllBtn.addEventListener('click', () => {
+                importAllFile.click();
+            });
+
+            importAllFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (x) => {
+                    try {
+                        const imported = JSON.parse(x.target.result);
+                        if (!imported || typeof imported !== 'object') throw new Error();
+                        
+                        Object.keys(imported).forEach(key => {
+                            localStorage.setItem(key, imported[key]);
+                        });
+                        
+                        alert("تم استيراد كافة البيانات وإعادة ضبط التطبيق بنجاح! 🎉");
+                        window.location.reload();
+                    } catch (err) {
+                        alert("حدث خطأ أثناء استيراد الملف! تأكد من أنه ملف نسخ احتياطي صحيح. ❌");
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            });
+
+            // ====== Drive Unified Backup Logic ======
+            const driveBackupBtn = document.getElementById('driveBackupBtn');
+            const driveRestoreBtn = document.getElementById('driveRestoreBtn');
+            const driveStatus = document.getElementById('driveStatus');
+
+            let gDriveAccessToken = sessionStorage.getItem('gDriveAccessToken') || null;
+
+            function showDriveStatus(msg) {
+                if(driveStatus) driveStatus.innerText = msg;
+            }
+
+            function checkResponseStatus(res) {
+                if (res.status === 401) {
+                    gDriveAccessToken = null;
+                    sessionStorage.removeItem('gDriveAccessToken');
+                    showDriveStatus("انتهت جلسة Drive، يرجى تسجيل الدخول ⚠️");
+                    throw new Error("Unauthorized");
+                }
+                return res;
+            }
+
+            async function triggerCloudAction(action) {
+                if (window.FastToolkitAuth && window.FastToolkitAuth.getWebAppUrl()) {
+                    showDriveStatus("جاري الاتصال بخادم الشركة (Web App)... ☁️");
+                    try {
+                        if (action === 'backup') {
+                            const backupData = getBackupData();
+                            const res = await window.FastToolkitAuth.backupData(backupData);
+                            showDriveStatus("تم الحفظ في Drive الشركة بنجاح! ☁️✅");
+                        } else if (action === 'restore') {
+                            const res = await window.FastToolkitAuth.restoreData();
+                            if (res.payload && typeof res.payload === 'object') {
+                                Object.keys(res.payload).forEach(key => {
+                                    localStorage.setItem(key, res.payload[key]);
+                                });
+                                showDriveStatus("تم استعادة البيانات بنجاح! 🔄");
+                                setTimeout(() => window.location.reload(), 1500);
+                            } else {
+                                showDriveStatus(res.message || "لا توجد نسخة سحابية محفوظة ❌");
+                            }
+                        }
+                        return;
+                    } catch (err) {
+                        console.error("Web App cloud action failed:", err);
+                        showDriveStatus("خطأ: " + (err.message || "فشل الاتصال") + " ❌");
+                        return;
+                    }
+                }
+
+                const clientId = window.GOOGLE_CLIENT_ID;
+                if (!clientId) {
+                    showDriveStatus("إعدادات Drive غير متوفرة ⚠️");
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+                    showDriveStatus("خطأ في مكتبة Google ❌");
+                    return;
+                }
+
+                showDriveStatus("جاري الاتصال بـ Google... ☁️");
+                try {
+                    const tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: clientId,
+                        scope: 'https://www.googleapis.com/auth/drive.file',
+                        callback: (tokenResponse) => {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                gDriveAccessToken = tokenResponse.access_token;
+                                sessionStorage.setItem('gDriveAccessToken', gDriveAccessToken);
+                                executeDriveAction(gDriveAccessToken, action);
+                            } else {
+                                showDriveStatus("فشل تسجيل الدخول ❌");
+                            }
+                        },
+                    });
+                    tokenClient.requestAccessToken({ prompt: 'consent' });
+                } catch (err) {
+                    console.error("GIS initialization failed:", err);
+                    showDriveStatus("خطأ في الاتصال ❌");
+                }
+            }
+
+            function getBackupData() {
+                const backupKeys = [
+                    'fastToolkitSettings', 'fastToolkitShortcuts', 'fastToolkitExpanded',
+                    'copyGridDataV6', 'unbackedUpCountV6', 'quick_sticky_note',
+                    'stickyNotesData', 'currentStickyNoteId', 'cardScannerData',
+                    'cardScannerHistory', 'simahApprovedAccounts', 'simahAccountsHistory',
+                    'simah_ai_provider', 'simah_ai_pref', 'simah_usage', 'autoSyncGDrive', 'cardLinkToggle'
+                ];
+                const backupData = {};
+                backupKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value !== null) backupData[key] = value;
+                });
+                return backupData;
+            }
+
+            function executeDriveAction(token, action) {
+                showDriveStatus("جاري الاتصال بـ Drive... ☁️");
+                const filename = "fast_toolkit_unified_backup_cloud.json";
+
+                fetch(`https://www.googleapis.com/drive/v3/files?q=name='${filename}'+and+trashed=false`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(checkResponseStatus)
+                .then(res => res.json())
+                .then(data => {
+                    const files = data.files || [];
+                    const fileId = files.length > 0 ? files[0].id : null;
+
+                    if (action === 'backup') {
+                        const backupData = getBackupData();
+                        if (fileId) {
+                            updateDriveFile(token, fileId, backupData);
+                        } else {
+                            createDriveFile(token, filename, backupData);
+                        }
+                    } else if (action === 'restore') {
+                        if (fileId) {
+                            restoreDriveFile(token, fileId);
+                        } else {
+                            showDriveStatus("لا توجد نسخة محفوظة ❌");
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive search failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل الاتصال بـ Drive ❌");
+                });
+            }
+
+            function updateDriveFile(token, fileId, content) {
+                showDriveStatus("جاري رفع البيانات... ☁️");
+                fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(content)
+                })
+                .then(checkResponseStatus)
+                .then(res => {
+                    if (res.ok) {
+                        showDriveStatus("تم النسخ السحابي بنجاح! ☁️✅");
+                    } else {
+                        showDriveStatus("حدث خطأ أثناء الرفع ❌");
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive update failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل رفع الملف ❌");
+                });
+            }
+
+            function createDriveFile(token, filename, content) {
+                showDriveStatus("جاري إنشاء الملف السحابي... ☁️");
+                fetch('https://www.googleapis.com/drive/v3/files', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: filename, mimeType: 'application/json' })
+                })
+                .then(checkResponseStatus)
+                .then(res => res.json())
+                .then(meta => {
+                    if (meta.id) {
+                        updateDriveFile(token, meta.id, content);
+                    } else {
+                        showDriveStatus("فشل إنشاء الملف ❌");
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive creation failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل إنشاء الملف ❌");
+                });
+            }
+
+            function restoreDriveFile(token, fileId) {
+                showDriveStatus("جاري تنزيل النسخة... ☁️");
+                fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(checkResponseStatus)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && typeof data === 'object') {
+                        Object.keys(data).forEach(key => {
+                            localStorage.setItem(key, data[key]);
+                        });
+                        showDriveStatus("تم الاستعادة بنجاح! جاري التحديث... 🔄");
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        showDriveStatus("الملف تالف أو غير صالح ❌");
+                    }
+                })
+                .catch(err => {
+                    console.error("Drive restore failed:", err);
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل استعادة الملف ❌");
+                });
+            }
+
+            if(driveBackupBtn) driveBackupBtn.addEventListener('click', () => triggerCloudAction('backup'));
+            if(driveRestoreBtn) driveRestoreBtn.addEventListener('click', () => triggerCloudAction('restore'));
+        });
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+
+</html>
