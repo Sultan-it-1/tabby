@@ -216,37 +216,31 @@
         /* تنسيق الحقوق الجديد والتفاعل */
         .footer {
             margin-top: 5px;
-            font-size: 8px;
-            color: #666;
-            border-top: 1px solid #1a1a1a;
-            padding-top: 6px;
+            margin-top: 8px;
+            font-size: 9px;
+            color: #555;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
-            /* تم إضافة السطرين بالأسفل لإجبار النص الإنجليزي على الترتيب السليم */
-            direction: ltr;
-            font-family: Arial, sans-serif;
         }
 
         .pulse-emoji {
             display: inline-block;
-            animation: pulse 1.4s infinite ease-in-out;
-        }
-
-        .container:hover .pulse-emoji {
-            animation-duration: 0.8s;
+            animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
-
-            0%,
-            100% {
+            0% {
                 transform: scale(1);
             }
 
-            30% {
-                transform: scale(1.2);
+            50% {
+                transform: scale(1.3);
+            }
+
+            100% {
+                transform: scale(1);
             }
 
             60% {
@@ -258,20 +252,12 @@
             color: #888;
         }
 
-
         .header-actions {
             display: flex;
             align-items: center;
             gap: 1px;
         }
     </style>
-    <!-- Centralized Cache Busting Loader -->
-    <script>
-        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
-    </script>
-    <script>
-        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
-    </script>
 </head>
 
 <body>
@@ -280,10 +266,10 @@
         <div class="header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="header-actions">
-                    <a href="download.html" style="text-decoration: none; font-size: 13px; transition: transform 0.2s;" title="تحميل الإضافة الجانبية">🧩</a>
+                    <a href="?page=settings" style="text-decoration: none; font-size: 13px; transition: transform 0.2s;" title="الإعدادات">⚙️</a>
                 </div>
                 <h1 style="margin: 0; text-align: center; flex: 1;">FAST TOOLKIT</h1>
-                <a href="settings.html"
+                <a href="?page=settings"
                     style="text-decoration: none; font-size: 14px; transition: transform 0.2s; flex-shrink:0;"
                     onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'"
                     title="الإعدادات">⚙️</a>
@@ -292,7 +278,7 @@
         </div>
 
         <div class="menu-grid">
-            <a href="note.html" class="menu-item">
+            <a href="?page=note" class="menu-item">
                 <div class="icon">📝</div>
                 <div class="text-wrapper">
                     <div class="title">نسخ سريع</div>
@@ -300,7 +286,7 @@
                 </div>
             </a>
 
-            <a href="simah.html" class="menu-item simah-tool">
+            <a href="?page=simah" class="menu-item simah-tool">
                 <div class="icon">📊</div>
                 <div class="text-wrapper">
                     <div class="title">سمة</div>
@@ -308,7 +294,7 @@
                 </div>
             </a>
 
-            <a href="card.html" class="menu-item card-tool">
+            <a href="?page=card" class="menu-item card-tool">
                 <div class="icon">🔍</div>
                 <div class="text-wrapper">
                     <div class="title">Card Scan</div>
@@ -316,7 +302,7 @@
                 </div>
             </a>
 
-            <a href="sticky.html" class="menu-item sticky-tool">
+            <a href="?page=sticky" class="menu-item sticky-tool">
                 <div class="icon">📌</div>
                 <div class="text-wrapper">
                     <div class="title">Sticky Notes</div>
@@ -324,7 +310,7 @@
                 </div>
             </a>
 
-            <a href="cia.html" class="menu-item">
+            <a href="?page=cia" class="menu-item">
                 <div class="icon">📋</div>
                 <div class="text-wrapper">
                     <div class="title">CIA Maker</div>
@@ -332,42 +318,27 @@
                 </div>
             </a>
 
-            <a href="date.html" class="menu-item date-tool">
+            <a href="?page=date" class="menu-item date-tool">
                 <div class="icon">📅</div>
                 <div class="text-wrapper">
                     <div class="title">Date Helper</div>
                     <div class="desc">محول التواريخ وحاسبة أيام العمل بدقة.</div>
                 </div>
             </a>
-
-            <a href="download.html" class="menu-item" style="border-color: rgba(0, 212, 255, 0.4); background: rgba(0, 212, 255, 0.05);">
-                <div class="icon">🧩</div>
-                <div class="text-wrapper">
-                    <div class="title" style="color: var(--accent-blue);">تحميل الإضافة الجانبية</div>
-                    <div class="desc">تحميل وتثبيت حزمة الإضافة لـ Chrome.</div>
-                </div>
-            </a>
-
         </div>
 
-        <!-- الجزء الخاص بالحقوق المتغيرة -->
-        <div class="footer" id="dynamic-footer">
-            <!-- سيتم توليد المحتوى هنا تلقائياً بواسطة الجافاسكريبت -->
-        </div>
+        <div class="footer" id="dynamic-footer"></div>
     </div>
 
     <script>
-        // مصفوفة الجمل والإيموجيات الخاصة بك
         const quotes = [
             { emoji: "❤️", text: "Crafted to make your work easier" },
             { emoji: "✨", text: "Made to fit your needs perfectly" },
             { emoji: "🌿", text: "Your productivity, our mission" },
-            { emoji: "🪄", text: "Crafted as if it were made only for you" },
             { emoji: "💎", text: "Built to match your ambitions" },
-            { emoji: "⭐️", text: "Made specially for you" }
+            { emoji: "⭐️", text: "Made specially for your company" }
         ];
 
-        // اختيار جملة عشوائية عند تحميل الصفحة
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
         // طباعة العبارة داخل الفوتر مع الحفاظ على حركة النبض للإيموجي وثبات الاسم
