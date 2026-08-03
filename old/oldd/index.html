@@ -8,98 +8,16 @@
     <meta name="theme-color" content="#0f0f0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>بوابة الأدوات الذكية - الرئيسية</title>
-    <script>
-        const APP_VERSION = "2.0.14";
-        (function () {
-            // Smart local query router: if running outside Apps Script and ?page= parameter is provided, redirect to page.html
-            const urlParams = new URLSearchParams(window.location.search);
-            const pageParam = urlParams.get('page');
-            const isAppsScript = window.location.hostname.includes('script.google.com') || window.location.hostname.includes('googleusercontent.com');
-            if (pageParam && pageParam !== 'index' && !isAppsScript) {
-                const validPages = ['settings', 'note', 'card', 'cia', 'simah', 'sticky', 'date'];
-                if (validPages.includes(pageParam)) {
-                    window.location.href = pageParam + '.html' + window.location.search;
-                    return;
-                }
-            }
-
-            const STORAGE_KEY_EMAIL = 'fastToolkitCompanyEmail';
-            const STORAGE_KEY_WEBAPP_URL = 'fastToolkitCompanyWebAppUrl';
-            const STORAGE_KEY_AUTH_STATUS = 'fastToolkitAuthStatus';
-            const DEFAULT_WEB_APP_URL = localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || '';
-
-            window.FastToolkitAuth = {
-                getEmail: function () { return localStorage.getItem(STORAGE_KEY_EMAIL) || ''; },
-                setEmail: function (email) {
-                    if (email) localStorage.setItem(STORAGE_KEY_EMAIL, email.toLowerCase().trim());
-                    else localStorage.removeItem(STORAGE_KEY_EMAIL);
-                },
-                getWebAppUrl: function () { return localStorage.getItem(STORAGE_KEY_WEBAPP_URL) || DEFAULT_WEB_APP_URL; },
-                setWebAppUrl: function (url) {
-                    if (url) localStorage.setItem(STORAGE_KEY_WEBAPP_URL, url.trim());
-                    else localStorage.removeItem(STORAGE_KEY_WEBAPP_URL);
-                },
-                isAuthorized: function () { return sessionStorage.getItem(STORAGE_KEY_AUTH_STATUS) === 'true'; },
-                verifyAccess: async function (email, customUrl) {
-                    const targetUrl = customUrl || this.getWebAppUrl();
-                    if (!targetUrl) return { allowed: false, error: 'NO_WEBAPP_URL', message: 'لم يتم إعداد رابط خادم الشركة (Web App URL).' };
-                    if (!email) return { allowed: false, error: 'NO_EMAIL', message: 'يرجى إدخال البريد الإلكتروني.' };
-                    try {
-                        const response = await fetch(targetUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({ action: 'check_access', userEmail: email.toLowerCase().trim() })
-                        });
-                        const data = await response.json();
-                        if (data.allowed) {
-                            this.setEmail(email);
-                            sessionStorage.setItem(STORAGE_KEY_AUTH_STATUS, 'true');
-                            return { allowed: true, message: data.message || 'تم التحقق بنجاح' };
-                        } else {
-                            sessionStorage.removeItem(STORAGE_KEY_AUTH_STATUS);
-                            return { allowed: false, message: data.message || 'عذراً، البريد غير مصرح له.' };
-                        }
-                    } catch (err) {
-                        return { allowed: false, error: 'NETWORK_ERROR', message: 'فشل الاتصال بخادم الشركة.' };
-                    }
-                },
-                backupData: async function (payload) {
-                    const targetUrl = this.getWebAppUrl();
-                    const email = this.getEmail();
-                    if (!targetUrl || !email) throw new Error('يرجى تسجيل الدخول وإعداد رابط Web App أولاً.');
-                    const response = await fetch(targetUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({ action: 'backup', userEmail: email, payload: payload })
-                    });
-                    return await response.json();
-                },
-                restoreData: async function () {
-                    const targetUrl = this.getWebAppUrl();
-                    const email = this.getEmail();
-                    if (!targetUrl || !email) throw new Error('يرجى تسجيل الدخول وإعداد رابط Web App أولاً.');
-                    const response = await fetch(targetUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({ action: 'restore', userEmail: email })
-                    });
-                    return await response.json();
-                }
-            };
-        })();
-    </script>
     <style>
         :root {
-            --bg: #0b0f14;
-            --card-bg: #141b24;
-            --accent-green: #00e676;
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
             --accent-blue: #00d4ff;
             --accent-yellow: #ffcc00;
             --accent-orange: #ff9f43;
-            --accent-purple: #a55eea;
-            --accent-teal: #26de81;
-            --text: #ffffff;
-            --border: #232d3b;
+            --text: #eee;
+            --border: #333;
         }
 
         body {
@@ -110,166 +28,1887 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            overflow-x: hidden;
+            height: 100vh;
+            overflow: hidden;
         }
 
         .container {
             text-align: center;
-            width: 100%;
-            max-width: 340px;
-            padding: 14px;
-            background: var(--bg);
+            width: 230px;
+            height: 300px;
             box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
             justify-content: space-between;
-        }
-
-        .header {
-            margin-bottom: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
         }
 
         .header h1 {
-            font-size: 18px;
-            font-weight: 800;
+            font-size: 14px;
             color: var(--accent-green);
-            margin: 0;
+            margin: 2px 0;
+            text-transform: uppercase;
             letter-spacing: 1px;
-            text-shadow: 0 0 12px rgba(0, 230, 118, 0.4);
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
         }
 
         .header p {
-            font-size: 11px;
-            color: #8a99ad;
-            margin: 4px 0 0 0;
+            color: #666;
+            font-size: 9px;
+            margin: 0 0 8px 0;
         }
 
         .menu-grid {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            flex: 1;
-            justify-content: center;
+            gap: 6px;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 2px;
+        }
+
+        .menu-grid::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .menu-grid::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
         }
 
         .menu-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 12px;
             background: var(--card-bg);
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
             text-decoration: none;
             color: var(--text);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
+            transition: 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: right;
         }
 
         .menu-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            transform: translateX(-2px);
+            border-color: var(--accent-green);
+            background: #1f1f1f;
         }
 
-        .menu-item .icon {
-            font-size: 22px;
-            margin-left: 12px;
-            width: 28px;
-            text-align: center;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        .menu-item.simah-tool:hover {
+            border-color: var(--accent-yellow);
         }
 
-        .menu-item .text-wrapper {
-            text-align: right;
-            flex: 1;
+        .menu-item.card-tool:hover {
+            border-color: var(--accent-blue);
         }
 
-        .menu-item .title {
-            font-size: 13px;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 2px;
+        .menu-item.sticky-tool:hover {
+            border-color: var(--accent-orange);
         }
 
-        .menu-item .desc {
-            font-size: 10px;
-            color: #9aa8ba;
+        .menu-item.date-tool:hover {
+            border-color: #ff5e57;
+        }
+
+        .icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .text-wrapper {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .title {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 1px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 230px;
         }
 
-        /* Colorful Accents for Each Card */
-        .menu-item.note-tool {
-            border-color: rgba(0, 230, 118, 0.35);
-            background: linear-gradient(135deg, rgba(0, 230, 118, 0.08) 0%, rgba(20, 27, 36, 0.95) 100%);
+        .desc {
+            font-size: 8px;
+            color: #666;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .menu-item.note-tool .title { color: var(--accent-green); }
 
-        .menu-item.simah-tool {
-            border-color: rgba(255, 204, 0, 0.35);
-            background: linear-gradient(135deg, rgba(255, 204, 0, 0.08) 0%, rgba(20, 27, 36, 0.95) 100%);
-        }
-        .menu-item.simah-tool .title { color: var(--accent-yellow); }
-
-        .menu-item.card-tool {
-            border-color: rgba(0, 212, 255, 0.35);
-            background: linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(20, 27, 36, 0.95) 100%);
-        }
-        .menu-item.card-tool .title { color: var(--accent-blue); }
-
-        .menu-item.sticky-tool {
-            border-color: rgba(255, 159, 67, 0.35);
-            background: linear-gradient(135deg, rgba(255, 159, 67, 0.08) 0%, rgba(20, 27, 36, 0.95) 100%);
-        }
-        .menu-item.sticky-tool .title { color: var(--accent-orange); }
-
-        .menu-item.cia-tool {
-            border-color: rgba(165, 94, 234, 0.35);
-            background: linear-gradient(135deg, rgba(165, 94, 234, 0.08) 0%, rgba(20, 27, 36, 0.95) 100%);
-        }
-        .menu-item.cia-tool .title { color: var(--accent-purple); }
-
-        .menu-item.date-tool {
-            border-color: rgba(38, 222, 129, 0.35);
-            background: linear-gradient(135deg, rgba(38, 222, 129, 0.08) 0%, rgba(20, 27, 36, 0.95) 100%);
-        }
-        .menu-item.date-tool .title { color: var(--accent-teal); }
-
+        /* تنسيق الحقوق الجديد والتفاعل */
         .footer {
-            margin-top: 12px;
-            font-size: 10px;
-            color: #6a7b8c;
+            margin-top: 5px;
+            font-size: 8px;
+            color: #666;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            gap: 4px;
+            /* تم إضافة السطرين بالأسفل لإجبار النص الإنجليزي على الترتيب السليم */
+            direction: ltr;
+            font-family: Arial, sans-serif;
         }
 
         .pulse-emoji {
             display: inline-block;
-            animation: pulse 1.5s infinite;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+
+        .container:hover .pulse-emoji {
+            animation-duration: 0.8s;
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.25); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            30% {
+                transform: scale(1.2);
+            }
+
+            60% {
+                transform: scale(1.05);
+            }
         }
 
         .footer b {
-            color: var(--accent-green);
+            color: #888;
         }
+
 
         .header-actions {
             display: flex;
             align-items: center;
+            gap: 1px;
         }
     </style>
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+const APP_VERSION = "2.0.14";
+
+// === Centralized Multi-User Google Apps Script Cloud Sync System ===
+(function() {
+    const GAS_URL_KEY = 'fast_toolkit_gas_url';
+    const USER_ID_KEY = 'fast_toolkit_user_id';
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzFz_CWlEuy8ijNqbukZheI6bCaIGdt-cT7FWw9663udYTjWG_-6zQK_-LjE0q5C8gf/exec';
+
+    // Purge old stale URLs if present
+    try {
+        const stored = localStorage.getItem(GAS_URL_KEY);
+        if (stored && (stored.includes('AKfycbwREwx') || !stored.includes('/exec'))) {
+            localStorage.removeItem(GAS_URL_KEY);
+        }
+    } catch(e) {}
+
+    window.getGasUrl = function() {
+        const stored = localStorage.getItem(GAS_URL_KEY);
+        if (stored && stored.includes('/exec')) return stored;
+        return DEFAULT_GAS_URL;
+    };
+
+    window.saveGasUrl = function(url) {
+        if (url && url.trim()) {
+            localStorage.setItem(GAS_URL_KEY, url.trim());
+        } else {
+            localStorage.removeItem(GAS_URL_KEY);
+        }
+        if (window.updateGasSyncBadge) window.updateGasSyncBadge();
+    };
+
+    window.getFastToolkitUserId = function() {
+        let uId = localStorage.getItem(USER_ID_KEY);
+        if (!uId) {
+            uId = 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem(USER_ID_KEY, uId);
+        }
+        return uId;
+    };
+
+    window.saveFastToolkitUserId = function(customId) {
+        if (customId && customId.trim()) {
+            localStorage.setItem(USER_ID_KEY, customId.trim());
+        }
+    };
+
+    window.updateGasSyncBadge = function() {
+        const badges = document.querySelectorAll('#gasSyncBadge');
+        const uId = window.getFastToolkitUserId();
+        badges.forEach(b => {
+            b.innerHTML = '🟢 المزامنة السحابية أوتوماتيكية نشطة (المعرف: ' + uId + ')';
+            b.style.color = 'var(--accent-green)';
+        });
+    };
+
+    window.autoPushToGAS = async function(customData = null) {
+        const gasUrl = window.getGasUrl();
+        if (!gasUrl) return;
+
+        try {
+            const backupKeys = [
+                'fastToolkitSettings',
+                'fastToolkitShortcuts',
+                'fastToolkitExpanded',
+                'copyGridDataV6',
+                'unbackedUpCountV6',
+                'quick_sticky_note',
+                'stickyNotesData',
+                'currentStickyNoteId',
+                'cardScannerData',
+                'cardScannerHistory',
+                'simahApprovedAccounts',
+                'simahAccountsHistory',
+                'simah_ai_provider',
+                'simah_ai_pref',
+                'simah_usage',
+                'cardLinkToggle'
+            ];
+            
+            const payloadData = customData || {};
+            if (!customData) {
+                backupKeys.forEach(k => {
+                    const val = localStorage.getItem(k);
+                    if (val !== null) payloadData[k] = val;
+                });
+            }
+
+            // Using text/plain for no-cors POST to trigger Google Apps Script doPost immediately
+            await fetch(gasUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'sync',
+                    userId: window.getFastToolkitUserId(),
+                    data: payloadData
+                })
+            });
+            console.log('Fast Toolkit: Auto-synced to Central Server ☁️ (User: ' + window.getFastToolkitUserId() + ')');
+        } catch (err) {
+            console.warn('Fast Toolkit: Auto-sync push failed:', err);
+        }
+    };
+
+    window.autoPullFromGAS = async function(showFeedback = false) {
+        const gasUrl = window.getGasUrl();
+        if (!gasUrl) return false;
+
+        try {
+            const uId = window.getFastToolkitUserId();
+            const separator = gasUrl.includes('?') ? '&' : '?';
+            const res = await fetch(`${gasUrl}${separator}action=read&userId=${encodeURIComponent(uId)}&t=${Date.now()}`);
+            
+            if (res && res.ok) {
+                const result = await res.json();
+                if (result && result.status === 'success' && result.data) {
+                    let updated = false;
+                    Object.keys(result.data).forEach(k => {
+                        const val = typeof result.data[k] === 'object' ? JSON.stringify(result.data[k]) : result.data[k];
+                        if (localStorage.getItem(k) !== val) {
+                            localStorage.setItem(k, val);
+                            updated = true;
+                        }
+                    });
+                    if (showFeedback) {
+                        alert('تمت مزامنة وجلب أحدث البيانات سحابياً بنجاح! ☁️🎉');
+                        window.location.reload();
+                    }
+                    return updated;
+                }
+            }
+            
+            if (showFeedback) {
+                alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
+            }
+        } catch (err) {
+            console.warn('Fast Toolkit: Auto-sync pull failed:', err);
+            if (showFeedback) {
+                alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
+            }
+        }
+        return false;
+    };
+
+    let pushDebounce = null;
+    window.triggerGasAutoPush = function() {
+        if (!window.getGasUrl()) return;
+        clearTimeout(pushDebounce);
+        pushDebounce = setTimeout(() => {
+            window.autoPushToGAS();
+        }, 1200);
+    };
+
+    // Global localStorage.setItem Interceptor for 100% Automatic Cloud Sync
+    if (!window._gasInterceptorSet) {
+        window._gasInterceptorSet = true;
+        const _originalSetItem = localStorage.setItem;
+        localStorage.setItem = function(key, value) {
+            _originalSetItem.apply(this, arguments);
+            if (key !== GAS_URL_KEY && key !== USER_ID_KEY && window.triggerGasAutoPush) {
+                window.triggerGasAutoPush();
+            }
+        };
+    }
+
+    // Auto-pull on load if configured & update badge
+    const initBadge = () => {
+        if (window.updateGasSyncBadge) window.updateGasSyncBadge();
+        if (window.getGasUrl()) {
+            window.autoPullFromGAS(false);
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBadge);
+    } else {
+        initBadge();
+    }
+})();
+
+</script>
+<script>
+(function () {
+    // === إعدادات مطور الموقع (Developer Config) ===
+    // استبدل هذا القيمة بمعرف العميل الخاص بمشروعك في Google Cloud لتمكين المزامنة السحابية للجميع
+    const GOOGLE_CLIENT_ID = "";
+    window.GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID;
+
+    // Apply expanded state to document element instantly to prevent page transition flickering
+    document.documentElement.classList.add('expanded');
+
+    const defaultSettings = {
+        mode: 'light',
+        themeColor: '#00e676'
+    };
+
+    let savedSettings = null;
+    try {
+        const stored = localStorage.getItem('fastToolkitSettings');
+        if (stored) {
+            savedSettings = JSON.parse(stored);
+            if (savedSettings.themeColor === '#007aff') {
+                savedSettings.themeColor = '#00e676';
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(savedSettings));
+            }
+        }
+    } catch (e) { }
+
+    const settings = { ...defaultSettings, ...savedSettings };
+
+    function hexToRgb(hex) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 0, g: 255, b: 0 };
+    }
+
+    const root = document.documentElement;
+    const rgb = hexToRgb(settings.themeColor);
+
+    let containerBg, containerBorder, textColor, itemBg, itemBorder;
+
+    if (settings.mode === 'light') {
+        // Create soft light colors based on the theme color
+        containerBg = `rgb(${Math.round(rgb.r * 0.08 + 255 * 0.92)}, ${Math.round(rgb.g * 0.08 + 255 * 0.92)}, ${Math.round(rgb.b * 0.08 + 255 * 0.92)})`;
+        containerBorder = `rgb(${Math.round(rgb.r * 0.2 + 255 * 0.8)}, ${Math.round(rgb.g * 0.2 + 255 * 0.8)}, ${Math.round(rgb.b * 0.2 + 255 * 0.8)})`;
+        itemBg = '#ffffff';
+        itemBorder = containerBorder;
+        textColor = '#111111';
+
+        root.style.setProperty('--bg', '#0f0f0f'); // Keep outside body dark
+        root.style.setProperty('--card-bg', itemBg);
+        root.style.setProperty('--text', textColor);
+        root.style.setProperty('--border', itemBorder);
+    } else {
+        containerBg = '#111111';
+        containerBorder = '#222222';
+        itemBg = '#1a1a1a';
+        itemBorder = '#333333';
+        textColor = '#eeeeee';
+
+        root.style.setProperty('--bg', '#0f0f0f');
+        root.style.setProperty('--card-bg', itemBg);
+        root.style.setProperty('--text', textColor);
+        root.style.setProperty('--border', itemBorder);
+    }
+
+    // Store for PiP usage
+    window._appContainerBg = containerBg;
+
+    // Apply Theme Color
+    root.style.setProperty('--accent-green', settings.themeColor);
+
+    // Apply Container Size and Overrides
+    const styleId = 'dynamic-settings-styles';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        if (document.head) {
+            document.head.appendChild(styleEl);
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
+                document.head.appendChild(styleEl);
+            });
+        }
+    }
+
+    // === Universal Quick Access Tools Navigation Bar Injection ===
+    function injectQuickToolsBar() {
+        if (document.getElementById('quickToolsBar')) return;
+
+        const container = document.querySelector('.app-container') || document.querySelector('.container');
+        if (!container) return;
+
+        const bar = document.createElement('div');
+        bar.id = 'quickToolsBar';
+        bar.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2px;
+            padding: 2px 4px;
+            margin-bottom: 4px;
+            background: transparent;
+            border: none;
+            box-sizing: border-box;
+            width: 100%;
+            flex-shrink: 0;
+            user-select: none;
+            direction: rtl;
+        `;
+
+        const tools = [
+            { href: 'note.html', icon: '📝', title: 'نسخ سريع' },
+            { href: 'simah.html', icon: '📊', title: 'سمة' },
+            { href: 'card.html', icon: '🔍', title: 'Card Scan' },
+            { href: 'sticky.html', icon: '📌', title: 'Sticky Notes' },
+            { href: 'cia.html', icon: '📋', title: 'CIA Maker' },
+            { href: 'date.html', icon: '📅', title: 'Date Helper' },
+            { href: 'index.html', icon: '🏠', title: 'الرئيسية' }
+        ];
+
+        const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+        // Don't render quick tools bar on Home page (index.html)
+        if (currentPath === 'index.html' || currentPath === '' || window.location.pathname.endsWith('/')) return;
+
+
+        tools.forEach(tool => {
+            const btn = document.createElement('a');
+            btn.href = tool.href;
+            btn.title = tool.title;
+            btn.innerHTML = tool.icon;
+            
+            const isActive = currentPath === tool.href || (currentPath === '' && tool.href === 'index.html');
+
+            btn.style.cssText = `
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 4px 0;
+                border-radius: 6px;
+                text-decoration: none;
+                font-size: 14px;
+                opacity: ${isActive ? '1' : '0.45'};
+                background: ${isActive ? 'rgba(0, 230, 118, 0.15)' : 'transparent'};
+                border: ${isActive ? '1px solid rgba(0, 230, 118, 0.35)' : '1px solid transparent'};
+                box-shadow: ${isActive ? '0 0 10px rgba(0, 230, 118, 0.2)' : 'none'};
+                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                filter: ${isActive ? 'none' : 'grayscale(30%)'};
+            `;
+
+            btn.onmouseover = () => {
+                if (!isActive) {
+                    btn.style.opacity = '1';
+                    btn.style.filter = 'none';
+                    btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                    btn.style.transform = 'translateY(-1px) scale(1.12)';
+                }
+            };
+            btn.onmouseout = () => {
+                if (!isActive) {
+                    btn.style.opacity = '0.45';
+                    btn.style.filter = 'grayscale(30%)';
+                    btn.style.background = 'transparent';
+                    btn.style.transform = 'scale(1)';
+                }
+            };
+
+            bar.appendChild(btn);
+        });
+
+        container.insertBefore(bar, container.firstChild);
+
+        // Hide duplicate original Home button in subpages since Quick Access Bar handles Home navigation
+        document.querySelectorAll('a[href="index.html"]').forEach(btn => {
+            if (btn.parentNode && btn.parentNode.id !== 'quickToolsBar') {
+                btn.style.display = 'none';
+            }
+        });
+    }
+
+
+    function initHeaderExtensions() {
+        injectQuickToolsBar();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHeaderExtensions);
+    } else {
+        initHeaderExtensions();
+    }
+
+
+
+    let styleRules = `
+        .container, .app-container {
+            width: 230px !important;
+            height: 300px !important;
+            background: ${containerBg} !important;
+            border-color: ${containerBorder} !important;
+            color: ${textColor} !important;
+            position: relative !important;
+        }
+        .container.expanded, .app-container.expanded,
+        .expanded .container, .expanded .app-container {
+            width: 320px !important;
+            height: 480px !important;
+        }
+        .container.ready, .app-container.ready,
+        .ready .container, .ready .app-container {
+            transition: width 0.3s ease, height 0.3s ease !important;
+        }
+
+        /* === Expanded state: scale up all content === */
+        .expanded .header h1, .expanded .header-row h1 { font-size: 18px !important; }
+        .expanded .header p { font-size: 11px !important; }
+        .expanded .title { font-size: 14px !important; }
+        .expanded .desc { font-size: 10px !important; }
+        .expanded .menu-item { padding: 9px 12px !important; gap: 10px !important; }
+        .expanded .icon { font-size: 20px !important; }
+        .expanded .footer { font-size: 10px !important; }
+        .expanded .nav-btn { font-size: 12px !important; padding: 5px 8px !important; }
+        .expanded .add-main-btn { font-size: 12px !important; padding: 5px 8px !important; }
+        .expanded .container-switch-btn { font-size: 12px !important; min-width: 55px !important; }
+
+        /* note.html chips & sections */
+        .expanded .chip { font-size: 13px !important; padding: 11px 3px !important; }
+        .expanded .section-label { font-size: 12px !important; }
+        .expanded .section-header { margin: 6px 0 3px !important; }
+        .expanded .grid-container { gap: 5px !important; }
+        .expanded .backup-btn { font-size: 12px !important; padding: 7px !important; }
+        .expanded .status { font-size: 12px !important; }
+        .expanded .search-input { font-size: 12px !important; height: 24px !important; }
+
+        /* card.html */
+        .expanded .paste-zone { font-size: 13px !important; padding: 16px 6px !important; }
+        .expanded #output { font-size: 13px !important; padding: 8px !important; }
+        .expanded #output-edit { font-size: 13px !important; padding: 7px !important; }
+        .expanded .action-btn { font-size: 12px !important; padding: 7px !important; }
+        .expanded .lock-label { font-size: 11px !important; }
+        .expanded .gateway-chip { font-size: 13px !important; padding: 8px 3px !important; }
+
+        /* sticky.html */
+        .expanded .note-area { font-size: 13px !important; padding: 10px !important; }
+        .expanded .btn { font-size: 12px !important; padding: 8px !important; }
+
+        /* settings.html */
+        .expanded .setting-group label { font-size: 12px !important; }
+        .expanded .color-btn { width: 24px !important; height: 24px !important; }
+        .expanded .action-btn.btn-reset, .expanded .btn-reset { font-size: 12px !important; padding: 8px !important; }
+
+        /* simah.html */
+        .expanded .section-title { font-size: 11px !important; }
+        .expanded .scan-zone p { font-size: 11px !important; }
+        .expanded .card, .expanded .final-card { font-size: 11px !important; }
+        .expanded .status-bar { font-size: 11px !important; }
+        .expanded .expand-btn, .expanded .ai-btn, .expanded .upload-btn, .expanded .settings-btn, .expanded .usage-btn { font-size: 11px !important; padding: 5px 7px !important; }
+
+        /* Modals scaled state */
+        .expanded .settings-modal, .expanded .usage-modal { top: 45px !important; left: 12px !important; right: 12px !important; padding: 12px !important; border-radius: 12px !important; }
+        .expanded .usage-modal { bottom: 40px !important; }
+        .expanded .usage-title { font-size: 14px !important; margin-bottom: 8px !important; padding-bottom: 6px !important; }
+        .expanded .usage-card { padding: 8px !important; border-radius: 8px !important; }
+        .expanded .usage-card-label { font-size: 10px !important; margin-bottom: 4px !important; }
+        .expanded .usage-card-value { font-size: 16px !important; }
+        .expanded .usage-card-sub { font-size: 9px !important; }
+        .expanded .usage-section-title { font-size: 11px !important; margin: 10px 0 6px 0 !important; }
+        .expanded .usage-row { padding: 6px 8px !important; font-size: 11px !important; }
+        .expanded .usage-bar-container { padding: 8px 10px !important; border-radius: 8px !important; }
+        .expanded .usage-bar-track { height: 8px !important; border-radius: 4px !important; margin-top: 6px !important; }
+        .expanded .usage-bar-fill { border-radius: 4px !important; }
+        .expanded .usage-close-btn { padding: 6px !important; font-size: 11px !important; margin-top: 8px !important; border-radius: 6px !important; }
+        .expanded .settings-modal input { padding: 8px !important; font-size: 12px !important; border-radius: 6px !important; margin-bottom: 10px !important; }
+        .expanded .provider-tab { padding: 6px !important; font-size: 11px !important; border-radius: 6px !important; }
+        .expanded .provider-tabs { margin-bottom: 10px !important; }
+        .expanded .settings-modal-btns button { padding: 6px !important; font-size: 11px !important; border-radius: 6px !important; }
+    `;
+
+    // PiP layout overrides inside the iframe
+    if (window.self !== window.top) {
+        styleRules += `
+            html, body {
+                width: 100vw !important;
+                height: 100vh !important;
+                overflow: hidden !important;
+                background: ${containerBg} !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .container, .app-container {
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                border: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+            }
+            .menu-grid {
+                flex-grow: 1 !important;
+                height: auto !important;
+                max-height: calc(100vh - 75px) !important;
+                overflow-y: auto !important;
+            }
+            .grid-container {
+                max-height: calc(100vh - 120px) !important;
+                overflow-y: auto !important;
+            }
+            textarea, .note-area {
+                height: calc(100vh - 140px) !important;
+                max-height: calc(100vh - 140px) !important;
+            }
+            .settings-modal, .usage-modal {
+                top: 20px !important;
+                left: 10px !important;
+                right: 10px !important;
+                bottom: 20px !important;
+                max-height: calc(100vh - 40px) !important;
+            }
+            #pipFloatingBtn {
+                display: none !important;
+            }
+        `;
+    } else {
+        styleRules += `
+            #pipFloatingBtn {
+                position: fixed;
+                bottom: 12px;
+                left: 12px;
+                width: 34px;
+                height: 34px;
+                background: ${settings.mode === 'light' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(30, 30, 30, 0.75)'};
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid ${settings.mode === 'light' ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.15)'};
+                border-radius: 50%;
+                color: ${settings.themeColor};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 9999;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            #pipFloatingBtn:hover {
+                transform: scale(1.1) translateY(-2px);
+                background: ${settings.themeColor};
+                color: ${settings.mode === 'light' && settings.themeColor !== '#00ff00' && settings.themeColor !== '#00e5ff' ? '#fff' : '#111'};
+                border-color: ${settings.themeColor};
+                box-shadow: 0 6px 16px ${settings.themeColor}66;
+            }
+            #pipFloatingBtn:active {
+                transform: scale(0.95);
+            }
+        `;
+    }
+
+    if (settings.mode === 'light') {
+        styleRules += `
+            /* Overrides for hardcoded dark colors in various tools */
+            .header p, .footer, .footer b, .desc { color: #555 !important; }
+            .menu-item:hover { background: #fff !important; }
+            
+            .nav-btn, .action-btn, .chip { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: ${textColor} !important; }
+            .nav-btn:hover, .action-btn:hover, .chip:hover { background: #f8f8f8 !important; border-color: var(--accent-green) !important; color: #000 !important; }
+            
+            .paste-zone { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: #666 !important; }
+            .paste-zone.active { background: #fff !important; border-color: var(--accent-green) !important; color: var(--accent-green) !important; }
+            
+            #output { background: #fff !important; border-color: ${itemBorder} !important; color: ${textColor} !important; font-weight: bold; }
+            #output-edit { background: #fff !important; color: ${textColor} !important; border-color: var(--accent-green) !important; }
+            
+            .lock-label { color: #555 !important; }
+            .slider { background-color: ${itemBorder} !important; border-color: #aaa !important; }
+            input:checked+.slider { background-color: var(--accent-green) !important; border-color: var(--accent-green) !important; }
+            hr { border-top-color: ${itemBorder} !important; }
+            
+            textarea { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
+            
+            .size-inputs input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
+            .size-input-wrapper span { color: #555 !important; }
+            
+            /* Fix for Simah tool */
+            .expand-btn, .ai-btn, .upload-btn, .settings-btn, #globalExpandBtn { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: ${textColor} !important; }
+            .expand-btn:hover, .ai-btn:hover, .upload-btn:hover, .settings-btn:hover, #globalExpandBtn:hover { background: #fff !important; border-color: var(--accent-green) !important; color: #000 !important; }
+            .ai-btn.active { background: var(--accent-green) !important; color: #000 !important; border-color: var(--accent-green) !important; }
+            .card { background: ${itemBg} !important; border: 1px solid ${itemBorder} !important; border-left: 3px solid #ffcc00 !important; }
+            .final-card { background: ${itemBg} !important; border: 1px solid ${itemBorder} !important; border-left: 3px solid var(--accent-green) !important; }
+            .final-card.copied { background: #e0e0e0 !important; border-left-color: #999 !important; }
+            .final-card.copied .final-value { color: #888 !important; }
+            .visual-check { background: #fff !important; }
+            .edit-input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
+            .scan-zone { background: ${itemBg} !important; }
+            .settings-modal { background: ${itemBg} !important; border-color: ${containerBorder} !important; box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
+            .settings-modal input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
+            .provider-tab { background: #fff !important; border-color: ${itemBorder} !important; color: #888 !important; }
+            .provider-tab.active { background: var(--accent-green) !important; color: #000 !important; border-color: var(--accent-green) !important; }
+            .close-key-btn { background: #fff !important; color: #555 !important; border: 1px solid ${itemBorder} !important; }
+            .close-key-btn:hover { background: #f0f0f0 !important; color: #111 !important; }
+            .save-key-btn { background: var(--accent-green) !important; color: #000 !important; border: none !important; }
+            .usage-btn { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: ${textColor} !important; }
+            .usage-btn:hover { background: #fff !important; border-color: var(--accent-green) !important; }
+            .usage-modal { background: ${itemBg} !important; border-color: ${containerBorder} !important; box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
+            .usage-card { background: #fff !important; border-color: ${itemBorder} !important; }
+            .usage-bar-container { background: #fff !important; border-color: ${itemBorder} !important; }
+            .usage-close-btn { background: #fff !important; color: #555 !important; border-color: ${itemBorder} !important; }
+            .usage-close-btn:hover { background: #f0f0f0 !important; color: #111 !important; }
+            .char-counter { background: #e0e0e0 !important; color: ${textColor} !important; }
+            .speed-toggle-btn { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
+            .speed-toggle-btn:hover { background: #eee !important; color: #000 !important; }
+
+            /* Fixes for note.html text colors in light mode */
+            .search-input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
+            .add-main-btn, .container-switch-btn, .sort-btn, .status { color: ${textColor} !important; }
+            .add-main-btn { border-color: ${itemBorder} !important; background: transparent !important; }
+            .add-item-trigger { color: ${textColor} !important; }
+            .modal-content { background: ${itemBg} !important; border-color: ${containerBorder} !important; }
+            .modal-content input, .modal-content textarea { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
+            .backup-btn { background: #fff !important; color: #555 !important; border-color: ${itemBorder} !important; }
+            .backup-btn:hover { background: #f0f0f0 !important; color: #111 !important; }
+        `;
+    }
+
+    styleEl.innerHTML = styleRules;
+
+    // Make settings available globally
+    window.fastToolkitSettings = settings;
+
+    // ==========================================
+    // === NATIVE PICTURE-IN-PICTURE CONTROLLER ===
+    // ==========================================
+    let activePipWindow = null;
+
+    // Monkey-patch downloads inside the iframe context
+    if (window.self !== window.top) {
+        const originalClick = HTMLAnchorElement.prototype.click;
+        HTMLAnchorElement.prototype.click = function () {
+            if (this.download) {
+                try {
+                    const openerWindow = window.parent.opener || window.opener;
+                    if (openerWindow) {
+                        // Fetch content of the blob/URL and trigger it in the opener context
+                        fetch(this.href)
+                            .then(res => res.text())
+                            .then(text => {
+                                const blob = new openerWindow.Blob([text], { type: "application/json" });
+                                const a = openerWindow.document.createElement("a");
+                                a.href = openerWindow.URL.createObjectURL(blob);
+                                a.download = this.download;
+                                a.style.display = "none";
+                                openerWindow.document.body.appendChild(a);
+                                a.click();
+                                openerWindow.document.body.removeChild(a);
+                                setTimeout(() => openerWindow.URL.revokeObjectURL(a.href), 100);
+                            })
+                            .catch(err => console.error("PiP download fetch failed:", err));
+                        return; // Cancel native PiP click
+                    }
+                } catch (err) {
+                    console.error("PiP download delegation failed:", err);
+                }
+            }
+            return originalClick.apply(this, arguments);
+        };
+    }
+
+    // Sync header/titlebar theme dynamically from iframe
+    function syncThemeToPipWindow() {
+        try {
+            const pDoc = window.parent.document;
+            const headerBar = pDoc.getElementById('pipHeaderBar');
+            const titleSpan = pDoc.getElementById('pipTitleSpan');
+            const minBtn = pDoc.getElementById('pipMinBtn');
+            const divider = pDoc.getElementById('pipDivider');
+            const pBody = pDoc.body;
+
+            if (headerBar || pBody) {
+                const accentColor = settings.themeColor;
+                const isLight = settings.mode === 'light';
+                const currentText = isLight ? "#111" : "#fff";
+
+                if (headerBar) headerBar.style.backgroundColor = "transparent";
+                if (pBody) {
+                    const bgColor = window._appContainerBg || (isLight ? '#f0f0f0' : '#111111');
+                    pBody.style.backgroundColor = bgColor;
+                    pBody.ownerDocument.documentElement.style.backgroundColor = bgColor;
+                }
+                if (titleSpan) {
+                    titleSpan.style.color = currentText;
+                    const pulseDot = headerBar.querySelector(".pip-pulse-dot");
+                    if (pulseDot) {
+                        pulseDot.style.backgroundColor = accentColor;
+                        pulseDot.style.boxShadow = `0 0 8px ${accentColor}`;
+                    }
+                }
+                if (divider) {
+                    divider.style.backgroundColor = isLight ? "#ccc" : "#2a2a2a";
+                }
+                if (minBtn) {
+                    if (isLight) {
+                        minBtn.style.color = "#444";
+                        minBtn.style.background = "rgba(0, 0, 0, 0.05)";
+                        minBtn.style.borderColor = "rgba(0, 0, 0, 0.1)";
+                    } else {
+                        minBtn.style.color = "#ccc";
+                        minBtn.style.background = "rgba(255, 255, 255, 0.04)";
+                        minBtn.style.borderColor = "rgba(255, 255, 255, 0.08)";
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Theme sync to PiP failed:", e);
+        }
+    }
+
+    function showOpenerOverlay() {
+        let overlay = document.getElementById("pipOpenerOverlay");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "pipOpenerOverlay";
+            const isLight = settings.mode === 'light';
+            const bg = isLight ? "#f0f2f5" : "#0f0f0f";
+            const textColor = isLight ? "#111" : "#fff";
+            const cardBg = isLight ? "#ffffff" : "#1a1a1a";
+            const border = isLight ? "rgba(0,0,0,0.1)" : "#333";
+            const accent = settings.themeColor;
+
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                background: ${bg};
+                background-image: ${isLight ? 
+                    `radial-gradient(at 10% 20%, rgba(0, 122, 255, 0.03) 0px, transparent 50%), radial-gradient(at 90% 80%, rgba(0, 230, 118, 0.03) 0px, transparent 50%)` :
+                    `radial-gradient(at 10% 20%, rgba(0, 230, 118, 0.05) 0px, transparent 50%), radial-gradient(at 90% 80%, rgba(0, 176, 255, 0.05) 0px, transparent 50%)`
+                };
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: 'Cairo', 'Segoe UI', sans-serif;
+                color: ${textColor};
+                padding: 20px;
+                box-sizing: border-box;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+
+            overlay.innerHTML = `
+                <div style="
+                    background: ${cardBg};
+                    border: 1px solid ${border};
+                    padding: 30px;
+                    border-radius: 20px;
+                    max-width: 400px;
+                    width: 100%;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, ${isLight ? '0.1' : '0.5'}), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                    text-align: center;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 15px;
+                ">
+                    <div style="font-size: 50px; filter: drop-shadow(0 0 10px ${accent}66); margin-bottom: 5px; animation: float 4s ease-in-out infinite;">📌</div>
+                    <h2 style="margin: 0; font-size: 22px; font-weight: 800; color: ${accent};">FAST TOOLKIT</h2>
+                    <p style="margin: 0; font-size: 14px; color: ${isLight ? '#555' : '#aaa'}; line-height: 1.6;">
+                        النافذة العائمة (PiP) نشطة حالياً دائماً في المقدمة!
+                    </p>
+                    <div style="display: flex; flex-direction: column; width: 100%; gap: 10px; margin-top: 15px;">
+                        <button id="pipOverlayFocusBtn" style="
+                            background: ${accent};
+                            color: ${isLight && accent !== '#00ff00' && accent !== '#00e5ff' ? '#fff' : '#0b0c10'};
+                            border: none;
+                            border-radius: 12px;
+                            padding: 12px;
+                            font-size: 14px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            box-shadow: 0 4px 15px ${accent}66;
+                            transition: all 0.2s;
+                        ">التركيز على النافذة العائمة</button>
+                        <button id="pipOverlayCloseBtn" style="
+                            background: rgba(255, 255, 255, 0.05);
+                            color: ${textColor};
+                            border: 1px solid ${border};
+                            border-radius: 12px;
+                            padding: 12px;
+                            font-size: 14px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">إغلاق النافذة العائمة</button>
+                    </div>
+                    <p style="font-size: 11px; color: ${isLight ? '#888' : '#666'}; margin: 10px 0 0 0;">
+                        💡 يرجى عدم إغلاق هذه الصفحة لتستمر النافذة العائمة بالعمل.
+                    </p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Bind events
+            document.getElementById("pipOverlayFocusBtn").addEventListener("click", () => {
+                const openerWin = window;
+                if (openerWin.activePipWindow) openerWin.activePipWindow.focus();
+            });
+            document.getElementById("pipOverlayCloseBtn").addEventListener("click", () => {
+                const openerWin = window;
+                if (openerWin.activePipWindow) openerWin.activePipWindow.close();
+            });
+        }
+        
+        overlay.offsetHeight; // force reflow
+        overlay.style.opacity = "1";
+    }
+
+    function hideOpenerOverlay() {
+        const overlay = document.getElementById("pipOpenerOverlay");
+        if (overlay) {
+            overlay.style.opacity = "0";
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    }
+
+    async function launchPip() {
+        if (!("documentPictureInPicture" in window)) {
+            if (window.location.protocol === "file:") {
+                alert("عذراً، ميزة النافذة العائمة (PiP) تتطلب تشغيل الموقع عبر خادم محلي (localhost) أو رابط آمن (HTTPS)، ولا تعمل عند فتح ملف HTML كـ file:// مباشرة. يرجى رفع الموقع أو تشغيل سيرفر محلي لتجربتها.");
+            } else {
+                alert("عذراً، متصفحك أو هذا الرابط لا يدعم ميزة النافذة العائمة (PiP). يرجى استخدام متصفح Google Chrome إصدار 116 وما فوق.");
+            }
+            return;
+        }
+
+        if (window.activePipWindow) {
+            window.activePipWindow.focus();
+            return;
+        }
+
+        try {
+            const width = 320;
+            const height = 480;
+
+            const pipWindow = await window.documentPictureInPicture.requestWindow({
+                width: width,
+                height: height,
+            });
+
+            window.activePipWindow = pipWindow;
+
+            // Setup PiP Document
+            pipWindow.document.title = "Fast Toolkit Always-on-Top";
+
+            const body = pipWindow.document.body;
+            body.style.margin = "0";
+            body.style.padding = "0";
+            body.style.overflow = "hidden";
+            // Use the exact same containerBg computed by applySettings
+            const pipBgColor = window._appContainerBg || (settings.mode === 'light' ? '#f0f0f0' : '#111111');
+            body.style.backgroundColor = pipBgColor;
+            // Fix browser default white on html element
+            pipWindow.document.documentElement.style.backgroundColor = pipBgColor;
+            pipWindow.document.documentElement.style.margin = "0";
+            pipWindow.document.documentElement.style.padding = "0";
+            body.style.width = "100vw";
+            body.style.height = "100vh";
+            body.style.display = "flex";
+            body.style.flexDirection = "column";
+            body.style.alignItems = "stretch";
+            body.style.justifyContent = "stretch";
+
+            // Custom header bar
+            const headerBar = pipWindow.document.createElement("div");
+            headerBar.id = "pipHeaderBar";
+            headerBar.style.height = "38px";
+            headerBar.style.minHeight = "38px";
+            headerBar.style.display = "flex";
+            headerBar.style.alignItems = "center";
+            headerBar.style.justifyContent = "space-between";
+            headerBar.style.padding = "0 14px";
+            headerBar.style.userSelect = "none";
+            headerBar.style.boxSizing = "border-box";
+            headerBar.style.width = "100%";
+            headerBar.dir = "rtl";
+
+            // Pulse dot + Title
+            const titleWrapper = pipWindow.document.createElement("div");
+            titleWrapper.style.display = "flex";
+            titleWrapper.style.alignItems = "center";
+            titleWrapper.style.gap = "6px";
+            titleWrapper.dir = "ltr"; // For "Fast Toolkit ●" layout
+
+            const pulseDot = pipWindow.document.createElement("span");
+            pulseDot.className = "pip-pulse-dot";
+            pulseDot.style.width = "6px";
+            pulseDot.style.height = "6px";
+            pulseDot.style.borderRadius = "50%";
+            pulseDot.style.backgroundColor = settings.themeColor;
+            pulseDot.style.boxShadow = `0 0 8px ${settings.themeColor}`;
+            pulseDot.style.display = "inline-block";
+
+            // Pulse style
+            const pulseStyle = pipWindow.document.createElement("style");
+            pulseStyle.textContent = `
+                @keyframes pipPulse {
+                    0% { opacity: 0.5; transform: scale(0.95); }
+                    50% { opacity: 1; transform: scale(1.1); box-shadow: 0 0 10px currentColor; }
+                    100% { opacity: 0.5; transform: scale(0.95); }
+                }
+            `;
+            pipWindow.document.head.appendChild(pulseStyle);
+            pulseDot.style.animation = "pipPulse 2.2s infinite ease-in-out";
+
+            const titleSpan = pipWindow.document.createElement("span");
+            titleSpan.id = "pipTitleSpan";
+            titleSpan.innerText = "";
+            titleSpan.style.fontFamily = "'Outfit', 'Segoe UI', sans-serif";
+            titleSpan.style.fontWeight = "600";
+            titleSpan.style.fontSize = "12px";
+            titleSpan.style.letterSpacing = "0.3px";
+
+            // Append in LTR order: Title then Dot
+            titleWrapper.appendChild(titleSpan);
+            titleWrapper.appendChild(pulseDot);
+
+            // Minimize button
+            const minBtn = pipWindow.document.createElement("button");
+            minBtn.id = "pipMinBtn";
+            minBtn.innerHTML = `
+                <span style="font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; font-size: 11px; letter-spacing: 0.2px;">تصغير</span>
+                <span style="font-size: 13px; color: #7c4dff; font-weight: bold; line-height: 1; margin-top: -1px;">—</span>
+            `;
+            minBtn.style.display = "flex";
+            minBtn.style.alignItems = "center";
+            minBtn.style.justifyContent = "center";
+            minBtn.style.gap = "8px";
+            minBtn.style.borderRadius = "20px";
+            minBtn.style.padding = "4px 14px";
+            minBtn.style.cursor = "pointer";
+            minBtn.style.outline = "none";
+            minBtn.style.border = "1px solid";
+            minBtn.style.boxSizing = "border-box";
+            minBtn.style.transition = "all 0.25s ease";
+
+            const btnStyle = pipWindow.document.createElement("style");
+            btnStyle.textContent = `
+                #pipMinBtn {
+                    -webkit-tap-highlight-color: transparent;
+                }
+                #pipMinBtn:focus, #pipMinBtn:focus-visible {
+                    outline: none;
+                }
+                #pipMinBtn:active {
+                    transform: scale(0.94);
+                    opacity: 0.8;
+                }
+            `;
+            pipWindow.document.head.appendChild(btnStyle);
+
+            let isCollapsed = false;
+
+            // Apply style dynamically
+            const isLight = settings.mode === 'light';
+            
+            if (isLight) {
+                headerBar.style.backgroundColor = "transparent";
+                titleSpan.style.color = "#111";
+                minBtn.style.color = "#222";
+                minBtn.style.background = "rgba(0,0,0,0.06)";
+                minBtn.style.borderColor = "rgba(0,0,0,0.12)";
+                minBtn.onmouseover = () => { minBtn.style.background = "rgba(0,0,0,0.12)"; };
+                minBtn.onmouseout = () => { minBtn.style.background = "rgba(0,0,0,0.06)"; };
+            } else {
+                headerBar.style.backgroundColor = "transparent";
+                titleSpan.style.color = "#eee";
+                minBtn.style.color = "#eee";
+                minBtn.style.background = "#1e1e1e";
+                minBtn.style.borderColor = "#333";
+                minBtn.onmouseover = () => { minBtn.style.background = "#2a2a2a"; };
+                minBtn.onmouseout = () => { minBtn.style.background = "#1e1e1e"; };
+            }
+
+            // Timer & Actions Wrapper
+            const middleWrapper = pipWindow.document.createElement("div");
+            middleWrapper.style.display = "flex";
+            middleWrapper.style.alignItems = "center";
+            middleWrapper.style.gap = "4px";
+            middleWrapper.dir = "ltr";
+            middleWrapper.style.flex = "1";
+            middleWrapper.style.justifyContent = "center";
+            middleWrapper.style.height = "100%"; // Ensures it's easily hoverable
+            
+            // Hover logic to show eye icon
+            middleWrapper.onmouseenter = () => {
+                visibilityBtn.style.opacity = "1";
+            };
+            middleWrapper.onmouseleave = () => {
+                visibilityBtn.style.opacity = "0";
+            };
+
+            // Timer display container (clickable part)
+            const timerContainer = pipWindow.document.createElement("div");
+            timerContainer.style.display = "flex";
+            timerContainer.style.alignItems = "center";
+            timerContainer.style.cursor = "pointer";
+            timerContainer.title = "اضغط لتصفير العداد";
+            timerContainer.style.transition = "transform 0.2s, filter 0.2s";
+            timerContainer.onmouseover = () => { timerContainer.style.filter = "brightness(1.2)"; };
+            timerContainer.onmouseout = () => { timerContainer.style.filter = "brightness(1)"; };
+
+            // Timer display (Premium Glassmorphic Badge)
+            const timerSpan = pipWindow.document.createElement("span");
+            timerSpan.style.fontFamily = "'Outfit', 'Segoe UI', monospace";
+            timerSpan.style.fontWeight = "700";
+            timerSpan.style.fontSize = "13px";
+            timerSpan.style.letterSpacing = "0.5px";
+            timerSpan.style.color = "#00e676";
+            timerSpan.style.padding = "2px 8px";
+            timerSpan.style.borderRadius = "8px";
+            timerSpan.style.backgroundColor = isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)";
+            timerSpan.style.border = isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.05)";
+            timerSpan.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.1)";
+            timerSpan.style.transition = "all 0.3s ease";
+            timerSpan.innerText = "00:00";
+
+            timerContainer.appendChild(timerSpan);
+
+            // Visibility Button
+            const visibilityBtn = pipWindow.document.createElement("button");
+            visibilityBtn.title = "إخفاء/إظهار العداد";
+            visibilityBtn.style.background = "none";
+            visibilityBtn.style.border = "none";
+            visibilityBtn.style.color = isLight ? "#777" : "#888";
+            visibilityBtn.style.cursor = "pointer";
+            visibilityBtn.style.padding = "4px";
+            visibilityBtn.style.borderRadius = "50%";
+            visibilityBtn.style.display = "flex";
+            visibilityBtn.style.alignItems = "center";
+            visibilityBtn.style.justifyContent = "center";
+            visibilityBtn.style.transition = "all 0.3s ease";
+            visibilityBtn.style.opacity = "0"; // hidden by default
+            
+            visibilityBtn.onmouseover = () => {
+                visibilityBtn.style.color = settings.themeColor;
+                visibilityBtn.style.backgroundColor = isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.1)";
+            };
+            visibilityBtn.onmouseout = () => {
+                visibilityBtn.style.color = isLight ? "#777" : "#888";
+                visibilityBtn.style.backgroundColor = "transparent";
+            };
+
+            const eyeOpenSVG = `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+            const eyeClosedSVG = `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+            if (typeof settings.pipTimerVisible === 'undefined') {
+                settings.pipTimerVisible = true;
+            }
+
+            function updateVisibility() {
+                if (settings.pipTimerVisible) {
+                    timerContainer.style.display = "flex";
+                    visibilityBtn.innerHTML = eyeOpenSVG;
+                    visibilityBtn.style.transform = "scale(1)";
+                } else {
+                    timerContainer.style.display = "none";
+                    visibilityBtn.innerHTML = eyeClosedSVG;
+                    visibilityBtn.style.transform = "scale(0.9)";
+                }
+                
+                // Keep visible if currently hovered
+                if (middleWrapper.matches(':hover')) {
+                    visibilityBtn.style.opacity = "1";
+                } else {
+                    visibilityBtn.style.opacity = "0";
+                }
+            }
+            updateVisibility();
+
+            visibilityBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                settings.pipTimerVisible = !settings.pipTimerVisible;
+                updateVisibility();
+                localStorage.setItem('fastToolkitSettings', JSON.stringify(settings));
+            });
+
+            middleWrapper.appendChild(visibilityBtn);
+            middleWrapper.appendChild(timerContainer);
+
+            // Smart Ticket Timer Logic
+            let pipTimerSeconds = 0;
+            let pipTimerInterval = null;
+            let lastTicketTimeStr = "00:00";
+            let ticketCount = 0;
+            let idleSeconds = 0;
+            const IDLE_LIMIT = 180; // 3 minutes idle threshold
+
+            function formatDuration(sec) {
+                const m = Math.floor(sec / 60);
+                const s = sec % 60;
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+
+            function updateTimerTooltip() {
+                if (ticketCount > 0) {
+                    timerContainer.title = `اضغط للتصفير | التكت السابق: ${lastTicketTimeStr} | إجمالي تكتات الجلسة: ${ticketCount}`;
+                } else {
+                    timerContainer.title = `اضغط لتصفير العداد | سيتم التصفير تلقائياً عند النسخ أو إنجاز التكت`;
+                }
+            }
+
+            function updateTimerDisplay() {
+                const m = Math.floor(pipTimerSeconds / 60);
+                const s = pipTimerSeconds % 60;
+                timerSpan.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+                timerSpan.style.animation = "none";
+                if (m >= 16) {
+                    timerSpan.style.color = isLight ? "#b71c1c" : "#ff5252"; // dark red / bright red
+                    timerSpan.style.animation = "pipPulse 0.8s infinite ease-in-out"; // blink
+                } else if (m >= 14) {
+                    timerSpan.style.color = isLight ? "#d32f2f" : "#ff8a80"; // red
+                } else if (m >= 10) {
+                    timerSpan.style.color = isLight ? "#f57f17" : "#ffd600"; // yellow
+                } else if (m >= 7) {
+                    timerSpan.style.color = isLight ? "#e65100" : "#ffab40"; // orange
+                } else {
+                    timerSpan.style.color = settings.themeColor; // theme color
+                }
+            }
+
+            function resetSmartTicketTimer(reason = 'manual') {
+                if (pipTimerSeconds > 1) {
+                    lastTicketTimeStr = formatDuration(pipTimerSeconds);
+                    ticketCount++;
+                }
+                pipTimerSeconds = 0;
+                idleSeconds = 0;
+                updateTimerDisplay();
+                updateTimerTooltip();
+
+                // Flash feedback pulse
+                timerSpan.style.transform = "scale(1.18)";
+                timerSpan.style.boxShadow = "0 0 10px rgba(0, 230, 118, 0.6)";
+                setTimeout(() => {
+                    timerSpan.style.transform = "scale(1)";
+                    timerSpan.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.1)";
+                }, 200);
+            }
+
+            // Click manual reset
+            timerContainer.addEventListener("click", () => {
+                resetSmartTicketTimer('manual');
+            });
+
+            // Smart Auto-Reset on Copy or Action in any window
+            const handleSmartCopy = () => {
+                resetSmartTicketTimer('copy');
+            };
+
+            window.addEventListener("copy", handleSmartCopy);
+            if (pipWindow) {
+                pipWindow.addEventListener("copy", handleSmartCopy);
+            }
+
+            // Listen to broad click events for copy buttons
+            const handleGlobalClick = (e) => {
+                const target = e.target.closest && e.target.closest('button, .copy-btn, .menu-item, [data-action="copy"]');
+                if (target) {
+                    const text = (target.innerText || '').toLowerCase();
+                    if (text.includes('نسخ') || text.includes('copy') || target.classList.contains('copy-btn')) {
+                        resetSmartTicketTimer('button');
+                    }
+                }
+            };
+            document.addEventListener('click', handleGlobalClick);
+
+            // Listen for Ticket URL Navigation / Change events from Extension or SidePanel
+            window.addEventListener("message", (e) => {
+                if (e.data && (e.data.action === "resetTicketTimer" || e.data.action === "ticketUrlChanged")) {
+                    resetSmartTicketTimer(e.data.reason || "url_changed");
+                }
+            });
+
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+                chrome.runtime.onMessage.addListener((msg) => {
+                    if (msg && msg.action === "resetTicketTimer") {
+                        resetSmartTicketTimer(msg.reason || "url_changed");
+                    }
+                });
+            }
+
+
+            // Inactivity Reset Listener
+            const resetIdle = () => {
+                idleSeconds = 0;
+            };
+            window.addEventListener("mousemove", resetIdle);
+            window.addEventListener("keydown", resetIdle);
+
+            // Main 1s Timer Loop with Inactivity Pause
+            pipTimerInterval = setInterval(() => {
+                idleSeconds++;
+                if (idleSeconds < IDLE_LIMIT) {
+                    pipTimerSeconds++;
+                    updateTimerDisplay();
+                } else {
+                    // Dim timer to signal auto-pause during idle
+                    timerSpan.style.opacity = "0.4";
+                }
+            }, 1000);
+
+
+            headerBar.appendChild(titleWrapper);
+            headerBar.appendChild(middleWrapper);
+            headerBar.appendChild(minBtn);
+            body.appendChild(headerBar);
+
+            // Iframe
+            const iframe = pipWindow.document.createElement("iframe");
+            iframe.id = "pipIframe";
+            iframe.src = window.location.href; // open this current page!
+            iframe.style.width = "100%";
+            iframe.style.height = "calc(100% - 38px)";
+            iframe.style.border = "none";
+            iframe.style.margin = "0";
+            iframe.style.padding = "0";
+            iframe.style.display = "block";
+            iframe.style.backgroundColor = "transparent";
+            iframe.setAttribute("allow", "clipboard-read; clipboard-write; camera; microphone; geolocation");
+            body.appendChild(iframe);
+
+            // Resize lock
+            let resizeTimeout = null;
+            pipWindow.addEventListener("resize", () => {
+                if (isCollapsed) return;
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    if (pipWindow.innerWidth !== 320 || pipWindow.innerHeight !== 480) {
+                        try {
+                            pipWindow.resizeTo(320, 480);
+                        } catch (e) {
+                            console.warn("Resize lock failed:", e);
+                        }
+                    }
+                }, 150);
+            });
+
+            // Minimize toggle click handler
+            minBtn.addEventListener("click", () => {
+                if (!isCollapsed) {
+                    isCollapsed = true;
+                    iframe.style.display = "none";
+                    minBtn.innerHTML = `
+                        <span style="font-size: 7px; margin-top: 1px;">➕</span>
+                        <span style="font-size: 10px; font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; letter-spacing: -0.2px;">توسيع</span>
+                    `;
+                    titleSpan.innerText = "";
+                    try {
+                        pipWindow.resizeTo(320, 78);
+                    } catch (e) {
+                        console.warn("Collapse failed:", e);
+                    }
+                } else {
+                    isCollapsed = false;
+                    iframe.style.display = "block";
+                    minBtn.innerHTML = `
+                        <span style="font-size: 7px; margin-top: 1px;">➖</span>
+                        <span style="font-size: 10px; font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; letter-spacing: -0.2px;">تصغير</span>
+                    `;
+                    titleSpan.innerText = "";
+                    try {
+                        pipWindow.resizeTo(320, 480);
+                    } catch (e) {
+                        console.warn("Expand failed:", e);
+                    }
+                }
+            });
+
+            // Listen for keyboard shortcuts inside the parent PiP window context too
+            pipWindow.addEventListener("keydown", (e) => {
+                const shortcuts = window.getFastToolkitShortcuts();
+                if (!shortcuts.enabled) return;
+                
+                const pressedKey = e.key.toLowerCase();
+                if (pressedKey === shortcuts.pipToggle.toLowerCase()) {
+                    e.preventDefault();
+                    minBtn.click();
+                }
+            });
+
+            showOpenerOverlay();
+
+            pipWindow.addEventListener("pagehide", () => {
+                clearInterval(pipTimerInterval);
+                window.activePipWindow = null;
+                hideOpenerOverlay();
+            });
+
+        } catch (error) {
+            console.error("Failed to open Picture-in-Picture window:", error);
+        }
+    }
+
+    function injectPipBtn() {
+        if (document.getElementById('pipBtn') || document.getElementById('pipFloatingBtn')) return;
+        if (window.self !== window.top) return;
+
+        const isLight = settings.mode === 'light';
+
+        // 1. Check for index.html header actions wrapper
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+            const btn = document.createElement('button');
+            btn.id = 'pipBtn';
+            btn.title = 'تشغيل النافذة العائمة (PiP)';
+            btn.style.cssText = `
+                background: none;
+                border: none;
+                color: #555;
+                cursor: pointer;
+                padding: 2px 3px;
+                line-height: 1;
+                transition: color 0.2s;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+            `;
+            btn.innerHTML = '📌';
+            btn.onmouseover = () => btn.style.color = 'var(--accent-green, #00c864)';
+            btn.onmouseout = () => btn.style.color = '#555';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                launchPip();
+            });
+            headerActions.appendChild(btn);
+            return;
+        }
+
+        // 2. Check for other tool pages header row (like note.html, card.html, simah.html, sticky.html)
+        const headerRight = document.querySelector('.header-right, .home-row');
+        const header = document.querySelector('.header');
+        
+        if (headerRight || header) {
+            const btn = document.createElement('button');
+            btn.id = 'pipBtn';
+            btn.className = 'nav-btn';
+            btn.title = 'تشغيل النافذة العائمة (PiP)';
+            btn.innerHTML = '📌';
+            btn.style.fontSize = '12px';
+            btn.style.display = 'inline-flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            btn.style.cursor = 'pointer';
+            
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                launchPip();
+            });
+
+            if (headerRight) {
+                // In note.html, place it before the search icon or home icon
+                btn.style.marginLeft = '4px';
+                headerRight.insertBefore(btn, headerRight.firstChild);
+            } else if (header) {
+                // In sticky.html/simah.html, insert after the first child (the back button)
+                header.insertBefore(btn, header.firstChild.nextSibling);
+            }
+            return;
+        }
+
+        // 3. Fallback: FAB (Floating Action Button) in the viewport
+        const btn = document.createElement('div');
+        btn.id = 'pipFloatingBtn';
+        btn.title = 'تشغيل النافذة العائمة (PiP)';
+        btn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <rect x="12" y="12" width="9" height="9" rx="1" ry="1"/>
+            </svg>
+        `;
+        btn.addEventListener('click', launchPip);
+        document.body.appendChild(btn);
+    }
+
+    // === Global Expand/Collapse ===
+    function applyExpand() {
+        document.documentElement.classList.add('expanded');
+        document.querySelectorAll('.container, .app-container').forEach(el => {
+            el.classList.add('expanded');
+        });
+    }
+
+    // Apply immediately when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            applyExpand();
+            if (window.self === window.top) {
+                injectPipBtn();
+                // Register Service Worker
+                // Service Worker disabled (inlined HTML mode)
+                // Inject Manifest Link
+                if (!document.querySelector('link[rel="manifest"]')) {
+                    const link = document.createElement('link');
+                    link.rel = 'manifest';
+                    link.href = 'manifest.json';
+                    document.head.appendChild(link);
+                }
+            }
+            if (window.self !== window.top) {
+                syncThemeToPipWindow();
+            }
+            setTimeout(() => {
+                document.documentElement.classList.add('ready');
+                document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
+            }, 50);
+        });
+    } else {
+        applyExpand();
+        if (window.self === window.top) {
+            injectPipBtn();
+            // Register Service Worker
+            // Service Worker disabled (inlined HTML mode)
+            // Inject Manifest Link
+            if (!document.querySelector('link[rel="manifest"]')) {
+                const link = document.createElement('link');
+                link.rel = 'manifest';
+                link.href = 'manifest.json';
+                document.head.appendChild(link);
+            }
+        }
+        if (window.self !== window.top) {
+            syncThemeToPipWindow();
+        }
+        setTimeout(() => {
+            document.documentElement.classList.add('ready');
+            document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('ready'));
+        }, 50);
+    }
+
+    // Global toggle function available to all pages
+    window.fastToolkitToggleExpand = function () {
+        document.documentElement.classList.add('expanded');
+        document.querySelectorAll('.container, .app-container').forEach(el => {
+            el.classList.add('ready');
+            el.classList.add('expanded');
+        });
+        return true;
+    };
+
+    window.fastToolkitSetExpand = function (shouldExpand) {
+        document.documentElement.classList.add('expanded');
+        document.querySelectorAll('.container, .app-container').forEach(el => {
+            el.classList.add('ready');
+            el.classList.add('expanded');
+        });
+    };
+
+    window.getFastToolkitShortcuts = function () {
+        const defaultShortcuts = {
+            enabled: true,
+            nav1: "1",
+            nav2: "2",
+            nav3: "3",
+            nav4: "4",
+            nav5: "5",
+            nav6: "6",
+            navHome: "h",
+            search: "/",
+            sort: "s",
+            tab: "t",
+            ai: "a",
+            settings: "s",
+            usage: "u",
+            clear: "c",
+            edit: "e",
+            pipToggle: "p"
+        };
+        try {
+            const stored = localStorage.getItem('fastToolkitShortcuts');
+            if (stored) {
+                return { ...defaultShortcuts, ...JSON.parse(stored) };
+            }
+        } catch (e) { }
+        return defaultShortcuts;
+    };
+
+    // Global Navigation Shortcuts
+    document.addEventListener('keydown', (e) => {
+        const shortcuts = window.getFastToolkitShortcuts();
+        if (!shortcuts.enabled) return;
+
+        const activeEl = document.activeElement;
+        const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        if (isInput) return;
+
+        // Ctrl+Shift+D لتبديل Dark/Light Mode
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+            e.preventDefault();
+            fastToolkitToggleTheme();
+            return;
+        }
+
+        // Ignore if any modifier key is pressed (to not override browser shortcuts)
+        if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+
+        const pressedKey = e.key.toLowerCase();
+        if (pressedKey === shortcuts.pipToggle.toLowerCase()) {
+            if (window.self !== window.top) {
+                try {
+                    const minBtn = window.parent.document.getElementById('pipMinBtn');
+                    if (minBtn) {
+                        e.preventDefault();
+                        minBtn.click();
+                        return;
+                    }
+                } catch (err) {
+                    console.warn("PiP toggle from iframe keydown failed:", err);
+                }
+            }
+        }
+
+        if (pressedKey === shortcuts.nav1.toLowerCase()) {
+            if (!window.location.pathname.endsWith('note.html')) window.location.href = 'note.html';
+        } else if (pressedKey === shortcuts.nav2.toLowerCase()) {
+            if (!window.location.pathname.endsWith('simah.html')) window.location.href = 'simah.html';
+        } else if (pressedKey === shortcuts.nav3.toLowerCase()) {
+            if (!window.location.pathname.endsWith('card.html')) window.location.href = 'card.html';
+        } else if (pressedKey === shortcuts.nav4.toLowerCase()) {
+            if (!window.location.pathname.endsWith('sticky.html')) window.location.href = 'sticky.html';
+        } else if (pressedKey === shortcuts.nav5.toLowerCase()) {
+            if (!window.location.pathname.endsWith('cia.html')) window.location.href = 'cia.html';
+        } else if (pressedKey === shortcuts.nav6.toLowerCase()) {
+            if (!window.location.pathname.endsWith('date.html')) window.location.href = 'date.html';
+        } else if (pressedKey === shortcuts.navHome.toLowerCase()) {
+            if (!window.location.pathname.endsWith('index.html') && !window.location.pathname.endsWith('/')) {
+                window.location.href = 'index.html';
+            }
+        } else if (pressedKey === '?') {
+            e.preventDefault();
+            showShortcutsOverlay();
+        }
+    });
+
+    // ====== Dark/Light Mode Toggle ======
+    function fastToolkitToggleTheme() {
+        let s;
+        try { s = JSON.parse(localStorage.getItem('fastToolkitSettings') || '{}'); } catch { s = {}; }
+        const newMode = (s.mode === 'dark') ? 'light' : 'dark';
+        s.mode = newMode;
+        localStorage.setItem('fastToolkitSettings', JSON.stringify(s));
+
+        const root = document.documentElement;
+        const themeColor = s.themeColor || '#00e676';
+
+        // إعادة تطبيق الألوان فوراً
+        if (newMode === 'dark') {
+            root.style.setProperty('--bg', '#0f0f0f');
+            root.style.setProperty('--card-bg', '#1a1a1a');
+            root.style.setProperty('--text', '#eeeeee');
+            root.style.setProperty('--border', '#333333');
+        } else {
+            const hex = themeColor;
+            const r = parseInt(hex.slice(1,3),16)||0, g = parseInt(hex.slice(3,5),16)||0, b = parseInt(hex.slice(5,7),16)||0;
+            root.style.setProperty('--bg', '#0f0f0f');
+            root.style.setProperty('--card-bg', '#ffffff');
+            root.style.setProperty('--text', '#111111');
+            root.style.setProperty('--border', `rgb(${Math.round(r*.2+255*.8)},${Math.round(g*.2+255*.8)},${Math.round(b*.2+255*.8)})`);
+        }
+
+        // تحديث الحاويات بخلفية جديدة
+        const styleEl = document.getElementById('dynamic-settings-styles');
+        if (styleEl) {
+            const bg = newMode === 'dark' ? '#111111' : '#ffffff';
+            const border = newMode === 'dark' ? '#222222' : '#dddddd';
+            const textC = newMode === 'dark' ? '#eeeeee' : '#111111';
+            styleEl.textContent = styleEl.textContent
+                .replace(/background: #[0-9a-fA-F]{6,8} !important; \/\* container-bg \*\//g, `background: ${bg} !important; /* container-bg */`);
+        }
+
+        // إظهار toast سريع
+        const toast = document.createElement('div');
+        toast.textContent = newMode === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        toast.style.cssText = `
+            position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+            background:#222;color:#fff;padding:6px 14px;border-radius:20px;
+            font-size:11px;font-weight:bold;z-index:999999;
+            border:1px solid #444;box-shadow:0 4px 12px rgba(0,0,0,0.5);
+            opacity:1;transition:opacity 0.4s;
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 1200);
+    }
+    window.fastToolkitToggleTheme = fastToolkitToggleTheme;
+
+    // ====== Shortcuts Visual Overlay ======
+    function showShortcutsOverlay() {
+        // إغلاق إن كانت مفتوحة
+        const existing = document.getElementById('ftShortcutsOverlay');
+        if (existing) { existing.remove(); return; }
+
+        const shortcuts = window.getFastToolkitShortcuts();
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-green').trim() || '#00ff00';
+
+        const groups = [
+            {
+                title: '🧭 التنقل',
+                items: [
+                    { key: shortcuts.navHome, desc: 'الرئيسية' },
+                    { key: shortcuts.nav1, desc: 'الملاحظات' },
+                    { key: shortcuts.nav2, desc: 'سيمة' },
+                    { key: shortcuts.nav3, desc: 'كارد سكانر' },
+                    { key: shortcuts.nav4, desc: 'الستيكي نوت' },
+                    { key: shortcuts.nav5, desc: 'CIA Maker' },
+                    { key: shortcuts.nav6, desc: 'Date Helper' },
+                ]
+            },
+            {
+                title: '⚡ الصفحة الحالية',
+                items: [
+                    { key: shortcuts.ai || 'a', desc: 'تبديل AI' },
+                    { key: shortcuts.settings || 's', desc: 'الإعدادات' },
+                    { key: shortcuts.usage || 'u', desc: 'الاستهلاك' },
+                    { key: shortcuts.clear || 'c', desc: 'مسح البيانات' },
+                    { key: shortcuts.edit || 'e', desc: 'تعديل' },
+                    { key: shortcuts.pipToggle || 'p', desc: 'تبديل PiP' },
+                ]
+            },
+            {
+                title: '📝 ملاحظات',
+                items: [
+                    { key: 'Ctrl+↵', desc: 'نسخ الملاحظة' },
+                    { key: 'Ctrl+⌫', desc: 'مسح الملاحظة' },
+                    { key: 'Ctrl+Tab', desc: 'ملاحظة تالية' },
+                    { key: 'Ctrl+⇧+N', desc: 'ملاحظة جديدة' },
+                ]
+            },
+            {
+                title: '🔑 عام',
+                items: [
+                    { key: '?', desc: 'هذه القائمة' },
+                    { key: 'Ctrl+⇧+D', desc: 'تبديل Dark/Light' },
+                    { key: 'Esc', desc: 'إغلاق النوافذ' },
+                ]
+            }
+        ];
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ftShortcutsOverlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Segoe UI', sans-serif; direction: rtl;
+        `;
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: #111; border: 1px solid #333; border-radius: 12px;
+            padding: 16px; min-width: 260px; max-width: 320px; max-height: 90vh;
+            overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+            scrollbar-width: thin;
+        `;
+
+        const title = document.createElement('div');
+        title.style.cssText = `font-size: 11px; font-weight: bold; color: ${accent}; text-align: center; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase;`;
+        title.textContent = '⌨️ اختصارات لوحة المفاتيح';
+        box.appendChild(title);
+
+        groups.forEach(group => {
+            const groupTitle = document.createElement('div');
+            groupTitle.style.cssText = `font-size: 8px; color: #666; font-weight: bold; margin: 8px 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px;`;
+            groupTitle.textContent = group.title;
+            box.appendChild(groupTitle);
+
+            group.items.forEach(item => {
+                const row = document.createElement('div');
+                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; border-radius: 4px; margin-bottom: 2px;`;
+                row.onmouseover = () => row.style.background = '#1a1a1a';
+                row.onmouseout = () => row.style.background = 'transparent';
+
+                const desc = document.createElement('span');
+                desc.style.cssText = `font-size: 9px; color: #aaa;`;
+                desc.textContent = item.desc;
+
+                const keyBadge = document.createElement('kbd');
+                keyBadge.style.cssText = `
+                    font-size: 9px; font-family: monospace; font-weight: bold;
+                    background: #1e1e1e; color: ${accent}; border: 1px solid #333;
+                    border-bottom: 2px solid #444; border-radius: 4px;
+                    padding: 1px 6px; white-space: nowrap;
+                `;
+                keyBadge.textContent = item.key;
+
+                row.appendChild(desc);
+                row.appendChild(keyBadge);
+                box.appendChild(row);
+            });
+        });
+
+        const hint = document.createElement('div');
+        hint.style.cssText = `font-size: 7px; color: #444; text-align: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid #222;`;
+        hint.textContent = 'اضغط ? أو Esc أو انقر خارج الإطار للإغلاق';
+        box.appendChild(hint);
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        // إغلاق بـ Escape
+        const escClose = (ev) => { if (ev.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escClose); } };
+        document.addEventListener('keydown', escClose);
+    }
+
+    window.showShortcutsOverlay = showShortcutsOverlay;
+})();
+
+</script>
 </head>
 
 <body>
@@ -277,18 +1916,20 @@
     <div class="container">
         <div class="header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div class="header-actions" style="width: 32px;"></div>
+                <div class="header-actions">
+                    <a href="download.html" style="text-decoration: none; font-size: 13px; transition: transform 0.2s;" title="تحميل الإضافة الجانبية">🧩</a>
+                </div>
                 <h1 style="margin: 0; text-align: center; flex: 1;">FAST TOOLKIT</h1>
-                <a href="?page=settings"
-                    style="text-decoration: none; font-size: 16px; transition: transform 0.2s; flex-shrink:0;"
+                <a href="settings.html"
+                    style="text-decoration: none; font-size: 14px; transition: transform 0.2s; flex-shrink:0;"
                     onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'"
                     title="الإعدادات">⚙️</a>
             </div>
-            <p>اختر الأداة المطلوبة للبدء</p>
+            <p style="margin-top: 4px;">اختر الأداة المطلوبة للبدء</p>
         </div>
 
         <div class="menu-grid">
-            <a href="?page=note" class="menu-item note-tool">
+            <a href="note.html" class="menu-item">
                 <div class="icon">📝</div>
                 <div class="text-wrapper">
                     <div class="title">نسخ سريع</div>
@@ -296,7 +1937,7 @@
                 </div>
             </a>
 
-            <a href="?page=simah" class="menu-item simah-tool">
+            <a href="simah.html" class="menu-item simah-tool">
                 <div class="icon">📊</div>
                 <div class="text-wrapper">
                     <div class="title">سمة</div>
@@ -304,7 +1945,7 @@
                 </div>
             </a>
 
-            <a href="?page=card" class="menu-item card-tool">
+            <a href="card.html" class="menu-item card-tool">
                 <div class="icon">🔍</div>
                 <div class="text-wrapper">
                     <div class="title">Card Scan</div>
@@ -312,7 +1953,7 @@
                 </div>
             </a>
 
-            <a href="?page=sticky" class="menu-item sticky-tool">
+            <a href="sticky.html" class="menu-item sticky-tool">
                 <div class="icon">📌</div>
                 <div class="text-wrapper">
                     <div class="title">Sticky Notes</div>
@@ -320,7 +1961,7 @@
                 </div>
             </a>
 
-            <a href="?page=cia" class="menu-item cia-tool">
+            <a href="cia.html" class="menu-item">
                 <div class="icon">📋</div>
                 <div class="text-wrapper">
                     <div class="title">CIA Maker</div>
@@ -328,32 +1969,48 @@
                 </div>
             </a>
 
-            <a href="?page=date" class="menu-item date-tool">
+            <a href="date.html" class="menu-item date-tool">
                 <div class="icon">📅</div>
                 <div class="text-wrapper">
                     <div class="title">Date Helper</div>
                     <div class="desc">محول التواريخ وحاسبة أيام العمل بدقة.</div>
                 </div>
             </a>
+
+            <a href="download.html" class="menu-item" style="border-color: rgba(0, 212, 255, 0.4); background: rgba(0, 212, 255, 0.05);">
+                <div class="icon">🧩</div>
+                <div class="text-wrapper">
+                    <div class="title" style="color: var(--accent-blue);">تحميل الإضافة الجانبية</div>
+                    <div class="desc">تحميل وتثبيت حزمة الإضافة لـ Chrome.</div>
+                </div>
+            </a>
+
         </div>
 
-        <div class="footer" id="dynamic-footer"></div>
+        <!-- الجزء الخاص بالحقوق المتغيرة -->
+        <div class="footer" id="dynamic-footer">
+            <!-- سيتم توليد المحتوى هنا تلقائياً بواسطة الجافاسكريبت -->
+        </div>
     </div>
 
     <script>
+        // مصفوفة الجمل والإيموجيات الخاصة بك
         const quotes = [
             { emoji: "❤️", text: "Crafted to make your work easier" },
             { emoji: "✨", text: "Made to fit your needs perfectly" },
             { emoji: "🌿", text: "Your productivity, our mission" },
+            { emoji: "🪄", text: "Crafted as if it were made only for you" },
             { emoji: "💎", text: "Built to match your ambitions" },
-            { emoji: "⭐️", text: "Made specially for your company" }
+            { emoji: "⭐️", text: "Made specially for you" }
         ];
 
+        // اختيار جملة عشوائية عند تحميل الصفحة
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
+        // طباعة العبارة داخل الفوتر مع الحفاظ على حركة النبض للإيموجي وثبات الاسم
         document.getElementById('dynamic-footer').innerHTML = `
             <span class="pulse-emoji">${randomQuote.emoji}</span> 
-            <span>${randomQuote.text} — <b>FAST TOOLKIT</b></span>
+            <span>${randomQuote.text} </span>
         `;
     </script>
 </body>

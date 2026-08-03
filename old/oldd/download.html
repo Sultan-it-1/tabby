@@ -4,20 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIMAH - Exact Account Extractor</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <meta name="description" content="FAST TOOLKIT - تحميل الإضافة العائمة">
+    <meta name="theme-color" content="#0f0f0f">
+    <title>تثبيت إضافة Royal Family العائمة</title>
     <style>
         :root {
             --bg: #0f0f0f;
-            --card-bg: #1a1a1a;
-            --accent-green: var(--accent-green);
+            --card-bg: #161616;
+            --accent-green: #00e676;
+            --accent-blue: #00d4ff;
             --text: #eee;
-            --border: #333;
-            --danger-red: #ff3333;
+            --border: #262626;
+            --gold: #ffcc00;
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--bg);
             color: var(--text);
             margin: 0;
@@ -28,652 +30,925 @@
             overflow: hidden;
         }
 
-        .app-container {
+        .container {
+            text-align: center;
             width: 230px;
             height: 300px;
-            background: rgba(20, 20, 20, 0.85);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: 8px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
             display: flex;
             flex-direction: column;
-            box-sizing: border-box;
             justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
             position: relative;
-            transition: width 0.3s ease, height 0.3s ease;
         }
 
         .header {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+        }
+
+        .header h1 {
+            font-size: 13px;
+            color: var(--accent-green);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .back-btn {
+            position: absolute;
+            right: 0;
+            top: -2px;
+            text-decoration: none;
+            font-size: 11px;
+            color: #888;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .back-btn:hover {
+            color: var(--accent-green);
+            transform: translateX(2px);
+        }
+
+        .shortcut-hint {
+            font-size: 8px;
+            color: #555;
+            background: #1f1f1f;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 0px 4px;
+            margin-left: 4px;
+        }
+
+        .content-scroll {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 2px;
+            margin-bottom: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .content-scroll::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .content-scroll::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        /* Progress Steps Tracker */
+        .progress-tracker {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .progress-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
-            flex-shrink: 0;
-            gap: 3px;
+            font-size: 9px;
+            color: #aaa;
         }
 
-        .nav-btn {
-            background: #252525;
-            border: 1px solid #444;
+        .progress-title-highlight {
             color: var(--accent-green);
-            padding: 3px 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-            text-decoration: none;
             font-weight: bold;
         }
 
-        .ai-btn {
-            background: #252525;
-            border: 1px solid #444;
-            color: #888;
-            padding: 3px 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-            font-weight: bold;
-            transition: 0.2s;
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
         }
 
-        .ai-btn.active {
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .steps-indicators {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2px;
+            padding: 0 4px;
+        }
+
+        .indicator-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #222;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .indicator-dot.active {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            box-shadow: 0 0 5px rgba(0, 212, 255, 0.3);
+        }
+
+        .indicator-dot.completed {
             background: var(--accent-green);
-            color: #000;
             border-color: var(--accent-green);
-            box-shadow: 0 0 5px var(--accent-green);
+            color: #111;
         }
 
-        .upload-btn {
-            background: #252525;
-            border: 1px solid #444;
-            color: var(--text);
-            padding: 3px 5px;
+        /* Action Cards */
+        .step-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: right;
+            transition: all 0.2s ease;
+        }
+
+        .step-card.active {
+            border-color: rgba(0, 230, 118, 0.4);
+            box-shadow: 0 0 10px rgba(0, 230, 118, 0.05);
+        }
+
+        .card-header-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-badge {
+            width: 14px;
+            height: 14px;
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-        }
-
-        .settings-btn {
-            background: #252525;
-            border: 1px solid #444;
-            color: var(--text);
-            padding: 3px 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-        }
-
-        .expand-btn {
-            background: #252525;
-            border: 1px solid #444;
+            background: rgba(0, 230, 118, 0.1);
             color: var(--accent-green);
-            padding: 4px;
-            border-radius: 4px;
-            cursor: pointer;
+            font-size: 8px;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .expand-btn:hover {
-            background: #333;
-        }
-
-        .clear-btn {
-            background: var(--danger-red);
-            color: white;
-            border: none;
-            padding: 2px 4px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 9px;
-            font-weight: bold;
-        }
-
-        .delete-card-btn {
-            background: transparent;
-            color: var(--danger-red);
-            border: none;
-            padding: 0 4px;
-            cursor: pointer;
-            font-size: 9px;
-            font-weight: bold;
-        }
-
-        @keyframes border-pulse {
-            0% { border-color: rgba(var(--accent-green-rgb, 0, 200, 100), 0.3); box-shadow: 0 0 0px rgba(var(--accent-green-rgb, 0, 200, 100), 0.1); }
-            50% { border-color: rgba(var(--accent-green-rgb, 0, 200, 100), 1); box-shadow: 0 0 15px rgba(var(--accent-green-rgb, 0, 200, 100), 0.4); }
-            100% { border-color: rgba(var(--accent-green-rgb, 0, 200, 100), 0.3); box-shadow: 0 0 0px rgba(var(--accent-green-rgb, 0, 200, 100), 0.1); }
-        }
-
-        .scan-zone {
-            border: 1px dashed color-mix(in srgb, var(--accent-green) 25%, transparent);
-            padding: 10px 5px;
-            border-radius: 6px;
-            margin-bottom: 4px;
-            cursor: default;
-            background: rgba(26, 26, 26, 0.6);
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-        }
-
-        .scan-zone.processing {
-            animation: border-pulse 1.5s infinite;
-            border-style: solid;
-        }
-
-        .scan-zone p {
-            margin: 0;
-            font-size: 11px;
-            color: #888;
-            font-weight: bold;
-        }
-
-        .section-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 9px;
-            color: #aaa;
-            margin: 4px 0 2px 0;
-            font-weight: bold;
-            border-bottom: 1px solid #222;
-            padding-bottom: 2px;
-            flex-shrink: 0;
-        }
-
-        .results {
-            overflow-y: auto;
-            text-align: left;
-            direction: ltr;
-            flex-grow: 1;
-            min-height: 60px;
-            max-height: 180px;
-            margin-bottom: 4px;
-        }
-
-        .card {
-            background: #000;
-            border: 1px solid #333;
-            border-radius: 6px;
-            padding: 6px;
-            margin-bottom: 4px;
-            border-left: 3px solid #ffcc00;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
-            direction: rtl;
-        }
-
-        .card-header-right {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .card-header-left {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            direction: ltr;
-        }
-
-        .label {
-            font-size: 8px;
-            color: #aaa;
-        }
-
-        /* تم تعديل العداد هنا ليجبر النص العربي والإنجليزي على الظهور بالترتيب الصحيح */
-        .char-counter {
-            font-size: 8px;
-            font-weight: bold;
-            padding: 1px 4px;
-            border-radius: 3px;
-            background: #111;
-            direction: ltr;
-            display: inline-block;
-        }
-
-        .counter-valid {
-            color: var(--accent-green);
-            border: 1px solid color-mix(in srgb, var(--accent-green) 20%, transparent);
-        }
-
-        .counter-invalid {
-            color: var(--danger-red);
-            border: 1px solid rgba(255, 51, 51, 0.2);
-        }
-
-        .play-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 11px;
-            padding: 0;
-            transition: transform 0.1s;
-        }
-
-        .play-btn:active {
-            transform: scale(0.9);
-        }
-
-        .speed-toggle-btn {
-            background: #222;
-            color: #ccc;
-            border: 1px solid #444;
-            border-radius: 3px;
-            font-size: 9px;
-            font-weight: bold;
-            padding: 1px 4px;
-            cursor: pointer;
-            user-select: none;
-            min-width: 28px;
-            text-align: center;
-        }
-
-        .speed-toggle-btn:hover {
-            background: #333;
-            color: var(--text);
-        }
-
-        .visual-check {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            color: var(--accent-green);
-            word-break: break-all;
-            margin-bottom: 4px;
-            font-weight: bold;
-            background: #111;
-            padding: 2px;
-            border-radius: 4px;
-            text-align: left;
-            line-height: 1.2;
-        }
-
-        .highlight {
-            color: #ffcc00;
-            background: #443300;
-            padding: 0 1px;
-            border-radius: 2px;
-        }
-
-        .edit-input {
-            width: 100%;
-            background: #222;
-            border: 1px solid #444;
-            color: var(--text);
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            padding: 4px;
-            box-sizing: border-box;
-            font-weight: bold;
-            border-radius: 4px;
-        }
-
-        .action-btn {
-            background: var(--accent-green);
-            color: #000;
-            border: none;
-            width: 100%;
-            padding: 4px;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
+        .card-title {
             font-size: 10px;
+            font-weight: 700;
+            color: #eee;
+        }
+
+        .card-desc {
+            font-size: 8px;
+            color: #888;
+            line-height: 1.3;
+        }
+
+        /* Custom Interactive Download Button */
+        .interactive-download-btn {
+            background: var(--accent-green);
+            color: #0b0c10;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 10px rgba(0, 230, 118, 0.2);
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .interactive-download-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(0, 230, 118, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .interactive-download-btn .progress-fill {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 0%;
+            background: rgba(0, 0, 0, 0.15);
+            transition: width 0.1s linear;
+        }
+
+        .interactive-download-btn.downloading {
+            background: #1a3c22;
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .interactive-download-btn.success {
+            background: #115c2a;
+            color: #fff;
+            border: 1px solid var(--accent-green);
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* Link Copy Utility */
+        .link-copy-box {
+            display: flex;
+            align-items: center;
+            background: #0b0c10;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 3px 6px;
+            gap: 4px;
             margin-top: 4px;
         }
 
-        .final-list {
-            overflow-y: auto;
+        .link-input {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 8px;
+            font-family: monospace;
+            flex-grow: 1;
+            outline: none;
             direction: ltr;
-            flex-grow: 1;
-            min-height: 50px;
-            max-height: 140px;
-        }
-
-        .final-card {
-            background: #111;
-            border: 1px solid #222;
-            border-radius: 4px;
-            padding: 5px 8px;
-            margin-bottom: 3px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 3px solid var(--accent-green);
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-
-        .final-value {
-            font-family: 'Courier New', monospace;
-            color: var(--accent-green);
-            font-size: 11px;
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 4px;
-            pointer-events: none;
-        }
-
-        .check-mark {
-            display: none;
-            color: #555;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: auto;
-        }
-
-        .final-card.copied {
-            background: #1e1e1e !important;
-            border-color: #2d2d2d !important;
-            border-left: 3px solid #444444 !important;
-        }
-
-        .final-card.copied .final-value {
-            color: #555555 !important;
-            text-decoration: line-through;
-        }
-
-        .final-card.copied .check-mark {
-            display: inline;
-        }
-
-        /* Toast Notifications */
-        .toast-container {
-            position: absolute;
-            bottom: 35px;
-            left: 0;
-            right: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            pointer-events: none;
-            z-index: 1000;
-            gap: 4px;
-        }
-
-        .toast {
-            background: rgba(20, 20, 20, 0.95);
-            color: var(--accent-green);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            border: 1px solid rgba(var(--accent-green-rgb, 0,200,100), 0.2);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .settings-modal {
-            position: absolute;
-            top: 35px;
-            left: 8px;
-            right: 8px;
-            background: rgba(25, 25, 25, 0.95);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 8px;
-            display: none;
-            z-index: 100;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-        }
-
-        .settings-modal input {
-            width: 100%;
-            background: #000;
-            border: 1px solid #444;
-            color: var(--text);
-            padding: 4px;
-            font-size: 10px;
-            border-radius: 4px;
-            box-sizing: border-box;
-            margin-bottom: 6px;
             text-align: left;
         }
 
-        .provider-tabs {
-            display: flex;
-            gap: 3px;
-            margin-bottom: 6px;
-        }
-
-        .provider-tab {
-            flex: 1;
-            padding: 4px;
-            font-size: 9px;
+        .copy-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: var(--accent-blue);
+            font-size: 8px;
             font-weight: bold;
+            padding: 4px 8px;
             border-radius: 4px;
             cursor: pointer;
-            border: 1px solid #444;
-            background: #222;
-            color: #888;
-            text-align: center;
-            transition: 0.2s;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
         }
 
-        .provider-tab.active {
+        .copy-btn:hover {
+            background: var(--accent-blue);
+            color: #000;
+            border-color: var(--accent-blue);
+        }
+
+        .copy-btn.copied {
             background: var(--accent-green);
             color: #000;
             border-color: var(--accent-green);
         }
 
-        .provider-section {
-            display: none;
-        }
-
-        .provider-section.active {
-            display: block;
-        }
-
-        .settings-modal-btns {
-            display: flex;
-            gap: 4px;
-        }
-
-        .settings-modal-btns button {
-            flex: 1;
-            padding: 3px;
-            font-size: 9px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            border: none;
-        }
-
-        .save-key-btn {
-            background: var(--accent-green);
-            color: #000;
-        }
-
-        .close-key-btn {
-            background: #333;
-            color: var(--text);
-        }
-
-        .usage-btn {
-            background: #252525;
-            border: 1px solid #444;
-            color: #888;
-            padding: 3px 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-
-        .usage-btn:hover {
-            background: #333;
-            color: var(--text);
-        }
-
-        .usage-modal {
-            position: absolute;
-            top: 35px;
-            left: 8px;
-            right: 8px;
-            bottom: 30px;
-            background: rgba(25, 25, 25, 0.95);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
+        /* Interactive Chrome Extension Simulator */
+        .mock-chrome {
+            background: #121212;
+            border: 1px solid #333;
+            border-radius: 8px;
             padding: 6px;
-            display: none;
-            z-index: 101;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-            direction: rtl;
-            overflow-y: auto;
+            direction: ltr;
+            text-align: left;
+            margin-top: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            position: relative; /* Added relative positioning to anchor tooltips correctly */
         }
 
-        .usage-title {
-            font-size: 9px;
-            font-weight: bold;
-            color: var(--accent-green);
-            margin-bottom: 4px;
-            text-align: center;
-            border-bottom: 1px solid #333;
-            padding-bottom: 3px;
+        /* Mock Header bar */
+        .mock-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #1a1a1a;
+            padding: 3px 6px;
+            border-radius: 6px 6px 0 0;
+            border-bottom: 1px solid #2d2d2d;
         }
 
-        .usage-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3px;
-            margin-bottom: 4px;
+        .mock-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            display: inline-block;
         }
 
-        .usage-card {
-            background: #0a0a0a;
-            border: 1px solid #222;
-            border-radius: 5px;
-            padding: 4px;
-            text-align: center;
-        }
+        .mock-dot.red { background: #ff5f56; }
+        .mock-dot.yellow { background: #ffbd2e; }
+        .mock-dot.green { background: #27c93f; }
 
-        .usage-card-label {
-            font-size: 8px;
-            color: #666;
-            font-weight: bold;
-            margin-bottom: 3px;
-        }
-
-        .usage-card-value {
-            font-size: 12px;
-            font-weight: bold;
-            color: var(--accent-green);
-            font-family: 'Courier New', monospace;
-        }
-
-        .usage-card-sub {
+        .mock-address {
+            background: #2a2a2a;
+            color: #999;
             font-size: 7px;
-            color: #555;
-            margin-top: 2px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            flex-grow: 1;
+            margin-left: 10px;
+            max-width: 110px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
         }
 
-        .usage-section-title {
-            font-size: 8px;
-            color: #888;
-            font-weight: bold;
-            margin: 6px 0 4px 0;
-            text-align: center;
-        }
-
-        .usage-row {
+        /* Mock Subbar with toggles */
+        .mock-subbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 3px 6px;
-            font-size: 9px;
-            border-bottom: 1px solid #1a1a1a;
+            padding: 4px;
+            background: #1e1e1e;
+            border-bottom: 1px solid #2d2d2d;
         }
 
-        .usage-row-label {
+        .mock-subbar-title {
+            font-size: 8px;
+            font-weight: bold;
+            color: #ddd;
+        }
+
+        .dev-mode-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .dev-mode-label {
+            font-size: 7px;
             color: #888;
         }
 
-        .usage-row-value {
-            color: var(--text);
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
-            direction: ltr;
+        /* Mini toggle switches */
+        .switch-mini {
+            position: relative;
+            display: inline-block;
+            width: 20px;
+            height: 10px;
+            flex-shrink: 0;
         }
 
-        .usage-bar-container {
-            grid-column: span 2;
-            background: #0a0a0a;
-            border: 1px solid #222;
-            border-radius: 5px;
-            padding: 4px 5px;
+        .switch-mini input {
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
 
-        .usage-bar-track {
-            width: 100%;
+        .slider-mini {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .2s;
+            border-radius: 10px;
+        }
+
+        .slider-mini:before {
+            position: absolute;
+            content: "";
             height: 6px;
-            background: #222;
-            border-radius: 3px;
+            width: 6px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-mini {
+            background-color: var(--accent-green);
+        }
+
+        input:checked + .slider-mini:before {
+            transform: translateX(10px);
+        }
+
+        /* Mock actions subbar */
+        .mock-actions {
+            display: flex;
+            gap: 4px;
+            background: #181818;
+            padding: 3px;
+            border-bottom: 1px solid #2d2d2d;
+            height: 0;
             overflow: hidden;
+            transition: height 0.3s ease, padding 0.3s ease;
+        }
+
+        .mock-actions.active {
+            height: 16px;
+            padding: 3px;
+        }
+
+        .mock-action-btn {
+            background: #333;
+            border: 1px solid #444;
+            color: #ccc;
+            font-size: 7px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            transition: 0.2s;
+        }
+
+        .mock-action-btn:hover:not(:disabled) {
+            background: #444;
+            color: #fff;
+        }
+
+        .mock-action-btn.pulse-border {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 4px rgba(0, 212, 255, 0.4);
+            animation: pulse-border 1.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 2px rgba(0, 212, 255, 0.2); }
+            50% { box-shadow: 0 0 8px rgba(0, 212, 255, 0.8); }
+            100% { box-shadow: 0 0 2px rgba(0, 212, 255, 0.2); }
+        }
+
+        .mock-action-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Mock main content area */
+        .mock-content {
+            height: 115px; /* Fixed height to accommodate simulated explorer and extension card perfectly */
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #121212;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .mock-empty-state {
+            text-align: center;
+            color: #666;
+            transition: opacity 0.2s ease;
+        }
+
+        .mock-empty-state p {
+            font-size: 7px;
+            margin: 4px 0 0 0;
+            line-height: 1.3;
+        }
+
+        .mock-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--accent-blue);
+            font-size: 7px;
+        }
+
+        .mock-spinner {
+            width: 10px;
+            height: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-top: 1px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mock Extension Card */
+        .mock-extension-card {
+            width: 100%;
+            background: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 6px;
+            box-sizing: border-box;
+            animation: slideIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            border-left: 2px solid var(--accent-green);
+        }
+
+        @keyframes slideIn {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .mock-card-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mock-ext-icon {
+            width: 12px;
+            height: 12px;
+            object-fit: contain;
+            border-radius: 3px;
+        }
+
+        .mock-ext-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .mock-ext-name {
+            font-size: 8px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .mock-ext-ver {
+            font-size: 6px;
+            color: #777;
+        }
+
+        .mock-ext-desc {
+            font-size: 7px;
+            color: #888;
+            margin: 4px 0;
+            line-height: 1.3;
+        }
+
+        .mock-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #292929;
+            padding-top: 4px;
             margin-top: 4px;
         }
 
-        .usage-bar-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.4s ease;
+        .mock-ext-id {
+            font-size: 6px;
+            color: #555;
+            font-family: monospace;
         }
 
-        .usage-close-btn {
-            width: 100%;
-            padding: 3px;
-            background: #222;
-            color: #888;
-            border: 1px solid #333;
+        .mock-card-btn-mini {
+            background: #2a2a2a;
+            border: 1px solid #3d3d3d;
+            color: #aaa;
+            font-size: 6px;
+            padding: 1px 4px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        /* Simulator Tooltip instruction */
+        .simulator-tooltip {
+            position: absolute;
+            background: var(--accent-blue);
+            color: #000;
+            padding: 4px 6px;
             border-radius: 4px;
+            font-size: 7px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            animation: bounceTooltip 1s infinite alternate;
+            z-index: 10;
+            display: none;
+            direction: rtl;
+        }
+
+        .simulator-tooltip::after {
+            content: "";
+            position: absolute;
+            bottom: -3px;
+            right: 12px;
+            border-width: 3px 3px 0;
+            border-style: solid;
+            border-color: var(--accent-blue) transparent;
+        }
+
+        @keyframes bounceTooltip {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-3px); }
+        }
+
+        /* Success Message Overlay */
+        .simulation-success-banner {
+            background: rgba(0, 230, 118, 0.08);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .simulation-success-banner span {
+            display: block;
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+
+        .simulation-success-banner p {
+            font-size: 8px;
+            color: #aaa;
+            margin: 2px 0 0 0;
+            line-height: 1.3;
+        }
+
+        /* Confetti particle elements */
+        .confetti-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 999;
+            animation: fall 1.5s ease-out forwards;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(120px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .footer {
+            margin-top: 5px;
+            font-size: 8px;
+            color: #666;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            direction: ltr;
+            font-family: Arial, sans-serif;
+        }
+
+        .pulse-emoji {
+            display: inline-block;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            30% { transform: scale(1.2); }
+            60% { transform: scale(1.05); }
+        }
+
+        /* Simulated File Explorer styles */
+        .mock-explorer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #1f1f1f;
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            z-index: 20;
+            border: 1px solid #444;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .explorer-header {
+            background: #2b2b2b;
+            padding: 3px 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ddd;
+            font-size: 8px;
+            border-bottom: 1px solid #383838;
+            font-weight: bold;
+        }
+
+        .explorer-close {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0 4px;
+        }
+
+        .explorer-close:hover {
+            color: #ff4d4d;
+        }
+
+        .explorer-address {
+            background: #202020;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border-bottom: 1px solid #333;
+        }
+
+        .explorer-nav-arrow {
+            color: #777;
             font-size: 8px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 3px;
         }
 
-        .usage-close-btn:hover {
+        .explorer-nav-arrow:hover {
+            color: #fff;
+        }
+
+        .explorer-path {
+            background: #151515;
+            border: 1px solid #333;
+            color: #aaa;
+            font-size: 7px;
+            padding: 2px 6px;
+            flex-grow: 1;
+            border-radius: 3px;
+            text-align: left;
+            direction: ltr;
+            font-family: monospace;
+        }
+
+        .explorer-body {
+            flex-grow: 1;
+            background: #181818;
+            padding: 3px;
+            overflow-y: auto;
+        }
+
+        .explorer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .explorer-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: right;
+            direction: rtl;
+            border: 1px solid transparent;
+        }
+
+        .explorer-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .explorer-item.selected {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+
+        .explorer-icon {
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .explorer-name {
+            font-size: 8px;
+            color: #eee;
+            flex-grow: 1;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .explorer-date, .explorer-type {
+            font-size: 7px;
+            color: #555;
+            flex-shrink: 0;
+        }
+
+        .explorer-date {
+            width: 70px;
+            text-align: left;
+            direction: ltr;
+        }
+
+        .explorer-type {
+            width: 45px;
+            text-align: right;
+        }
+
+        .explorer-footer {
+            background: #202020;
+            padding: 3px 6px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 6px;
+            border-top: 1px solid #333;
+        }
+
+        .explorer-btn {
+            padding: 2px 6px;
+            font-size: 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            border: 1px solid #444;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .explorer-btn.select-btn {
             background: #333;
-            color: var(--text);
+            color: #aaa;
         }
 
-        .results::-webkit-scrollbar,
-        .final-list::-webkit-scrollbar {
-            width: 3px;
+        .explorer-btn.select-btn.active {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(0, 230, 118, 0.3);
         }
 
-        .results::-webkit-scrollbar-thumb,
-        .final-list::-webkit-scrollbar-thumb {
-            background: #333;
-            border-radius: 10px;
+        .explorer-btn.cancel-btn {
+            background: #1b1b1b;
+            color: #888;
+        }
+
+        .explorer-btn.cancel-btn:hover {
+            color: #fff;
+            background: #252525;
+        }
+
+        .explorer-error {
+            color: #ff4d4d;
+            font-size: 7px;
+            flex-grow: 1;
+            text-align: right;
+            display: none;
+            animation: shake 0.3s ease;
+            font-weight: bold;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
         }
     </style>
     <!-- Centralized Cache Busting Loader -->
@@ -2392,803 +2667,525 @@ const APP_VERSION = "2.0.14";
 
 <body>
 
-    <div class="app-container" id="appContainer">
+    <div class="container">
         <div class="header">
-            <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-            </a>
-
-            <button id="aiBtn" class="ai-btn" onclick="toggleAI()">AI</button>
-            <button class="upload-btn" onclick="document.getElementById('fileInput').click()"
-                title="رفع صورة من الجهاز">📁</button>
-            <button class="settings-btn" onclick="openSettings()" title="إعدادات API Key">⚙️</button>
-            <button class="usage-btn" onclick="toggleUsageModal()" title="استخدام API">📊</button>
-            <span style="font-size: 9px; color: var(--text); font-weight: bold; margin-right: auto;">SIMAH</span>
+            <a href="index.html" class="back-btn" title="الرجوع للرئيسية">🔙 <span class="shortcut-hint">Esc</span></a>
+            <h1>تحميل وإعداد الإضافة</h1>
         </div>
 
-        <div id="settingsModal" class="settings-modal">
-            <div class="provider-tabs">
-                <div class="provider-tab active" id="tabGemini" onclick="switchProvider('gemini')">Gemini</div>
-                <div class="provider-tab" id="tabGroq" onclick="switchProvider('groq')">Groq</div>
-            </div>
-            <div id="sectionGemini" class="provider-section active">
-                <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
-                    مفتاح
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank"
-                        style="color: var(--accent-green); text-decoration: underline;">Gemini API</a>:
+        <div class="content-scroll">
+            
+            <!-- Progress Tracker -->
+            <div class="progress-tracker">
+                <div class="progress-header-row">
+                    <span>جاهزية التثبيت: <span class="progress-title-highlight" id="progress-percent">0%</span></span>
+                    <span style="font-size: 8px;" id="progress-status-text">قم بتحميل الإضافة أولاً</span>
                 </div>
-                <input type="password" id="geminiKeyInput" placeholder="Gemini Key...">
-            </div>
-            <div id="sectionGroq" class="provider-section">
-                <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
-                    مفتاح
-                    <a href="https://console.groq.com/keys" target="_blank"
-                        style="color: var(--accent-green); text-decoration: underline;">Groq API</a>:
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="overall-progress-bar"></div>
                 </div>
-                <input type="password" id="groqKeyInput" placeholder="Groq Key...">
+                <div class="steps-indicators">
+                    <div class="indicator-dot active" id="dot-1" title="تحميل الإضافة">📥</div>
+                    <div class="indicator-dot" id="dot-2" title="نسخ الرابط">📋</div>
+                    <div class="indicator-dot" id="dot-3" title="المحاكاة والتفعيل">⚙️</div>
+                </div>
             </div>
-            <div style="font-size: 8px; color: #ff9f43; text-align: right; margin-bottom: 6px; font-weight: bold; direction: rtl;">
-                🔒 مفاتيحك تُحفظ محلياً بالكامل على متصفحك ولا يتم إرسالها لأي خادم خارجي.
-            </div>
-            <div class="settings-modal-btns">
-                <button class="save-key-btn" onclick="saveApiKey()">حفظ</button>
-                <button class="close-key-btn" onclick="closeSettings()">إلغاء</button>
-            </div>
-        </div>
 
-        <div id="usageModal" class="usage-modal">
-            <div class="usage-title" id="usageProviderTitle">📊 استهلاك الباقة</div>
+            <!-- STEP 1: Download Button Card -->
+            <div class="step-card active" id="card-step-1">
+                <div class="card-header-row">
+                    <span class="card-badge">1</span>
+                    <span class="card-title">تحميل حزمة الإضافة</span>
+                </div>
+                <span class="card-desc">اضغط للتحميل التفاعلي السريع لحزمة الإضافة المضغوطة.</span>
+                
+                <button id="download-trigger-btn" class="interactive-download-btn">
+                    <span class="progress-fill" id="btn-progress-fill"></span>
+                    <span id="btn-icon">📥</span>
+                    <span id="btn-text">تحميل الإضافة العائمة (ZIP)</span>
+                </button>
+            </div>
 
-            <!-- طلبات اليوم -->
-            <div class="usage-bar-container" id="reqSection">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="usage-card-label">طلبات اليوم</span>
-                    <span style="font-size:7px; color:#555;" id="reqResetTime"></span>
+            <!-- STEP 2: Copy link box -->
+            <div class="step-card" id="card-step-2">
+                <div class="card-header-row">
+                    <span class="card-badge">2</span>
+                    <span class="card-title">فتح صفحة إضافات كروم</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:2px;">
-                    <div><span class="usage-card-value" id="reqUsed">—</span> <span
-                            style="font-size:7px; color:#666;">مستخدم</span></div>
-                    <div style="font-size:8px; color:#888;">من <span class="usage-row-value" id="reqMax">—</span></div>
+                <span class="card-desc">انسخ الرابط بالأسفل، ثم قم بلصقه وافتحه في علامة تبويب جديدة:</span>
+                
+                <div class="link-copy-box">
+                    <input type="text" class="link-input" value="chrome://extensions" readonly onclick="this.select()">
+                    <button class="copy-btn" id="copy-link-btn">نسخ الرابط 📋</button>
                 </div>
-                <div class="usage-bar-track" style="margin-top:3px;">
-                    <div class="usage-bar-fill" id="reqBarFill" style="width:0%; background: var(--accent-green);">
+            </div>
+
+            <!-- STEP 3: Extensions Simulator -->
+            <div class="step-card" id="card-step-3">
+                <div class="card-header-row">
+                    <span class="card-badge">3</span>
+                    <span class="card-title">محاكاة طريقة التثبيت</span>
+                </div>
+                <span class="card-desc">جرب خطوات التثبيت هنا تفاعلياً لتتعلم الطريقة الحقيقية:</span>
+
+                <!-- تنبيه اختيار المجلد الصحيح -->
+                <div style="background: #fff3cd; border: 1px solid #ffe69c; border-radius: 6px; padding: 6px; font-size: 8px; color: #664d03; line-height: 1.4; display: flex; gap: 6px; align-items: flex-start; margin-top: 4px; text-align: right;">
+                    <span style="font-size: 10px; color: #664d03; flex-shrink: 0; margin-top: 1px;">⚠️</span>
+                    <div>
+                        <strong style="color: #664d03;">ملاحظة هامة جداً للتثبيت:</strong>
+                        عندما تضغط على <span style="color: #157347; font-weight: bold;">"تحميل إضافة تم فك حزمتها"</span> وتفتح لك نافذة اختيار الملفات، تأكد من الدخول إلى مجلد الحزمة المستخرج أولاً، واختيار المجلد الداخلي المسمى <strong style="color: #0b5ed7; text-decoration: underline; font-family: monospace; font-weight: bold;">chrome-extension</strong> الذي يحتوي مباشرة على ملفات الإضافة لتجنب الأخطاء.
                     </div>
                 </div>
-                <div style="display:flex; justify-content:space-between; margin-top:2px;">
-                    <span style="font-size:7px; color:var(--accent-green);" id="reqRemaining"></span>
-                    <span style="font-size:7px; color:#555;" id="reqPercent"></span>
-                </div>
-            </div>
 
-            <!-- طلبات الساعة -->
-            <div class="usage-bar-container" id="tokenSection" style="margin-top:3px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="usage-card-label">طلبات الساعة</span>
-                    <span style="font-size:7px; color:#555;" id="tokenResetTime"></span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:2px;">
-                    <div><span class="usage-card-value" id="tokenUsed">—</span> <span
-                            style="font-size:7px; color:#666;">مستخدم</span></div>
-                    <div style="font-size:8px; color:#888;">من <span class="usage-row-value" id="tokenMax">—</span>
+                <!-- Simulator widget -->
+                <div class="mock-chrome">
+                    <div class="simulator-tooltip" id="sim-tooltip">اضغط لتفعيل وضع المطور! 💡</div>
+                    <div class="simulator-tooltip" id="load-tooltip" style="background: var(--accent-green); color: #000; top: 18px; left: 10px; right: auto;">اضغط على "تحميل إضافة تم فك حزمتها" 📂</div>
+                    
+                    <!-- Address header -->
+                    <div class="mock-header">
+                        <span class="mock-dot red"></span>
+                        <span class="mock-dot yellow"></span>
+                        <span class="mock-dot green"></span>
+                        <div class="mock-address">chrome://extensions</div>
+                    </div>
+                    
+                    <!-- Actions sub header -->
+                    <div class="mock-subbar">
+                        <span class="mock-subbar-title">الإضافات</span>
+                        <div class="dev-mode-wrapper">
+                            <span class="dev-mode-label">وضع المطور</span>
+                            <label class="switch-mini">
+                                <input type="checkbox" id="mock-dev-toggle">
+                                <span class="slider-mini"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Load Unpacked button panel -->
+                    <div class="mock-actions" id="mock-actions-bar">
+                        <button class="mock-action-btn" id="mock-load-btn" disabled>
+                            <span>تحميل إضافة تم فك حزمتها</span>
+                            <span style="font-size: 7px;">📂</span>
+                        </button>
+                        <button class="mock-action-btn" disabled>حزمة مضغوطة</button>
+                        <button class="mock-action-btn" disabled>تحديث</button>
+                    </div>
+                    
+                    <!-- Simulator content area -->
+                    <div class="mock-content" id="mock-content-area">
+                        <div class="mock-empty-state" id="mock-empty">
+                            <span style="font-size: 14px;">🛠️</span>
+                            <p>يرجى تفعيل "وضع المطور" (Developer Mode) في الأعلى لبدء المحاكاة.</p>
+                        </div>
+
+                        <!-- Simulated File Explorer Window -->
+                        <div class="mock-explorer" id="mock-explorer">
+                            <div class="explorer-header">
+                                <span>تحديد دليل الإضافة</span>
+                                <button class="explorer-close" id="explorer-close-btn">×</button>
+                            </div>
+                            <div class="explorer-address">
+                                <span class="explorer-nav-arrow" id="explorer-back-arrow">⬅</span>
+                                <div class="explorer-path" id="explorer-path-text">Downloads &gt; royal-family-extension</div>
+                            </div>
+                            <div class="explorer-body">
+                                <div class="explorer-list">
+                                    <!-- Inner Folder option -->
+                                    <div class="explorer-item" id="explorer-folder-item">
+                                        <span class="explorer-icon">📁</span>
+                                        <span class="explorer-name">chrome-extension</span>
+                                        <span class="explorer-date">19/05/2026 19:41</span>
+                                        <span class="explorer-type">مجلد ملفات</span>
+                                    </div>
+                                    <!-- Inner Files (Visible only when folder is entered) -->
+                                    <div class="explorer-item" id="explorer-file-manifest" style="display: none; pointer-events: none;">
+                                        <span class="explorer-icon">📄</span>
+                                        <span class="explorer-name">manifest.json</span>
+                                        <span class="explorer-date">19/05/2026 19:41</span>
+                                        <span class="explorer-type">ملف JSON</span>
+                                    </div>
+                                    <div class="explorer-item" id="explorer-file-content" style="display: none; pointer-events: none;">
+                                        <span class="explorer-icon">📄</span>
+                                        <span class="explorer-name">content.js</span>
+                                        <span class="explorer-date">19/05/2026 19:41</span>
+                                        <span class="explorer-type">ملف JavaScript</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="explorer-footer">
+                                <span id="explorer-error-msg" class="explorer-error">⚠️ ادخل لمجلد chrome-extension أولاً!</span>
+                                <button class="explorer-btn select-btn" id="explorer-select-btn">اختيار المجلد</button>
+                                <button class="explorer-btn cancel-btn" id="explorer-cancel-btn">إلغاء</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Simulated Loader -->
+                        <div class="mock-loader" id="mock-loader" style="display: none;">
+                            <div class="mock-spinner"></div>
+                            <span>جاري تثبيت الإضافة من المجلد...</span>
+                        </div>
+
+                        <!-- Simulated Extension Card -->
+                        <div class="mock-extension-card" id="mock-extension-card" style="display: none;">
+                            <div class="mock-card-header">
+                                <img src="icon.png" class="mock-ext-icon" alt="Royal" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%2300e676%22><path d=%22M12 2L2 22h20L12 2z%22/></svg>'">
+                                <div class="mock-ext-info">
+                                    <span class="mock-ext-name">Royal Family</span>
+                                    <span class="mock-ext-ver">1.0.0</span>
+                                </div>
+                                <label class="switch-mini">
+                                    <input type="checkbox" checked disabled>
+                                    <span class="slider-mini"></span>
+                                </label>
+                            </div>
+                            <p class="mock-ext-desc">مجموعة أدوات عائمة في المقدمة دائماً (PiP) لمساعدتك.</p>
+                            <div class="mock-card-footer">
+                                <span class="mock-ext-id">ID: royal-family-pip</span>
+                                <button class="mock-card-btn-mini">التفاصيل</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="usage-bar-track" style="margin-top:3px;">
-                    <div class="usage-bar-fill" id="tokenBarFill" style="width:0%; background: var(--accent-green);">
-                    </div>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-top:2px;">
-                    <span style="font-size:7px; color:var(--accent-green);" id="tokenRemaining"></span>
-                    <span style="font-size:7px; color:#555;" id="tokenPercent"></span>
+
+                <!-- Simulation Success Banner -->
+                <div class="simulation-success-banner" id="sim-success-banner">
+                    <span>مبروك! لقد تعلمت الطريقة بنجاح 🎉</span>
+                    <p>الآن، قم بتطبيق نفس الخطوات الحقيقية في صفحة الإضافات المثبتة لديك.</p>
                 </div>
             </div>
-
-            <!-- إحصائيات -->
-            <div class="usage-grid" style="margin-top:4px;">
-                <div class="usage-card">
-                    <div class="usage-card-label">طلباتك اليوم</div>
-                    <div class="usage-card-value" id="usageDay">0</div>
-                </div>
-                <div class="usage-card">
-                    <div class="usage-card-label">إجمالي الكل</div>
-                    <div class="usage-card-value" id="usageTotal">0</div>
-                </div>
-            </div>
-
-            <div id="usageNoData" style="display:none; text-align:center; padding:6px; font-size:8px; color:#666;">⚡
-                استخدم AI مرة لعرض بيانات الباقة</div>
-            <div style="font-size:7px; color:#444; text-align:center; margin-top:3px;" id="usageLastUpdate"></div>
-            <button class="usage-close-btn" onclick="toggleUsageModal()">إغلاق</button>
         </div>
 
-        <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileUpload(event)">
-
-        <div class="scan-zone" id="dropZone">
-            <p>الصق الصورة هنا مباشرة (Ctrl + V)</p>
+        <div class="footer">
+            <span class="pulse-emoji">👑</span>
+            <span>Royal Family — always ready to serve you</span>
         </div>
-
-        <div class="section-title">
-            <span>التدقيق الفوري</span>
-        </div>
-        <div id="results" class="results">
-            <div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>
-        </div>
-
-        <div class="section-title">
-            <span>القائمة المعتمدة <span id="listCounter" style="color: var(--accent-green);">(0)</span></span>
-            <button class="clear-btn" onclick="clearFinalList()">مسح</button>
-        </div>
-        <div id="finalList" class="final-list"></div>
-
-        <div id="toastContainer" class="toast-container"></div>
     </div>
 
+    <!-- Interactive script logic -->
     <script>
-const appContainer = document.getElementById('appContainer');
-const resultsArea = document.getElementById('results');
-const finalListArea = document.getElementById('finalList');
-const listCounter = document.getElementById('listCounter');
-const aiBtn = document.getElementById('aiBtn');
-const settingsModal = document.getElementById('settingsModal');
-const geminiKeyInput = document.getElementById('geminiKeyInput');
-const groqKeyInput = document.getElementById('groqKeyInput');
+        // Progress scores and elements
+        let isDownloaded = false;
+        let isCopied = false;
+        let isSimulated = false;
 
-function showToast(message, isError = false, duration = 2500) {
-    const container = document.getElementById('toastContainer');
-    if (!container) return { remove: () => {}, update: () => {} };
+        const overallProgressBar = document.getElementById('overall-progress-bar');
+        const progressPercentText = document.getElementById('progress-percent');
+        const progressStatusText = document.getElementById('progress-status-text');
+        
+        const dot1 = document.getElementById('dot-1');
+        const dot2 = document.getElementById('dot-2');
+        const dot3 = document.getElementById('dot-3');
 
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerHTML = message;
-    
-    if (isError) {
-        toast.style.color = '#ff4444';
-        toast.style.borderColor = 'rgba(255,68,68,0.3)';
-    }
+        const cardStep1 = document.getElementById('card-step-1');
+        const cardStep2 = document.getElementById('card-step-2');
+        const cardStep3 = document.getElementById('card-step-3');
 
-    container.appendChild(toast);
-    
-    requestAnimationFrame(() => {
-        toast.classList.add('show');
-    });
-
-    let timeoutId;
-    const remove = () => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    };
-
-    if (duration > 0) {
-        timeoutId = setTimeout(remove, duration);
-    }
-
-    return {
-        remove,
-        update: (newMessage, newIsError) => {
-            toast.innerHTML = newMessage;
-            if (newIsError !== undefined) {
-                toast.style.color = newIsError ? '#ff4444' : 'var(--accent-green)';
-                toast.style.borderColor = newIsError ? 'rgba(255,68,68,0.3)' : 'rgba(0,200,100,0.2)';
+        // Confetti effect helper
+        function launchConfetti() {
+            const container = document.querySelector('.container');
+            const colors = ['#00e676', '#00d4ff', '#ffcc00', '#ff9f43', '#e040fb'];
+            
+            for (let i = 0; i < 35; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti-particle';
+                
+                // Random position & color
+                particle.style.left = Math.random() * 95 + '%';
+                particle.style.top = Math.random() * 20 + 20 + '%';
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Random size
+                const size = Math.random() * 5 + 3;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Random animation delay & duration
+                particle.style.animationDuration = Math.random() * 1 + 1 + 's';
+                
+                container.appendChild(particle);
+                
+                // Cleanup
+                setTimeout(() => {
+                    particle.remove();
+                }, 2000);
             }
         }
-    };
-}
 
-let savedAccountsList = [];
-let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
-let isAIActive = true;
-localStorage.setItem('simah_ai_pref', 'true');
-let globalVoiceSpeed = localStorage.getItem('simah_voice_speed') || '1';
-let lastRateLimitInfo = {};
-if (aiBtn) {
-    aiBtn.className = 'ai-btn active';
-    aiBtn.title = 'الذكاء الاصطناعي مفعل دائماً لتقرير سمة';
-}
+        // Global progress updater
+        function updateOverallProgress() {
+            let percentage = 0;
+            if (isDownloaded) percentage += 33;
+            if (isCopied) percentage += 33;
+            if (isSimulated) percentage += 34;
 
-const speechDictionary = {
-    '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
-    '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine',
-    '-': ' dash '
-};
+            overallProgressBar.style.width = percentage + '%';
+            progressPercentText.textContent = percentage + '%';
 
-function toggleSpeed(cardId) {
-    const btn = document.getElementById(`sp_${cardId}`);
-    const speeds = ['1', '1.5', '2', '0.25', '0.5'];
-    const currentSpeed = btn.getAttribute('data-speed');
-
-    let currentIndex = speeds.indexOf(currentSpeed);
-    let nextIndex = (currentIndex + 1) % speeds.length;
-    let nextSpeed = speeds[nextIndex];
-
-    btn.setAttribute('data-speed', nextSpeed);
-    btn.innerText = `×${nextSpeed}`;
-
-    globalVoiceSpeed = nextSpeed;
-    localStorage.setItem('simah_voice_speed', nextSpeed);
-}
-
-function toggleAI() {
-    isAIActive = true;
-    if (aiBtn) {
-        aiBtn.className = 'ai-btn active';
-    }
-    localStorage.setItem('simah_ai_pref', 'true');
-    showToast("الذكاء الاصطناعي (AI) مفعل إجبارياً للحصول على دقة 100% في سمة 🧠");
-}
-
-function switchProvider(provider) {
-    currentProvider = provider;
-    document.getElementById('tabGemini').className = provider === 'gemini' ? 'provider-tab active' : 'provider-tab';
-    document.getElementById('tabGroq').className = provider === 'groq' ? 'provider-tab active' : 'provider-tab';
-    document.getElementById('sectionGemini').className = provider === 'gemini' ? 'provider-section active' : 'provider-section';
-    document.getElementById('sectionGroq').className = provider === 'groq' ? 'provider-section active' : 'provider-section';
-}
-
-function openSettings() {
-    if (typeof window.fastToolkitSetExpand === 'function') {
-        window.fastToolkitSetExpand(true);
-    }
-    geminiKeyInput.value = localStorage.getItem('simah_ai_key') || '';
-    groqKeyInput.value = localStorage.getItem('simah_groq_key') || '';
-    switchProvider(currentProvider);
-    settingsModal.style.display = 'block';
-}
-
-function closeSettings() {
-    settingsModal.style.display = 'none';
-}
-
-function saveApiKey() {
-    const geminiKey = geminiKeyInput.value.trim();
-    const groqKey = groqKeyInput.value.trim();
-    localStorage.setItem('simah_ai_key', geminiKey);
-    localStorage.setItem('simah_groq_key', groqKey);
-    localStorage.setItem('simah_ai_provider', currentProvider);
-    closeSettings();
-
-    const providerName = currentProvider === 'groq' ? 'Groq' : 'Gemini';
-    showToast(`تم الحفظ — المزود: ${providerName} ✅`);
-}
-
-// ======== نظام تتبع الاستخدام ========
-function getUsageData() {
-    try {
-        return JSON.parse(localStorage.getItem('simah_usage') || '{}');
-    } catch { return {}; }
-}
-
-function saveUsageData(data) {
-    localStorage.setItem('simah_usage', JSON.stringify(data));
-}
-
-function recordUsage(provider) {
-    const now = new Date();
-    const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
-    const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-    const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
-
-    let data = getUsageData();
-    if (!data[provider]) data[provider] = {};
-    let p = data[provider];
-
-    // ساعة
-    if (p._hourKey !== hourKey) { p.hour = 0; p._hourKey = hourKey; }
-    p.hour = (p.hour || 0) + 1;
-
-    // يوم
-    if (p._dayKey !== dayKey) { p.day = 0; p._dayKey = dayKey; }
-    p.day = (p.day || 0) + 1;
-
-    // شهر
-    if (p._monthKey !== monthKey) { p.month = 0; p._monthKey = monthKey; }
-    p.month = (p.month || 0) + 1;
-
-    // إجمالي
-    p.total = (p.total || 0) + 1;
-
-    p.lastUsed = now.toISOString();
-    data[provider] = p;
-    saveUsageData(data);
-}
-
-const PROVIDER_LIMITS = {
-    groq: { rphLimit: 1800, rpdLimit: 1000, label: 'Groq' },
-    gemini: { rphLimit: 600, rpdLimit: 1500, label: 'Gemini' }
-};
-
-function toggleUsageModal() {
-    const modal = document.getElementById('usageModal');
-    if (modal.style.display === 'block') {
-        modal.style.display = 'none';
-        return;
-    }
-    if (typeof window.fastToolkitSetExpand === 'function') {
-        window.fastToolkitSetExpand(true);
-    }
-    refreshUsageModal();
-    modal.style.display = 'block';
-}
-
-function refreshUsageModal() {
-    const data = getUsageData();
-    const provider = currentProvider;
-    const p = data[provider] || {};
-    const limits = PROVIDER_LIMITS[provider] || PROVIDER_LIMITS.groq;
-    const now = new Date();
-    const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-    const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
-
-    const dayCount = p._dayKey === dayKey ? (p.day || 0) : 0;
-    const hourCount = p._hourKey === hourKey ? (p.hour || 0) : 0;
-    const totalCount = p.total || 0;
-
-    document.getElementById('usageProviderTitle').innerText = `📊 استهلاك ${limits.label}`;
-    document.getElementById('usageDay').innerText = dayCount;
-    document.getElementById('usageTotal').innerText = totalCount;
-
-    // === بار الطلبات اليومية ===
-    const reqSection = document.getElementById('reqSection');
-    const noData = document.getElementById('usageNoData');
-    reqSection.style.display = 'block';
-
-    const rpdMax = limits.rpdLimit;
-    const rpdUsed = dayCount;
-    const rpdRemaining = Math.max(0, rpdMax - rpdUsed);
-    const rpdPct = rpdMax > 0 ? Math.round((rpdUsed / rpdMax) * 100) : 0;
-
-    document.getElementById('reqUsed').innerText = rpdUsed;
-    document.getElementById('reqMax').innerText = rpdMax;
-    document.getElementById('reqRemaining').innerText = `${rpdRemaining} متبقي`;
-    document.getElementById('reqPercent').innerText = `${rpdPct}% مستهلك`;
-    document.getElementById('reqResetTime').innerText = `يتجدد كل يوم`;
-
-    const reqBar = document.getElementById('reqBarFill');
-    reqBar.style.width = Math.min(rpdPct, 100) + '%';
-    reqBar.style.background = rpdPct < 50 ? 'var(--accent-green)' : rpdPct < 80 ? '#ffcc00' : '#ff3333';
-
-    // === بار طلبات الدقيقة ===
-    const tokenSection = document.getElementById('tokenSection');
-    tokenSection.style.display = 'block';
-
-    const rphMax = limits.rphLimit;
-    const rpmUsed = hourCount;
-    const rpmRemaining = Math.max(0, rphMax - rpmUsed);
-    const rpmPct = rphMax > 0 ? Math.round((rpmUsed / rphMax) * 100) : 0;
-
-    document.getElementById('tokenUsed').innerText = rpmUsed;
-    document.getElementById('tokenMax').innerText = rphMax;
-    document.getElementById('tokenRemaining').innerText = `${rpmRemaining} متبقي`;
-    document.getElementById('tokenPercent').innerText = `${rpmPct}% مستهلك`;
-    document.getElementById('tokenResetTime').innerText = `يتجدد كل ساعة`;
-
-    const tokenBar = document.getElementById('tokenBarFill');
-    tokenBar.style.width = Math.min(rpmPct, 100) + '%';
-    tokenBar.style.background = rpmPct < 50 ? 'var(--accent-green)' : rpmPct < 80 ? '#ffcc00' : '#ff3333';
-
-    noData.style.display = 'none';
-
-    const lastUpdate = document.getElementById('usageLastUpdate');
-    if (p.lastUsed) {
-        const t = new Date(p.lastUsed);
-        lastUpdate.innerText = `آخر استخدام: ${t.toLocaleTimeString('ar-SA')}`;
-    } else {
-        lastUpdate.innerText = 'لم يتم الاستخدام بعد';
-    }
-}
-
-document.addEventListener('paste', e => {
-    const item = e.clipboardData.items[0];
-    if (item && item.type.indexOf('image') !== -1) processImage(item.getAsFile());
-});
-
-function handleFileUpload(e) {
-    if (e.target.files && e.target.files[0]) {
-        processImage(e.target.files[0]);
-        e.target.value = '';
-    }
-}
-
-async function processImage(file) {
-    resultsArea.innerHTML = '';
-    const dropZone = document.getElementById('dropZone');
-    dropZone.classList.add('processing');
-    let loadingToast;
-
-    if (currentProvider === 'groq') {
-        const groqKey = localStorage.getItem('simah_groq_key');
-        if (!groqKey) {
-            showToast("⚠️ مفتاح Groq مفقود! يرجى إدخال مفتاح الـ AI لاستخدام أداة سمة ⚙️", true, 4000);
-            openSettings();
-            dropZone.classList.remove('processing');
-            return;
+            if (percentage === 0) {
+                progressStatusText.textContent = "قم بتحميل الإضافة أولاً";
+            } else if (percentage === 33) {
+                progressStatusText.textContent = "تم التحميل! انسخ الرابط الآن";
+                dot1.className = "indicator-dot completed";
+                dot1.textContent = "✓";
+                dot2.className = "indicator-dot active";
+                cardStep1.classList.remove('active');
+                cardStep2.classList.add('active');
+            } else if (percentage === 66) {
+                progressStatusText.textContent = "رائع! جرب المحاكي بالأسفل";
+                dot2.className = "indicator-dot completed";
+                dot2.textContent = "✓";
+                dot3.className = "indicator-dot active";
+                cardStep2.classList.remove('active');
+                cardStep3.classList.add('active');
+                
+                // Show tooltip helper in simulator
+                setTimeout(() => {
+                    if (!document.getElementById('mock-dev-toggle').checked) {
+                        document.getElementById('sim-tooltip').style.display = 'block';
+                    }
+                }, 300);
+            } else if (percentage === 100) {
+                progressStatusText.textContent = "مكتمل بالكامل! جاهز للتثبيت 👑";
+                dot3.className = "indicator-dot completed";
+                dot3.textContent = "✓";
+                cardStep3.classList.add('active');
+            }
         }
-        loadingToast = showToast("جاري الاستخراج بالذكاء الاصطناعي عبر Groq... 🧠", false, 0);
-        await extractWithGroq(file, groqKey);
-    } else {
-        const apiKey = localStorage.getItem('simah_ai_key');
-        if (!apiKey) {
-            showToast("⚠️ مفتاح Gemini مفقود! يرجى إدخال مفتاح الـ AI لاستخدام أداة سمة ⚙️", true, 4000);
-            openSettings();
-            dropZone.classList.remove('processing');
-            return;
-        }
-        loadingToast = showToast("جاري الاستخراج بالذكاء الاصطناعي عبر Gemini... 🧠", false, 0);
-        await extractWithAI(file, apiKey);
-    }
-    
-    if (loadingToast) loadingToast.remove();
-    dropZone.classList.remove('processing');
-}
 
-async function extractWithAI(file, apiKey) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            try {
-                const base64String = reader.result.split(',')[1];
-                const payload = {
-                    contents: [{
-                        parts: [
-                            { text: "Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting." },
-                            { inlineData: { mimeType: file.type, data: base64String } }
-                        ]
-                    }]
-                };
+        // === 1. Interactive Download Simulation ===
+        const downloadBtn = document.getElementById('download-trigger-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnProgress = document.getElementById('btn-progress-fill');
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+        downloadBtn.addEventListener('click', () => {
+            if (isDownloaded) return;
 
-                if (!response.ok) throw new Error('API Error');
+            downloadBtn.classList.add('downloading');
+            btnIcon.textContent = "⏳";
+            btnText.textContent = "جاري التحميل... 0%";
 
-                recordUsage('gemini');
+            let currentProgress = 0;
+            const interval = setInterval(() => {
+                currentProgress += 5;
+                btnProgress.style.width = currentProgress + '%';
+                btnText.textContent = "جاري التحميل... " + currentProgress + "%";
 
-                const data = await response.json();
-                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
-                    extractAccounts(data.candidates[0].content.parts[0].text);
-                } else if (data.candidates && data.candidates[0].finishReason) {
-                    showToast("تم حظر الرد من قبل AI بسبب: " + data.candidates[0].finishReason, true, 4000);
-                    extractAccounts('');
-                } else if (data.error) {
-                    showToast("خطأ API: " + data.error.message, true, 4000);
-                    extractAccounts('');
-                } else {
-                    extractAccounts('');
+                if (currentProgress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Success state
+                    downloadBtn.classList.remove('downloading');
+                    downloadBtn.classList.add('success');
+                    btnIcon.textContent = "🎉";
+                    btnText.textContent = "تم التحميل بنجاح!";
+                    
+                    isDownloaded = true;
+                    updateOverallProgress();
+                    launchConfetti();
+
+                    // Actually trigger file download
+                    const hiddenAnchor = document.createElement('a');
+                    hiddenAnchor.href = "chrome-extension.zip";
+                    hiddenAnchor.download = "chrome-extension.zip";
+                    document.body.appendChild(hiddenAnchor);
+                    hiddenAnchor.click();
+                    document.body.removeChild(hiddenAnchor);
                 }
-            } catch (err) {
-                showToast("خطأ AI: " + err.message, true, 4000);
-            }
-            resolve();
-        };
-    });
-}
+            }, 80);
+        });
 
-async function extractWithGroq(file, groqKey) {
-    return new Promise(async (resolve) => {
-        try {
-            let rawOcrText = "";
-            if (typeof Tesseract !== 'undefined') {
-                try {
-                    const result = await Tesseract.recognize(file, 'eng+ara');
-                    rawOcrText = result?.data?.text || "";
-                } catch(e) {}
-            }
+        // === 2. Copy URL Action ===
+        const copyBtn = document.getElementById('copy-link-btn');
 
-            const promptText = `Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting.\n\nRAW TEXT:\n${rawOcrText}`;
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText('chrome://extensions').then(() => {
+                copyBtn.textContent = "تم النسخ! 🚀";
+                copyBtn.classList.add('copied');
+                
+                isCopied = true;
+                updateOverallProgress();
 
-            const payload = {
-                model: 'llama-3.3-70b-versatile',
-                messages: [{
-                    role: 'user',
-                    content: promptText
-                }]
-            };
-
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${groqKey}`
-                },
-                body: JSON.stringify(payload)
+                setTimeout(() => {
+                    copyBtn.textContent = "نسخ الرابط 📋";
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                // Fallback selection copy
+                const input = document.querySelector('.link-input');
+                input.select();
+                document.execCommand('copy');
+                
+                copyBtn.textContent = "تم النسخ! 🚀";
+                copyBtn.classList.add('copied');
+                isCopied = true;
+                updateOverallProgress();
+                
+                setTimeout(() => {
+                    copyBtn.textContent = "نسخ الرابط 📋";
+                    copyBtn.classList.remove('copied');
+                }, 2000);
             });
+        });
 
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error ? data.error.message : 'Unknown API Error');
-            }
+        // === 3. Google Chrome Extension Simulator ===
+        const mockDevToggle = document.getElementById('mock-dev-toggle');
+        const mockActionsBar = document.getElementById('mock-actions-bar');
+        const mockLoadBtn = document.getElementById('mock-load-btn');
+        const mockEmpty = document.getElementById('mock-empty');
+        const mockLoader = document.getElementById('mock-loader');
+        const mockExtensionCard = document.getElementById('mock-extension-card');
+        const simTooltip = document.getElementById('sim-tooltip');
+        const loadTooltip = document.getElementById('load-tooltip');
+        const simSuccessBanner = document.getElementById('sim-success-banner');
 
-            recordUsage('groq');
+        mockDevToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                // Dev mode ON
+                mockActionsBar.classList.add('active');
+                mockLoadBtn.removeAttribute('disabled');
+                mockLoadBtn.classList.add('pulse-border');
+                simTooltip.style.display = 'none';
 
-            if (data.choices && data.choices[0].message && data.choices[0].message.content) {
-                extractAccounts(data.choices[0].message.content);
+                // If step 2 was done, display next tooltip
+                if (isCopied && !isSimulated) {
+                    loadTooltip.style.display = 'block';
+                }
             } else {
-                extractAccounts(rawOcrText);
-            }
-        } catch (err) {
-            showToast("خطأ Groq: " + err.message, true, 4000);
-        }
-        resolve();
-    });
-}
-
-// === معالجة الصورة مسبقاً بـ Canvas لرفع دقة Tesseract (Grayscale + Threshold) ===
-async function preprocessImageForSimah(file) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const scale = Math.min(2, 1400 / Math.max(img.width, img.height));
-            canvas.width = img.width * scale;
-            canvas.height = img.height * scale;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                const binary = gray > 140 ? 255 : 0; // أكثر تساهلاً لحروف UUID
-                data[i] = data[i + 1] = data[i + 2] = binary;
-            }
-            ctx.putImageData(imageData, 0, 0);
-            URL.revokeObjectURL(url);
-            canvas.toBlob(resolve, 'image/png');
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
-        img.src = url;
-    });
-}
-
-async function extractWithTesseract(file) {
-    try {
-        const processedFile = await preprocessImageForSimah(file);
-        const worker = await Tesseract.createWorker('eng');
-        await worker.setParameters({ tesseract_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' });
-        const { data: { text } } = await worker.recognize(processedFile);
-        await worker.terminate();
-        extractAccounts(text);
-    } catch (err) { showToast("فشل في القراءة ❌", true); }
-}
-
-function extractAccounts(rawText) {
-    resultsArea.innerHTML = '';
-    let found = [];
-
-    let cleanText = rawText.replace(/[ \t]+/g, '');
-    const regex = /[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}|[A-Z0-9]{20,36}/g;
-    let matches = cleanText.match(regex);
-
-    if (matches) {
-        matches.forEach(acc => {
-            if (!found.includes(acc)) {
-                found.push(acc);
-                addReviewCard(acc);
+                // Dev mode OFF
+                mockActionsBar.classList.remove('active');
+                mockLoadBtn.setAttribute('disabled', 'true');
+                mockLoadBtn.classList.remove('pulse-border');
+                loadTooltip.style.display = 'none';
+                
+                // Hide extension card if Dev mode is off
+                mockExtensionCard.style.display = 'none';
+                mockEmpty.style.display = 'block';
             }
         });
-    }
 
-    if (found.length === 0) {
-        let ultraCleanText = rawText.replace(/[^A-Z0-9-]/g, '');
-        let ultraMatches = ultraCleanText.match(/[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}/g);
-        if (ultraMatches) {
-            ultraMatches.forEach(acc => {
-                if (!found.includes(acc)) {
-                    found.push(acc);
-                    addReviewCard(acc);
-                }
-            });
-        }
-    }
+        // Simulated Explorer variables
+        const mockExplorer = document.getElementById('mock-explorer');
+        const explorerFolderItem = document.getElementById('explorer-folder-item');
+        const explorerFileManifest = document.getElementById('explorer-file-manifest');
+        const explorerFileContent = document.getElementById('explorer-file-content');
+        const explorerPathText = document.getElementById('explorer-path-text');
+        const explorerSelectBtn = document.getElementById('explorer-select-btn');
+        const explorerCancelBtn = document.getElementById('explorer-cancel-btn');
+        const explorerCloseBtn = document.getElementById('explorer-close-btn');
+        const explorerBackArrow = document.getElementById('explorer-back-arrow');
+        const explorerErrorMsg = document.getElementById('explorer-error-msg');
+        
+        let explorerState = 'parent'; // 'parent' or 'inner'
+        let folderSelected = false;
 
-    if (found.length === 0) {
-        let lines = rawText.split('\n').map(l => l.replace(/[^A-Z0-9-]/g, '')).filter(l => l.length > 0);
-        for (let i = 0; i < lines.length - 1; i++) {
-            let combined = lines[i] + lines[i + 1];
-            if (combined.length >= 30 && combined.length <= 42) {
-                let cleanedCombined = combined.replace(/-+/g, '-').replace(/-$/, '');
-                if (cleanedCombined.length === 36 || cleanedCombined.length === 20) {
-                    addReviewCard(cleanedCombined);
-                    found.push(cleanedCombined);
-                    break;
+        mockLoadBtn.addEventListener('click', () => {
+            if (isSimulated) return;
+
+            loadTooltip.style.display = 'none';
+            mockLoadBtn.classList.remove('pulse-border');
+            mockEmpty.style.display = 'none';
+            
+            // Reset explorer state
+            mockExplorer.style.display = 'flex';
+            explorerState = 'parent';
+            folderSelected = false;
+            explorerPathText.textContent = "Downloads > royal-family-extension";
+            explorerFolderItem.style.display = 'flex';
+            explorerFolderItem.classList.remove('selected');
+            explorerFileManifest.style.display = 'none';
+            explorerFileContent.style.display = 'none';
+            explorerSelectBtn.classList.remove('active');
+            explorerErrorMsg.style.display = 'none';
+        });
+
+        // Folder selection/entering logic
+        explorerFolderItem.addEventListener('click', () => {
+            if (explorerState === 'parent') {
+                if (!folderSelected) {
+                    folderSelected = true;
+                    explorerFolderItem.classList.add('selected');
+                    explorerErrorMsg.style.display = 'none';
+                } else {
+                    enterChromeExtensionFolder();
                 }
             }
+        });
+
+        explorerFolderItem.addEventListener('dblclick', () => {
+            if (explorerState === 'parent') {
+                enterChromeExtensionFolder();
+            }
+        });
+
+        function enterChromeExtensionFolder() {
+            explorerState = 'inner';
+            explorerPathText.textContent = "Downloads > royal-family-extension > chrome-extension";
+            explorerFolderItem.style.display = 'none';
+            explorerFileManifest.style.display = 'flex';
+            explorerFileContent.style.display = 'flex';
+            explorerSelectBtn.classList.add('active');
+            explorerErrorMsg.style.display = 'none';
         }
-    }
 
-    if (found.length > 0) {
-        showToast(`وجد ${found.length} حسابات`, false);
-    } else {
-        showToast("لم يتم العثور على حسابات ❌", true);
-    }
-}
+        // Back arrow logic
+        explorerBackArrow.addEventListener('click', () => {
+            if (explorerState === 'inner') {
+                explorerState = 'parent';
+                folderSelected = false;
+                explorerPathText.textContent = "Downloads > royal-family-extension";
+                explorerFolderItem.style.display = 'flex';
+                explorerFolderItem.classList.remove('selected');
+                explorerFileManifest.style.display = 'none';
+                explorerFileContent.style.display = 'none';
+                explorerSelectBtn.classList.remove('active');
+            }
+        });
 
-function highlightSuspectCharacters(text) {
-    return text.replace(/[0DO8BIL15S]/g, m => `<span class="highlight">${m}</span>`);
-}
+        // Cancel and Close logic
+        const closeExplorer = () => {
+            mockExplorer.style.display = 'none';
+            if (!isSimulated) {
+                mockEmpty.style.display = 'block';
+            }
+        };
 
-function speakAccount(inputId, cardId) {
-    if (!('speechSynthesis' in window)) return;
+        explorerCancelBtn.addEventListener('click', closeExplorer);
+        explorerCloseBtn.addEventListener('click', closeExplorer);
 
-    window.speechSynthesis.cancel();
+        // Folder selection confirm
+        explorerSelectBtn.addEventListener('click', () => {
+            if (explorerState === 'parent') {
+                // Show error!
+                explorerErrorMsg.style.display = 'block';
+                explorerErrorMsg.style.animation = 'none';
+                explorerErrorMsg.offsetHeight; // trigger reflow
+                explorerErrorMsg.style.animation = 'shake 0.3s ease';
+            } else if (explorerState === 'inner') {
+                // Success! Close explorer and load card
+                mockExplorer.style.display = 'none';
+                mockLoader.style.display = 'flex';
 
-    const textToRead = document.getElementById(inputId).value.trim().toLowerCase();
-    const speedValue = parseFloat(document.getElementById(`sp_${cardId}`).getAttribute('data-speed'));
+                setTimeout(() => {
+                    mockLoader.style.display = 'none';
+                    mockExtensionCard.style.display = 'block';
+                    simSuccessBanner.style.display = 'block';
 
-    let verbalizedText = textToRead.split('').map(char => {
-        return speechDictionary[char] || ` ${char} `;
-    }).join(' ');
+                    isSimulated = true;
+                    updateOverallProgress();
+                    launchConfetti();
+                }, 1200);
+            }
+        });
 
-    const utterance = new SpeechSynthesisUtterance(verbalizedText);
-    utterance.lang = 'en-US';
-    utterance.rate = speedValue;
-    utterance.pitch = 1;
-
-    window.speechSynthesis.speak(utterance);
-}
-
-function updateCounter(cardId) {
-    const inputEl = document.getElementById(`i_${cardId}`);
-    const counterEl = document.getElementById(`count_${cardId}`);
-    const len = inputEl.value.trim().length;
-
-    counterEl.innerText = len + " خانة";
-
-    if (len === 20 || len === 36) {
-        counterEl.className = 'char-counter counter-valid';
-    } else {
-        counterEl.className = 'char-counter counter-invalid';
-    }
-}
-
-function addReviewCard(value) {
-    const cardId = 'c_' + Math.random().toString(36).substr(2, 5);
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.id = cardId;
-    div.innerHTML = `
-    <div class="card-header">
-        <div class="card-header-right">
-            <button class="delete-card-btn" onclick="removeCard('${cardId}')" title="حذف وإلغاء هذه البطاقة">✕ حذف</button>
-            <span class="label">| تأكيد الحساب</span>
-            <span id="count_${cardId}" class="char-counter">0 خانة</span>
-        </div>
-        <div class="card-header-left">
-            <div id="sp_${cardId}" class="speed-toggle-btn" data-speed="${globalVoiceSpeed}" onclick="toggleSpeed('${cardId}')">×${globalVoiceSpeed}</div>
-            <button class="play-btn" onclick="speakAccount('i_${cardId}', '${cardId}')" title="استماع للحساب">🔊</button>
-        </div>
-    </div>
-    <div class="visual-check" id="v_${cardId}">${highlightSuspectCharacters(value)}</div>
-    <input type="text" class="edit-input" id="i_${cardId}" value="${value}" oninput="updateCounter('${cardId}')">
-    <button class="action-btn" onclick="approve('${cardId}')">إعتماد للحفظ</button>
-`;
-    resultsArea.appendChild(div);
-
-    updateCounter(cardId);
-}
-
-function removeCard(cardId) {
-    document.getElementById(cardId).remove();
-    window.speechSynthesis.cancel();
-    if (resultsArea.children.length === 0) {
-        resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>';
-    }
-}
-
-function approve(cardId) {
-    const val = document.getElementById('i_' + cardId).value.trim().toUpperCase();
-    if (val && !savedAccountsList.includes(val)) {
-        savedAccountsList.push(val);
-        renderList();
-    }
-    document.getElementById(cardId).remove();
-    window.speechSynthesis.cancel();
-}
-
-function renderList() {
-    listCounter.innerText = `(${savedAccountsList.length})`;
-    finalListArea.innerHTML = savedAccountsList.map((acc, index) => `
-    <div class="final-card" id="fc_${index}" onclick="copy('${acc}', ${index})">
-        <div class="final-value">
-            <span>${acc}</span>
-            <span class="check-mark">✔</span>
-        </div>
-    </div>
-`).join('');
-}
-
-function copy(val, index) {
-    const proceedWithVisuals = () => {
-        showToast("تم النسخ! 📋");
-        const cardEl = document.getElementById(`fc_${index}`);
-        if (cardEl && !cardEl.classList.contains('copied')) {
-            cardEl.classList.add('copied');
-        }
-    };
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(val).then(proceedWithVisuals).catch(() => fallbackCopy(val, proceedWithVisuals));
-    } else {
-        fallbackCopy(val, proceedWithVisuals);
-    }
-}
-
-function fallbackCopy(text, callback) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-        document.execCommand('copy');
-        callback();
-    } catch (err) {
-        showToast("فشل النسخ ❌", true);
-    }
-    document.body.removeChild(textArea);
-}
-
-function clearFinalList() {
-    savedAccountsList = [];
-    renderList();
-    window.speechSynthesis.cancel();
-    showToast("تم مسح القائمة 🗑️");
-}
-
-// Global window bindings
-window.toggleSpeed = toggleSpeed;
-window.toggleAI = toggleAI;
-window.switchProvider = switchProvider;
-window.openSettings = openSettings;
-window.closeSettings = closeSettings;
-window.saveApiKey = saveApiKey;
-window.toggleUsageModal = toggleUsageModal;
-window.handleFileUpload = handleFileUpload;
-window.speakAccount = speakAccount;
-window.updateCounter = updateCounter;
-window.removeCard = removeCard;
-window.approve = approve;
-window.copy = copy;
-window.clearFinalList = clearFinalList;
-
-// Keyboard Shortcuts for Simah Tool
-document.addEventListener('keydown', (e) => {
-    const shortcuts = window.getFastToolkitShortcuts ? window.getFastToolkitShortcuts() : { enabled: true, ai: 'a', settings: 's', usage: 'u', clear: 'c' };
-    if (!shortcuts.enabled) return;
-
-    const activeEl = document.activeElement;
-    const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
-
-    // Escape closes modals
-    if (e.key === 'Escape') {
-        closeSettings();
-        const usageModal = document.getElementById('usageModal');
-        if (usageModal) usageModal.style.display = 'none';
-        return;
-    }
-
-    if (isInput) return;
-    if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-
-    const pressedKey = e.key.toLowerCase();
-    if (pressedKey === shortcuts.ai.toLowerCase()) {
-        toggleAI();
-    } else if (pressedKey === shortcuts.settings.toLowerCase() || pressedKey === ',') {
-        openSettings();
-    } else if (pressedKey === shortcuts.usage.toLowerCase()) {
-        toggleUsageModal();
-    } else if (pressedKey === shortcuts.clear.toLowerCase()) {
-        clearFinalList();
-    }
-});
-
-</script>
+        // Keyboard navigation (Esc to return)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
 </body>
+
 </html>
