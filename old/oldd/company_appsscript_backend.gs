@@ -1,25 +1,40 @@
 /**
  * Fast Toolkit - Google Apps Script Backend Engine
  * 
- * طريقة الاستخدام:
+ * طريقة الاستخدام والتشغيل:
  * 1. افتح https://script.google.com وقم بإنشاء مشروع جديد باسم "Fast Toolkit Engine".
  * 2. انسخ هذا الكود بالكامل واستبدل الكود الموجود في الملف Code.gs.
  * 3. انقر على Deploy -> New Deployment.
  * 4. اختر النوع: Web App.
  * 5. اضبط المالك: Execute as: Me.
- * 6. اضبط الوصول: Who has access: Anyone.
+ * 6. هام جداً!! اضبط الوصول: Who has access: Anyone (أي شخص).
  * 7. انقر Deploy وانسخ رابط الـ Web App وضعه في ملف config.js بالإضافة.
  */
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "getConfig";
+  
+  var payload = {};
+  if (e && e.parameter && e.parameter.payload) {
+    try {
+      payload = JSON.parse(e.parameter.payload);
+    } catch(err) {}
+  }
 
   if (action === "getConfig") {
     return handleGetConfig();
   } else if (action === "getNotes") {
     return handleGetNotes();
   } else if (action === "getBackup") {
-    return handleGetBackup(e.parameter ? e.parameter.key : "fast_copy_backup");
+    var backupKey = (e.parameter && e.parameter.key) ? e.parameter.key : (payload.key || "fast_copy_backup");
+    return handleGetBackup(backupKey);
+  } else if (action === "saveBackup") {
+    return handleSaveBackup({
+      key: payload.key || (e.parameter ? e.parameter.key : "fast_copy_backup"),
+      data: payload.data || (e.parameter ? e.parameter.data : {})
+    });
+  } else if (action === "saveNote") {
+    return handleSaveNote(payload);
   }
 
   return createJsonResponse({ status: "error", message: "Action not recognized" });
@@ -29,7 +44,7 @@ function doPost(e) {
   try {
     var contents = e.postData ? e.postData.contents : "{}";
     var payload = JSON.parse(contents);
-    var action = payload.action || "saveData";
+    var action = payload.action || (e.parameter ? e.parameter.action : "saveData");
 
     if (action === "saveData" || action === "logEvent") {
       return handleSaveData(payload);
@@ -37,6 +52,8 @@ function doPost(e) {
       return handleSaveNote(payload);
     } else if (action === "saveBackup") {
       return handleSaveBackup(payload);
+    } else if (action === "getBackup") {
+      return handleGetBackup(payload.key || "fast_copy_backup");
     }
 
     return createJsonResponse({ status: "error", message: "Post action not recognized" });
