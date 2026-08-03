@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Royal Family - Fast Toolkit",
+  "version": "1.1.0",
+  "description": "لوحة الأدوات السريعة تفتح كشريط جانبي بجوار موقع العمل مباشرة",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "sidePanel",
+    "declarativeNetRequest",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://script.google.com/*",
+    "https://*.googleusercontent.com/*",
+    "*://*.tabby.sa/*"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "افتح اللوحة الجانبية Fast Toolkit"
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://script.google.com/*", "https://*.googleusercontent.com/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ]
+}
+

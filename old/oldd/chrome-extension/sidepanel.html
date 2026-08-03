@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Toolkit Side Panel</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: transparent;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <iframe src="about:blank" id="tool-frame" allow="clipboard-read; clipboard-write"></iframe>
+    <script>
+        const DEFAULT_APPSCRIPT_URL = "https://script.google.com";
+
+        function loadFrameUrl() {
+            const iframe = document.getElementById('tool-frame');
+            if (!iframe) return;
+
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.get(['fastToolkitCompanyWebAppUrl'], (result) => {
+                    const savedUrl = result.fastToolkitCompanyWebAppUrl;
+                    if (savedUrl && savedUrl.trim()) {
+                        iframe.src = savedUrl.trim();
+                    } else {
+                        const localSaved = localStorage.getItem('fastToolkitCompanyWebAppUrl');
+                        iframe.src = localSaved || DEFAULT_APPSCRIPT_URL;
+                    }
+                });
+            } else {
+                const localSaved = localStorage.getItem('fastToolkitCompanyWebAppUrl');
+                iframe.src = localSaved || DEFAULT_APPSCRIPT_URL;
+            }
+        }
+        loadFrameUrl();
+        function checkActiveTab() {
+            if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    if (tabs && tabs[0] && tabs[0].url) {
+                        const url = tabs[0].url;
+                        const isTicket = url.includes('/ticket') || 
+                                         url.includes('/tickets/') || 
+                                         (url.includes('tabby.sa') && url.includes('ticket'));
+                        const iframe = document.getElementById('tool-frame');
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({
+                                action: "updateTicketState",
+                                hasTicket: isTicket,
+                                ticketUrl: isTicket ? url : ""
+                            }, "*");
+                        }
+                    }
+                });
+            }
+        }
+
+        // Listen to extension background URL changes and forward to tool iframe
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+            chrome.runtime.onMessage.addListener((message) => {
+                if (message.action === "resetTicketTimer" || message.action === "updateTicketState") {
+                    const iframe = document.getElementById('tool-frame');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage(message, "*");
+                    }
+                }
+            });
+        }
+
+        window.addEventListener('load', checkActiveTab);
+        setInterval(checkActiveTab, 3000);
+    </script>
+</body>
+</html>
+
+
