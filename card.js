@@ -101,21 +101,28 @@ function loadSavedTabbyInput() {
     }
 }
 
+function loadSavedCardData() {
+    const saved = localStorage.getItem('cardScannerData');
+    if (!saved) return;
+    try {
+        const data = JSON.parse(saved);
+        updateUI(data.fullText, data.card, data.amount, data.time, data.date);
+        if (data.cleanText) detectCardMeta(data.cleanText);
+    } catch (e) { }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initCheckoutActionModeUI();
     loadSavedTabbyInput();
-    const saved = localStorage.getItem('cardScannerData');
-    if (saved) {
-        try {
-            const data = JSON.parse(saved);
-            updateUI(data.fullText, data.card, data.amount, data.time, data.date);
-            if (data.cleanText) detectCardMeta(data.cleanText);
-        } catch (e) { }
-    }
+    loadSavedCardData();
 });
 
 window.addEventListener('focus', loadSavedTabbyInput);
 window.addEventListener('pageshow', loadSavedTabbyInput);
+window.addEventListener('storage', (event) => {
+    if (event.key === 'cardScannerData') loadSavedCardData();
+    if (event.key === 'tabbyInput_saved') loadSavedTabbyInput();
+});
 
 outputEdit.addEventListener('input', () => {
     const parts = outputEdit.value.split('//').map(p => p.trim());
@@ -220,6 +227,16 @@ function saveScanToHistory(data) {
     localStorage.setItem('cardScannerHistory', JSON.stringify(history));
 }
 
+function activateCardScanPopup() {
+    if (window.clearTabbyInput) {
+        window.clearTabbyInput();
+    }
+
+    if (window.launchPip) {
+        window.launchPip();
+    }
+}
+
 async function processImage(file) {
     dropZone.classList.add('active', 'processing');
     let loadingToast;
@@ -233,6 +250,7 @@ async function processImage(file) {
                 dropZone.classList.remove('active', 'processing');
                 return;
             }
+            activateCardScanPopup();
             await extractCardWithGroq(file, groqKey, loadingToast);
         } else {
             loadingToast = showToast("جاري الاستخراج عبر Gemini... 🧠", false, 0);
@@ -243,6 +261,7 @@ async function processImage(file) {
                 dropZone.classList.remove('active', 'processing');
                 return;
             }
+            activateCardScanPopup();
             await extractCardWithAI(file, apiKey, loadingToast);
         }
     } else {
@@ -470,14 +489,7 @@ function parseData(rawText) {
     showToast("تم النسخ والتحليل! ✅");
     secureCopy(finalResult);
 
-    // Clear old Tabby user input when scanning a new card
-    if (window.clearTabbyInput) {
-        window.clearTabbyInput();
-    }
-
-    if (window.launchPip) {
-        window.launchPip();
-    }
+    activateCardScanPopup();
 }
 
 function updateUI(fullText, card, amount, time, date) {
@@ -1202,6 +1214,7 @@ function parseAIResult(aiText) {
 
     showToast("تم النسخ والتحليل بالـ AI! ✅");
     secureCopy(finalResult);
+    activateCardScanPopup();
 }
 
 

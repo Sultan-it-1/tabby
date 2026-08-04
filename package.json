@@ -1,6 +1,6 @@
 {
   "name": "fast-toolkit",
-  "version": "2.0.25",
+  "version": "2.0.26",
   "private": true,
   "scripts": {
     "check": "node --check card.js && node --check cia.js && node --check date.js && node --check note.js && node --check settings.js && node --check simah.js && node --check sticky.js && node --check sw.js && node --check version.js && node --check chrome-extension/background.js && node --check chrome-extension/content.js && node --check chrome-extension/launcher.js && node --check chrome-extension-dev/background.js && node --check chrome-extension-dev/content.js"
