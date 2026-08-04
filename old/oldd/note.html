@@ -527,14 +527,12 @@ const APP_VERSION = "2.0.14";
 (function() {
     const GAS_URL_KEY = 'fast_toolkit_gas_url';
     const USER_ID_KEY = 'fast_toolkit_user_id';
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzFz_CWlEuy8ijNqbukZheI6bCaIGdt-cT7FWw9663udYTjWG_-6zQK_-LjE0q5C8gf/exec';
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxaHl1JjB8KUevA1kTv6VwvPK6OTHwHTxwELItChwSWVAZVW2ZLtcu336JEh3bNEHSW/exec';
+    let isCloudPullComplete = false;
 
-    // Purge old stale URLs if present
     try {
         const stored = localStorage.getItem(GAS_URL_KEY);
-        if (stored && (stored.includes('AKfycbwREwx') || !stored.includes('/exec'))) {
-            localStorage.removeItem(GAS_URL_KEY);
-        }
+        if (stored && !stored.includes('/exec')) localStorage.removeItem(GAS_URL_KEY);
     } catch(e) {}
 
     window.getGasUrl = function() {
@@ -544,11 +542,8 @@ const APP_VERSION = "2.0.14";
     };
 
     window.saveGasUrl = function(url) {
-        if (url && url.trim()) {
-            localStorage.setItem(GAS_URL_KEY, url.trim());
-        } else {
-            localStorage.removeItem(GAS_URL_KEY);
-        }
+        if (url && url.trim()) localStorage.setItem(GAS_URL_KEY, url.trim());
+        else localStorage.removeItem(GAS_URL_KEY);
         if (window.updateGasSyncBadge) window.updateGasSyncBadge();
     };
 
@@ -557,9 +552,7 @@ const APP_VERSION = "2.0.14";
     };
 
     window.saveFastToolkitUserId = function(customId) {
-        if (customId && customId.trim()) {
-            localStorage.setItem(USER_ID_KEY, customId.trim());
-        }
+        if (customId && customId.trim()) localStorage.setItem(USER_ID_KEY, customId.trim());
         if (window.updateGasSyncBadge) window.updateGasSyncBadge();
     };
 
@@ -567,124 +560,146 @@ const APP_VERSION = "2.0.14";
         const badges = document.querySelectorAll('#gasSyncBadge');
         const uId = window.getFastToolkitUserId();
         badges.forEach(b => {
-            if (uId && uId.includes('@')) {
-                b.innerHTML = '🟢 المزامنة السحابية نشطة (' + uId + ')';
-            } else {
-                b.innerHTML = '🟢 المزامنة السحابية التلقائية نشطة';
-            }
+            b.innerHTML = uId && uId.includes('@')
+                ? '🟢 المزامنة السحابية نشطة (' + uId + ')'
+                : '🟢 المزامنة السحابية التلقائية نشطة';
             b.style.color = 'var(--accent-green)';
         });
     };
 
+    window.gasShowLoginOverlay = function() {
+        const el = document.getElementById('gasLoginOverlay');
+        if (el) el.style.display = 'flex';
+    };
+
+    window.gasHideLoginOverlay = function() {
+        const el = document.getElementById('gasLoginOverlay');
+        if (el) el.style.display = 'none';
+    };
+
+    window.gasOpenGoogleLogin = function() {
+        window.open(window.getGasUrl(), '_blank', 'width=640,height=680');
+    };
+
+    // جلب الإيميل من خادم قوقل عبر JSONP (يحمل كوكيز المتصفح)
+    window.gasFetchEmail = function() {
+        return new Promise((resolve) => {
+            const gasUrl = window.getGasUrl();
+            if (!gasUrl) return resolve(null);
+            const cbName = 'emailCB_' + Date.now();
+            const script = document.createElement('script');
+            const sep = gasUrl.includes('?') ? '&' : '?';
+            let timer = setTimeout(() => {
+                delete window[cbName]; script.remove(); resolve(null);
+            }, 8000);
+            window[cbName] = function(result) {
+                clearTimeout(timer); delete window[cbName]; script.remove();
+                resolve(result && result.email && result.email.includes('@') ? result.email : null);
+            };
+            script.onerror = function() {
+                clearTimeout(timer); delete window[cbName]; script.remove(); resolve(null);
+            };
+            script.src = gasUrl + sep + 'action=get_email&callback=' + cbName + '&t=' + Date.now();
+            document.body.appendChild(script);
+        });
+    };
+
+    window.gasRetryEmailFetch = async function() {
+        const email = await window.gasFetchEmail();
+        if (email) {
+            localStorage.setItem(USER_ID_KEY, email);
+            window.gasHideLoginOverlay();
+            window.updateGasSyncBadge();
+            window.autoPullFromGAS(false);
+        } else {
+            window.gasOpenGoogleLogin();
+        }
+    };
+
+    // === رفع البيانات للسيرفر مع credentials لضمان حمل الكوكيز ===
     window.autoPushToGAS = async function(customData = null) {
         const gasUrl = window.getGasUrl();
         if (!gasUrl) return;
+        if (!isCloudPullComplete && !customData && !localStorage.getItem('copyGridDataV6') && !localStorage.getItem('fastToolkitCIA_v4')) return;
 
         try {
             const backupKeys = [
-                'fastToolkitSettings',
-                'fastToolkitShortcuts',
-                'fastToolkitExpanded',
-                'copyGridDataV6',
-                'unbackedUpCountV6',
-                'quick_sticky_note',
-                'stickyNotesData',
-                'currentStickyNoteId',
-                'fastToolkitCIA_v4',
-                'cardScannerData',
-                'cardScannerHistory',
-                'simahApprovedAccounts',
-                'simahAccountsHistory',
-                'simah_ai_provider',
-                'simah_ai_pref',
-                'simah_usage',
-                'cardLinkToggle'
+                'fastToolkitSettings','fastToolkitShortcuts','fastToolkitExpanded',
+                'copyGridDataV6','unbackedUpCountV6','quick_sticky_note',
+                'stickyNotesData','currentStickyNoteId','fastToolkitCIA_v4',
+                'cardScannerData','cardScannerHistory','simahApprovedAccounts',
+                'simahAccountsHistory','simah_ai_provider','simah_ai_pref',
+                'simah_usage','cardLinkToggle'
             ];
-            
             const payloadData = customData || {};
             if (!customData) {
-                backupKeys.forEach(k => {
-                    const val = localStorage.getItem(k);
-                    if (val !== null) payloadData[k] = val;
-                });
+                backupKeys.forEach(k => { const v = localStorage.getItem(k); if (v !== null) payloadData[k] = v; });
             }
-
             const payloadStr = JSON.stringify({
                 action: 'sync',
                 userId: window.getFastToolkitUserId(),
                 data: payloadData
             });
 
-            // 1. Try sendBeacon for immediate zero-CORS background push
-            if (navigator.sendBeacon) {
-                const blob = new Blob([payloadStr], { type: 'text/plain;charset=utf-8' });
-                if (navigator.sendBeacon(gasUrl, blob)) {
-                    console.log('Fast Toolkit: Auto-synced via sendBeacon ☁️');
-                    return;
-                }
-            }
-
-            // 2. Fallback to fetch text/plain
+            // POST مع credentials لضمان وصول كوكيز قوقل للسيرفر
             await fetch(gasUrl, {
                 method: 'POST',
                 mode: 'no-cors',
+                credentials: 'include',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: payloadStr
             });
-            console.log('Fast Toolkit: Auto-synced via fetch ☁️');
+            console.log('Fast Toolkit: Data saved to cloud ☁️ (' + window.getFastToolkitUserId() + ')');
         } catch (err) {
-            console.warn('Fast Toolkit: Auto-sync push failed:', err);
+            console.warn('Fast Toolkit: Push failed:', err);
         }
     };
 
+    // === جلب البيانات من السيرفر عبر JSONP (يحمل كوكيز المتصفح) ===
     window.autoPullFromGAS = function(showFeedback = false) {
         return new Promise((resolve) => {
             const gasUrl = window.getGasUrl();
             if (!gasUrl) return resolve(false);
-
             const uId = window.getFastToolkitUserId();
-            const callbackName = 'gasCallback_' + Date.now() + '_' + Math.floor(Math.random()*1000);
-            
+            const cbName = 'gasCB_' + Date.now() + '_' + Math.floor(Math.random()*9999);
             const script = document.createElement('script');
-            const separator = gasUrl.includes('?') ? '&' : '?';
-            
-            window[callbackName] = function(result) {
-                delete window[callbackName];
-                script.remove();
+            const sep = gasUrl.includes('?') ? '&' : '?';
+
+            window[cbName] = function(result) {
+                delete window[cbName]; script.remove();
+                isCloudPullComplete = true;
                 if (result && result.status === 'success') {
                     if (result.userId && result.userId.includes('@')) {
                         localStorage.setItem(USER_ID_KEY, result.userId);
-                        if (window.updateGasSyncBadge) window.updateGasSyncBadge();
+                        window.updateGasSyncBadge();
                     }
-                    if (result.data) {
+                    if (result.data && Object.keys(result.data).length > 0) {
                         let updated = false;
                         Object.keys(result.data).forEach(k => {
                             const val = typeof result.data[k] === 'object' ? JSON.stringify(result.data[k]) : result.data[k];
-                            if (localStorage.getItem(k) !== val) {
-                                localStorage.setItem(k, val);
-                                updated = true;
+                            if (val && val !== '{}' && localStorage.getItem(k) !== val) {
+                                localStorage.setItem(k, val); updated = true;
                             }
                         });
-                        if (showFeedback) {
+                        if (updated) {
+                            if (showFeedback) { alert('تمت استعادة بياناتك بنجاح! ☁️🎉'); window.location.reload(); }
+                            else { if (window.render) window.render(); else if (window.renderCards) window.renderCards(); }
+                        } else if (showFeedback) {
                             alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
-                            window.location.reload();
                         }
-                        resolve(updated);
-                        return;
+                        resolve(updated); return;
                     }
                 }
                 if (showFeedback) alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
                 resolve(false);
             };
-
             script.onerror = function() {
-                delete window[callbackName];
-                script.remove();
+                delete window[cbName]; script.remove();
+                isCloudPullComplete = true;
                 if (showFeedback) alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
                 resolve(false);
             };
-
-            script.src = `${gasUrl}${separator}action=read&userId=${encodeURIComponent(uId)}&callback=${callbackName}&t=${Date.now()}`;
+            script.src = gasUrl + sep + 'action=read&userId=' + encodeURIComponent(uId) + '&callback=' + cbName + '&t=' + Date.now();
             document.body.appendChild(script);
         });
     };
@@ -693,36 +708,41 @@ const APP_VERSION = "2.0.14";
     window.triggerGasAutoPush = function() {
         if (!window.getGasUrl()) return;
         clearTimeout(pushDebounce);
-        pushDebounce = setTimeout(() => {
-            window.autoPushToGAS();
-        }, 1200);
+        pushDebounce = setTimeout(() => window.autoPushToGAS(), 1500);
     };
 
-    // Global localStorage.setItem Interceptor for 100% Automatic Cloud Sync
     if (!window._gasInterceptorSet) {
         window._gasInterceptorSet = true;
-        const _originalSetItem = localStorage.setItem;
+        const _orig = localStorage.setItem;
         localStorage.setItem = function(key, value) {
-            _originalSetItem.apply(this, arguments);
-            if (key !== GAS_URL_KEY && key !== USER_ID_KEY && window.triggerGasAutoPush) {
-                window.triggerGasAutoPush();
-            }
+            _orig.apply(this, arguments);
+            if (key !== GAS_URL_KEY && key !== USER_ID_KEY) window.triggerGasAutoPush();
         };
     }
 
-    // Auto-pull on load if configured & update badge
-    const initBadge = () => {
+    // التهيئة الأولية
+    const initSync = async () => {
         if (window.updateGasSyncBadge) window.updateGasSyncBadge();
-        if (window.getGasUrl()) {
+        const gasUrl = window.getGasUrl();
+        if (!gasUrl) return;
+
+        const storedEmail = localStorage.getItem(USER_ID_KEY);
+        if (storedEmail && storedEmail.includes('@')) {
             window.autoPullFromGAS(false);
+        } else {
+            const email = await window.gasFetchEmail();
+            if (email) {
+                localStorage.setItem(USER_ID_KEY, email);
+                window.updateGasSyncBadge();
+                window.autoPullFromGAS(false);
+            } else {
+                window.gasShowLoginOverlay();
+            }
         }
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initBadge);
-    } else {
-        initBadge();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSync);
+    else initSync();
 })();
 
 </script>
@@ -2255,6 +2275,44 @@ const APP_VERSION = "2.0.14";
 })();
 
 </script>
+
+<style id="gasLoginOverlayStyle">
+#gasLoginOverlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999;
+    background: rgba(10,10,14,0.97);
+    flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; direction: rtl; text-align: center;
+    backdrop-filter: blur(8px);
+}
+#gasLoginOverlay .login-card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #00e676;
+    border-radius: 20px;
+    padding: 40px 32px;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: 0 0 40px rgba(0,230,118,0.15);
+    animation: loginFadeIn 0.4s ease;
+}
+@keyframes loginFadeIn {
+    from { opacity:0; transform: translateY(-20px); }
+    to { opacity:1; transform: translateY(0); }
+}
+#gasLoginOverlay .login-logo { font-size: 52px; margin-bottom: 12px; }
+#gasLoginOverlay h2 { color: #fff; font-size: 20px; margin: 0 0 8px; font-weight: 700; }
+#gasLoginOverlay p { color: #aaa; font-size: 13px; margin: 0 0 28px; line-height: 1.6; }
+#gasLoginOverlay .login-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: #fff; color: #333; border: none; border-radius: 12px;
+    padding: 13px 24px; font-size: 15px; font-weight: 600;
+    cursor: pointer; width: 100%; transition: all 0.2s;
+    text-decoration: none;
+}
+#gasLoginOverlay .login-btn:hover { background: #f0f0f0; transform: scale(1.02); }
+#gasLoginOverlay .login-btn img { width: 20px; height: 20px; }
+#gasLoginOverlay .login-note { color: #555; font-size: 11px; margin-top: 18px; }
+</style>
 </head>
 
 <body>
