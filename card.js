@@ -90,6 +90,8 @@ function showToast(message, isError = false, duration = 2500) {
 let isEditMode = false;
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
 let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
+const CARD_SCAN_COPY_REQUEST_KEY = 'cardScannerCopyRequest';
+let lastHandledCopyRequestAt = 0;
 if (isAIActive && aiBtn) aiBtn.className = 'ai-btn active';
 
 function loadSavedTabbyInput() {
@@ -115,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCheckoutActionModeUI();
     loadSavedTabbyInput();
     loadSavedCardData();
+    handlePipCopyRequest(localStorage.getItem(CARD_SCAN_COPY_REQUEST_KEY));
 });
 
 window.addEventListener('focus', loadSavedTabbyInput);
@@ -122,6 +125,7 @@ window.addEventListener('pageshow', loadSavedTabbyInput);
 window.addEventListener('storage', (event) => {
     if (event.key === 'cardScannerData') loadSavedCardData();
     if (event.key === 'tabbyInput_saved') loadSavedTabbyInput();
+    if (event.key === CARD_SCAN_COPY_REQUEST_KEY) handlePipCopyRequest(event.newValue);
 });
 
 outputEdit.addEventListener('input', () => {
@@ -164,6 +168,47 @@ async function secureCopy(text) {
         document.body.removeChild(textArea);
         return success;
     }
+}
+
+function isInsidePipFrame() {
+    try {
+        if (window.top && window.top !== window && window.top.isPip) return true;
+    } catch (e) { }
+
+    try {
+        if (window.parent && window.parent !== window && window.parent.opener) return true;
+    } catch (e) { }
+
+    try {
+        if (window.opener) return true;
+    } catch (e) { }
+
+    return false;
+}
+
+function requestPipCopy(text) {
+    try {
+        localStorage.setItem(CARD_SCAN_COPY_REQUEST_KEY, JSON.stringify({
+            text,
+            requestedAt: Date.now()
+        }));
+    } catch (e) { }
+}
+
+async function handlePipCopyRequest(rawRequest) {
+    if (!isInsidePipFrame() || !rawRequest) return;
+    try {
+        const request = JSON.parse(rawRequest);
+        if (!request || typeof request.text !== 'string' || typeof request.requestedAt !== 'number') return;
+        if (request.requestedAt <= lastHandledCopyRequestAt) return;
+        if (Date.now() - request.requestedAt > 60000) return;
+
+        lastHandledCopyRequestAt = request.requestedAt;
+        const copied = await secureCopy(request.text);
+        if (copied) {
+            localStorage.removeItem(CARD_SCAN_COPY_REQUEST_KEY);
+        }
+    } catch (e) { }
 }
 
 function formatAmount(amount) {
@@ -1213,6 +1258,7 @@ function parseAIResult(aiText) {
     saveScanToHistory(savedData);
 
     showToast("تم النسخ والتحليل بالـ AI! ✅");
+    requestPipCopy(finalResult);
     secureCopy(finalResult);
     activateCardScanPopup();
 }
