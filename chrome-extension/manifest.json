@@ -13,8 +13,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "*://*.sultanops.com/*",
-    "*://*.tabby.sa/*"
+    "*://*.sultanops.com/*"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"
@@ -36,4 +35,3 @@
     }
   ]
 }
-

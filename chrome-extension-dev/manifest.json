@@ -15,8 +15,7 @@
   "host_permissions": [
     "*://127.0.0.1/*",
     "*://localhost/*",
-    "*://*.sultanops.com/*",
-    "*://*.tabby.sa/*"
+    "*://*.sultanops.com/*"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"
