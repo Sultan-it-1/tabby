@@ -4,10 +4,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Instant Anti-Flicker Initialization -->
+    <script>
+        document.documentElement.classList.add('expanded');
+        if (localStorage.getItem('fastToolkit_full_window') !== 'false') {
+            document.documentElement.classList.add('full-window');
+        }
+    </script>
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
     <meta name="description" content="FAST TOOLKIT - مجموعة أدوات ذكية وسريعة">
     <meta name="theme-color" content="#0f0f0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>بوابة الأدوات الذكية - الرئيسية</title>
+    <!-- Prefetch all tool pages for instant navigation -->
+    <link rel="prefetch" href="card.html">
+    <link rel="prefetch" href="note.html">
+    <link rel="prefetch" href="simah.html">
+    <link rel="prefetch" href="sticky.html">
+    <link rel="prefetch" href="cia.html">
+    <link rel="prefetch" href="date.html">
+    <link rel="prefetch" href="settings.html">
+    <link rel="prefetch" href="download.html">
     <style>
         :root {
             --bg: #0f0f0f;
@@ -208,13 +230,6 @@
             gap: 1px;
         }
     </style>
-    <!-- Centralized Cache Busting Loader -->
-    <script>
-        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
-    </script>
-    <script>
-        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
-    </script>
 </head>
 
 <body>

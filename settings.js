@@ -6,8 +6,11 @@
 
     // Apply expanded and full-window states to document element instantly to prevent page transition flickering
     document.documentElement.classList.add('expanded');
-    if (localStorage.getItem('fastToolkit_full_window') !== 'false') {
+    const path = window.location.pathname;
+    const isIndexPage = path.endsWith('index.html') || path.endsWith('/') || path === '' || !path.includes('.html');
+    if (isIndexPage || localStorage.getItem('fastToolkit_full_window') !== 'false') {
         document.documentElement.classList.add('full-window');
+        localStorage.setItem('fastToolkit_full_window', 'true');
     }
 
     const defaultSettings = {
@@ -1320,7 +1323,9 @@
     // === Global Expand/Collapse ===
     function applyExpand() {
         document.documentElement.classList.add('expanded');
-        const isFull = localStorage.getItem('fastToolkit_full_window') !== 'false';
+        const path = window.location.pathname;
+        const isIndexPage = path.endsWith('index.html') || path.endsWith('/') || path === '' || !path.includes('.html');
+        const isFull = isIndexPage || localStorage.getItem('fastToolkit_full_window') !== 'false';
         if (isFull) {
             document.documentElement.classList.add('full-window');
             if (document.body) document.body.classList.add('full-window');
@@ -1340,7 +1345,17 @@
                 // Register Service Worker
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('sw.js')
-                        .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
+                        .then(reg => {
+                            console.log('Fast Toolkit: PWA Service Worker registered');
+                            // Prefetch all pages immediately so navigation is instant
+                            setTimeout(() => {
+                                if (navigator.serviceWorker.controller) {
+                                    navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_ALL' });
+                                } else {
+                                    navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({ type: 'PREFETCH_ALL' }));
+                                }
+                            }, 2000);
+                        })
                         .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
                 }
                 // Inject Manifest Link
@@ -1366,7 +1381,16 @@
             // Register Service Worker
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
-                    .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
+                    .then(reg => {
+                        console.log('Fast Toolkit: PWA Service Worker registered');
+                        setTimeout(() => {
+                            if (navigator.serviceWorker.controller) {
+                                navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_ALL' });
+                            } else {
+                                navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({ type: 'PREFETCH_ALL' }));
+                            }
+                        }, 2000);
+                    })
                     .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
             }
             // Inject Manifest Link
