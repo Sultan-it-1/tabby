@@ -4,8 +4,11 @@
     const GOOGLE_CLIENT_ID = "391323775541-770j7b9e1bgtv57fnhi77cgcc10mnojp.apps.googleusercontent.com";
     window.GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID;
 
-    // Apply expanded state to document element instantly to prevent page transition flickering
+    // Apply expanded and full-window states to document element instantly to prevent page transition flickering
     document.documentElement.classList.add('expanded');
+    if (localStorage.getItem('fastToolkit_full_window') !== 'false') {
+        document.documentElement.classList.add('full-window');
+    }
 
     const defaultSettings = {
         mode: 'light',
@@ -213,6 +216,8 @@
             transition: width 0.3s ease, height 0.3s ease !important;
         }
 
+
+
         /* === Expanded state: scale up all content === */
         .expanded .header h1, .expanded .header-row h1 { font-size: 18px !important; }
         .expanded .header p { font-size: 11px !important; }
@@ -251,6 +256,14 @@
         .expanded .color-btn { width: 24px !important; height: 24px !important; }
         .expanded .action-btn.btn-reset, .expanded .btn-reset { font-size: 12px !important; padding: 8px !important; }
 
+        /* === Modern Button Micro-Animations & Press Feedback === */
+        button, .btn, .nav-btn, .action-btn, .chip, .menu-item, .checkout-search-btn, .checkout-mode-toggle, .add-main-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        button:active, .btn:active, .nav-btn:active, .action-btn:active, .chip:active, .menu-item:active, .checkout-search-btn:active, .checkout-mode-toggle:active {
+            transform: scale(0.95) !important;
+        }
+
         /* simah.html */
         .expanded .section-title { font-size: 11px !important; }
         .expanded .scan-zone p { font-size: 11px !important; }
@@ -276,6 +289,53 @@
         .expanded .provider-tab { padding: 6px !important; font-size: 11px !important; border-radius: 6px !important; }
         .expanded .provider-tabs { margin-bottom: 10px !important; }
         .expanded .settings-modal-btns button { padding: 6px !important; font-size: 11px !important; border-radius: 6px !important; }
+
+        /* === Full Window / Split Screen Mode (High Priority Override) === */
+        html.full-window, body.full-window {
+            width: 100% !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            background: ${containerBg} !important;
+        }
+
+        html.full-window .container,
+        html.full-window .app-container,
+        body.full-window .container,
+        body.full-window .app-container,
+        html.expanded.full-window .container,
+        html.expanded.full-window .app-container,
+        .container.full-window,
+        .app-container.full-window {
+            width: 100% !important;
+            height: 100vh !important;
+            min-width: 100% !important;
+            min-height: 100vh !important;
+            max-width: 100% !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 12px 14px !important;
+            box-sizing: border-box !important;
+            flex-grow: 1 !important;
+        }
+
+        html.full-window .menu-grid,
+        body.full-window .menu-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+            align-content: start !important;
+            gap: 10px !important;
+            max-height: calc(100vh - 90px) !important;
+            overflow-y: auto !important;
+            padding-right: 4px !important;
+        }
     `;
 
     // PiP layout overrides inside the iframe
@@ -383,6 +443,14 @@
             .slider { background-color: ${itemBorder} !important; border-color: #aaa !important; }
             input:checked+.slider { background-color: var(--accent-green) !important; border-color: var(--accent-green) !important; }
             hr { border-top-color: ${itemBorder} !important; }
+
+            .checkout-search-box { background: #f0f8ff !important; border-color: #00b0ff !important; }
+            .checkout-search-header { color: #0088cc !important; }
+            .checkout-mode-toggle { background: #e6f7ff !important; border-color: #0099ff !important; color: #0077cc !important; }
+            .checkout-param-chip { background: #f5f5f5 !important; color: #555 !important; border-color: #ddd !important; opacity: 0.8 !important; }
+            .checkout-param-chip.active { background: #e6f7ff !important; color: #0077cc !important; border-color: #0099ff !important; opacity: 1 !important; font-weight: bold !important; }
+            .checkout-search-btn { background: linear-gradient(135deg, #00b0ff, #0088cc) !important; color: #ffffff !important; border-color: #0088cc !important; }
+            .checkout-search-btn:hover { background: #0077cc !important; }
             
             textarea { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
             
@@ -658,6 +726,7 @@
             });
 
             window.activePipWindow = pipWindow;
+            pipWindow.isPip = true;
 
             // Setup PiP Document
             pipWindow.document.title = "Fast Toolkit Always-on-Top";
@@ -1112,6 +1181,39 @@
         }
     }
 
+    function toggleFullWindow() {
+        const isFull = document.documentElement.classList.contains('full-window');
+        setFullWindowState(!isFull);
+    }
+
+    function setFullWindowState(enable) {
+        if (enable) {
+            document.documentElement.classList.add('full-window');
+            if (document.body) document.body.classList.add('full-window');
+            document.querySelectorAll('.container, .app-container').forEach(el => el.classList.add('full-window'));
+            localStorage.setItem('fastToolkit_full_window', 'true');
+        } else {
+            document.documentElement.classList.remove('full-window');
+            if (document.body) document.body.classList.remove('full-window');
+            document.querySelectorAll('.container, .app-container').forEach(el => el.classList.remove('full-window'));
+            localStorage.setItem('fastToolkit_full_window', 'false');
+        }
+
+        const fullBtn = document.getElementById('fullWindowBtn');
+        if (fullBtn) {
+            fullBtn.innerHTML = enable ? '🗗' : '🗖';
+            fullBtn.title = enable ? 'إلغاء التكبير (الحجم العادي)' : 'تكبير الصفحة (لوضع تقسيم العرض)';
+        }
+    }
+    window.toggleFullWindow = toggleFullWindow;
+    window.launchPip = launchPip;
+    window.closePip = function() {
+        if (window.activePipWindow) {
+            window.activePipWindow.close();
+            // Let the pagehide event handler do the cleanup (it clears activePipWindow and overlay)
+        }
+    };
+
     function injectPipBtn() {
         if (document.getElementById('pipBtn') || document.getElementById('pipFloatingBtn')) return;
         if (window.self !== window.top) return;
@@ -1168,12 +1270,34 @@
                 launchPip();
             });
 
+            let fullBtn = null;
+            if (window.location.pathname.includes('settings.html')) {
+                fullBtn = document.createElement('button');
+                fullBtn.id = 'fullWindowBtn';
+                fullBtn.className = 'nav-btn';
+                const isFull = document.documentElement.classList.contains('full-window');
+                fullBtn.title = isFull ? 'إلغاء التكبير (الحجم العادي)' : 'تكبير الصفحة (لوضع تقسيم العرض)';
+                fullBtn.innerHTML = isFull ? '🗗' : '🗖';
+                fullBtn.style.fontSize = '12px';
+                fullBtn.style.display = 'inline-flex';
+                fullBtn.style.alignItems = 'center';
+                fullBtn.style.justifyContent = 'center';
+                fullBtn.style.cursor = 'pointer';
+                fullBtn.style.marginLeft = '4px';
+                fullBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    toggleFullWindow();
+                });
+            }
+
             if (headerRight) {
                 // In note.html, place it before the search icon or home icon
                 btn.style.marginLeft = '4px';
+                if (fullBtn) headerRight.insertBefore(fullBtn, headerRight.firstChild);
                 headerRight.insertBefore(btn, headerRight.firstChild);
             } else if (header) {
                 // In sticky.html/simah.html, insert after the first child (the back button)
+                if (fullBtn) header.insertBefore(fullBtn, header.firstChild.nextSibling);
                 header.insertBefore(btn, header.firstChild.nextSibling);
             }
             return;
@@ -1196,8 +1320,14 @@
     // === Global Expand/Collapse ===
     function applyExpand() {
         document.documentElement.classList.add('expanded');
+        const isFull = localStorage.getItem('fastToolkit_full_window') !== 'false';
+        if (isFull) {
+            document.documentElement.classList.add('full-window');
+            if (document.body) document.body.classList.add('full-window');
+        }
         document.querySelectorAll('.container, .app-container').forEach(el => {
             el.classList.add('expanded');
+            if (isFull) el.classList.add('full-window');
         });
     }
 

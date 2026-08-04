@@ -87,33 +87,44 @@
             padding: 6px 10px;
             text-decoration: none;
             color: var(--text);
-            transition: 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             gap: 8px;
             text-align: right;
+            position: relative;
         }
 
         .menu-item:hover {
-            transform: translateX(-2px);
+            transform: translateX(-3px) translateY(-1px);
             border-color: var(--accent-green);
-            background: #1f1f1f;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-green) 18%, transparent);
+        }
+
+        .menu-item:active {
+            transform: scale(0.97) translateX(-1px);
+            opacity: 0.9;
         }
 
         .menu-item.simah-tool:hover {
             border-color: var(--accent-yellow);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-yellow) 18%, transparent);
         }
 
         .menu-item.card-tool:hover {
             border-color: var(--accent-blue);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-blue) 18%, transparent);
         }
 
         .menu-item.sticky-tool:hover {
             border-color: var(--accent-orange);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-orange) 18%, transparent);
         }
 
         .menu-item.date-tool:hover {
             border-color: #ff5e57;
+            box-shadow: 0 4px 14px rgba(255, 94, 87, 0.18);
         }
 
         .icon {

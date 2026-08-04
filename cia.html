@@ -61,6 +61,29 @@
             text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
         }
 
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            color: var(--accent-green);
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
         .search-box {
             width: 100%;
             margin-bottom: 6px;

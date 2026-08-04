@@ -71,12 +71,17 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            transition: 0.2s;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .nav-btn:hover {
             background: #122212;
             border-color: var(--accent-green);
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
         }
 
         .content-area {

@@ -143,7 +143,7 @@
             align-items: center;
             justify-content: center;
             text-decoration: none;
-            transition: 0.2s;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
             height: 20px;
             box-sizing: border-box;
@@ -152,6 +152,11 @@
         .nav-btn:hover {
             border-color: var(--accent-green);
             background: #122212;
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
         }
 
         @keyframes sort-pulse {

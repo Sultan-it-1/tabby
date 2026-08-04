@@ -66,6 +66,17 @@
             font-size: 10px;
             text-decoration: none;
             font-weight: bold;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
         }
 
         .ai-btn {

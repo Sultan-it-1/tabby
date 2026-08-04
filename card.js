@@ -47,8 +47,18 @@ let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
 let isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
 if (isAIActive && aiBtn) aiBtn.className = 'ai-btn active';
 
+function loadSavedTabbyInput() {
+    const savedInput = localStorage.getItem('tabbyInput_saved');
+    const inputEl = document.getElementById('tabbyInput');
+    if (savedInput && inputEl && !inputEl.value) {
+        inputEl.value = savedInput;
+        if (window.processTabbyInput) window.processTabbyInput();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initCheckoutActionModeUI();
+    loadSavedTabbyInput();
     const saved = localStorage.getItem('cardScannerData');
     if (saved) {
         try {
@@ -58,6 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { }
     }
 });
+
+window.addEventListener('focus', loadSavedTabbyInput);
+window.addEventListener('pageshow', loadSavedTabbyInput);
 
 outputEdit.addEventListener('input', () => {
     const parts = outputEdit.value.split('//').map(p => p.trim());
@@ -411,6 +424,15 @@ function parseData(rawText) {
 
     showToast("تم النسخ والتحليل! ✅");
     secureCopy(finalResult);
+
+    // Clear old Tabby user input when scanning a new card
+    if (window.clearTabbyInput) {
+        window.clearTabbyInput();
+    }
+
+    if (window.launchPip) {
+        window.launchPip();
+    }
 }
 
 function updateUI(fullText, card, amount, time, date) {
@@ -489,6 +511,10 @@ function clearData() {
         outputDiv.style.display = 'block';
         outputEdit.style.display = 'none';
         editBtn.innerText = '✏️';
+    }
+
+    if (window.clearTabbyInput) {
+        window.clearTabbyInput();
     }
 
     showToast("تم مسح البيانات 🗑️");
@@ -1222,6 +1248,12 @@ window.processTabbyInput = function() {
     const idChip = document.getElementById('chip-tabby-id');
     const linkChip = document.getElementById('chip-tabby-link');
 
+    if (inputEl.value) {
+        localStorage.setItem('tabbyInput_saved', inputEl.value);
+    } else {
+        localStorage.removeItem('tabbyInput_saved');
+    }
+
     if (!input) {
         idChip.innerText = "ID";
         linkChip.innerText = "الرابط";
@@ -1252,6 +1284,15 @@ window.processTabbyInput = function() {
         idChip.innerText = id;
         linkChip.innerText = "نسخ الرابط";
         linkChip.dataset.link = `https://backoffice.tabby.sa/customers/${id}`;
+        
+        // Remove the popup when a user ID is pasted (closes PiP and returns to normal)
+        if (window.top && window.top.isPip) {
+            window.top.close();
+        } else if (window.documentPictureInPicture && window.documentPictureInPicture.window) {
+            window.documentPictureInPicture.window.close();
+        } else if (window.closePip) {
+            window.closePip();
+        }
     } else {
         idChip.innerText = "غير صالح";
         linkChip.innerText = "الرابط";
@@ -1291,6 +1332,7 @@ window.copyTabbyDetails = function() {
 }
 
 window.clearTabbyInput = function() {
+    localStorage.removeItem('tabbyInput_saved');
     const inputEl = document.getElementById('tabbyInput');
     inputEl.value = '';
     window.processTabbyInput();
