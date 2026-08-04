@@ -41,7 +41,7 @@
                                 action: "updateTicketState",
                                 hasTicket: isTicket,
                                 ticketUrl: isTicket ? url : ""
-                            }, "*");
+                            }, "http://127.0.0.1:5500");
                         }
                     }
                 });
@@ -54,7 +54,7 @@
                 if (message.action === "resetTicketTimer" || message.action === "updateTicketState") {
                     const iframe = document.getElementById('tool-frame');
                     if (iframe && iframe.contentWindow) {
-                        iframe.contentWindow.postMessage(message, "*");
+                        iframe.contentWindow.postMessage(message, "http://127.0.0.1:5500");
                     }
                 }
             });

@@ -149,19 +149,13 @@ function renderCardsView() {
             cardEl.className = 'cia-full-card';
 
             // C Section
-            const cRow = document.createElement('div');
-            cRow.className = 'cia-row';
-            cRow.innerHTML = `<span class="cia-badge c">C</span><span class="cia-text" dir="auto" style="font-weight:bold;color:var(--text);">${card.c || '-'}</span>`;
+            const cRow = createCiaRow('C', 'c', card.c || '-', true);
 
             // I Section
-            const iRow = document.createElement('div');
-            iRow.className = 'cia-row';
-            iRow.innerHTML = `<span class="cia-badge i">I</span><span class="cia-text" dir="auto">${card.i || '-'}</span>`;
+            const iRow = createCiaRow('I', 'i', card.i || '-');
 
             // A Section
-            const aRow = document.createElement('div');
-            aRow.className = 'cia-row';
-            aRow.innerHTML = `<span class="cia-badge a">A</span><span class="cia-text" dir="auto">${card.a || '-'}</span>`;
+            const aRow = createCiaRow('A', 'a', card.a || '-');
 
             // Footer with Copy hint & Edit/Delete actions
             const footer = document.createElement('div');
@@ -216,6 +210,28 @@ function renderCardsView() {
     }
 
     container.appendChild(grid);
+}
+
+function createCiaRow(label, badgeClass, value, isStrong = false) {
+    const row = document.createElement('div');
+    row.className = 'cia-row';
+
+    const badge = document.createElement('span');
+    badge.className = `cia-badge ${badgeClass}`;
+    badge.innerText = label;
+
+    const text = document.createElement('span');
+    text.className = 'cia-text';
+    text.dir = 'auto';
+    text.innerText = value;
+    if (isStrong) {
+        text.style.fontWeight = 'bold';
+        text.style.color = 'var(--text)';
+    }
+
+    row.appendChild(badge);
+    row.appendChild(text);
+    return row;
 }
 
 // Modal Operations

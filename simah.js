@@ -13,7 +13,7 @@ function showToast(message, isError = false, duration = 2500) {
 
     const toast = document.createElement('div');
     toast.className = 'toast';
-    toast.innerHTML = message;
+    toast.innerText = message;
     
     if (isError) {
         toast.style.color = '#ff4444';
@@ -39,7 +39,7 @@ function showToast(message, isError = false, duration = 2500) {
     return {
         remove,
         update: (newMessage, newIsError) => {
-            toast.innerHTML = newMessage;
+            toast.innerText = newMessage;
             if (newIsError !== undefined) {
                 toast.style.color = newIsError ? '#ff4444' : 'var(--accent-green)';
                 toast.style.borderColor = newIsError ? 'rgba(255,68,68,0.3)' : 'rgba(0,200,100,0.2)';

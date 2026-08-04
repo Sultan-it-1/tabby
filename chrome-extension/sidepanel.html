@@ -41,7 +41,7 @@
                                 action: "updateTicketState",
                                 hasTicket: isTicket,
                                 ticketUrl: isTicket ? url : ""
-                            }, "*");
+                            }, "https://tabby.sultanops.com");
                         }
                     }
                 });
@@ -54,7 +54,7 @@
                 if (message.action === "resetTicketTimer" || message.action === "updateTicketState") {
                     const iframe = document.getElementById('tool-frame');
                     if (iframe && iframe.contentWindow) {
-                        iframe.contentWindow.postMessage(message, "*");
+                        iframe.contentWindow.postMessage(message, "https://tabby.sultanops.com");
                     }
                 }
             });
@@ -65,5 +65,4 @@
     </script>
 </body>
 </html>
-
 
