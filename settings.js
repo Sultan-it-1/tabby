@@ -201,25 +201,6 @@
 
 
     let styleRules = `
-        /* === Smooth Page Transition (masks load time as cinematic fade) === */
-        @keyframes fastToolkit_fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        body {
-            animation: fastToolkit_fadeIn 0.15s ease-out both !important;
-        }
-        /* View Transitions API support */
-        @view-transition {
-            navigation: auto;
-        }
-        ::view-transition-old(root) {
-            animation-duration: 0.12s;
-        }
-        ::view-transition-new(root) {
-            animation-duration: 0.12s;
-        }
-
         .container, .app-container {
             width: 230px !important;
             height: 300px !important;
@@ -1364,17 +1345,7 @@
                 // Register Service Worker
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('sw.js')
-                        .then(reg => {
-                            console.log('Fast Toolkit: PWA Service Worker registered');
-                            // Prefetch all pages immediately so navigation is instant
-                            setTimeout(() => {
-                                if (navigator.serviceWorker.controller) {
-                                    navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_ALL' });
-                                } else {
-                                    navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({ type: 'PREFETCH_ALL' }));
-                                }
-                            }, 2000);
-                        })
+                        .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
                         .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
                 }
                 // Inject Manifest Link
@@ -1400,16 +1371,7 @@
             // Register Service Worker
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => {
-                        console.log('Fast Toolkit: PWA Service Worker registered');
-                        setTimeout(() => {
-                            if (navigator.serviceWorker.controller) {
-                                navigator.serviceWorker.controller.postMessage({ type: 'PREFETCH_ALL' });
-                            } else {
-                                navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({ type: 'PREFETCH_ALL' }));
-                            }
-                        }, 2000);
-                    })
+                    .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
                     .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
             }
             // Inject Manifest Link

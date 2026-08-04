@@ -4,19 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Instant Anti-Flicker Initialization -->
-    <script>
-        document.documentElement.classList.add('expanded');
-        if (localStorage.getItem('fastToolkit_full_window') !== 'false') {
-            document.documentElement.classList.add('full-window');
-        }
-    </script>
-    <script>
-        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
-    </script>
-    <script>
-        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
-    </script>
     <title>Fast Copy Pro - Secured & Maximized</title>
     <style>
         body {
@@ -537,6 +524,13 @@
             text-align: center;
         }
     </style>
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
 </head>
 
 <body>
