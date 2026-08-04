@@ -21,7 +21,20 @@
     <meta name="theme-color" content="#0f0f0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>بوابة الأدوات الذكية - الرئيسية</title>
-    <!-- Prefetch all tool pages for instant navigation -->
+    <!-- Chrome Speculation Rules: prerender tool pages in background for instant navigation -->
+    <script type="speculationrules">
+    {
+      "prerender": [{
+        "source": "list",
+        "urls": ["card.html", "note.html", "simah.html", "sticky.html", "cia.html", "date.html", "settings.html", "download.html"]
+      }],
+      "prefetch": [{
+        "source": "list",
+        "urls": ["card.html", "note.html", "simah.html", "sticky.html", "cia.html", "date.html", "settings.html", "download.html"]
+      }]
+    }
+    </script>
+    <!-- Fallback prefetch for non-Chrome browsers -->
     <link rel="prefetch" href="card.html">
     <link rel="prefetch" href="note.html">
     <link rel="prefetch" href="simah.html">

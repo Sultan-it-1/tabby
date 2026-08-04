@@ -24,6 +24,7 @@ const ASSETS_TO_CACHE = [
   "./simah.js",
   "./sticky.js",
   "./cia.js",
+  "./date.js",
   "./icon.png",
   "./Apple.png",
 ];
@@ -35,31 +36,36 @@ const CDN_ASSETS = [
   "https://cdn.jsdelivr.net/npm/flatpickr",
 ];
 
-// Install Event - cache everything aggressively
+// Helper: strip query params for cache matching (fixes ?v=Date.now() cache misses)
+function stripQuery(url) {
+  const u = new URL(url);
+  u.search = '';
+  return u.href;
+}
+
+// Install Event — cache everything aggressively on first load
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Cache local assets first (must succeed)
       await cache.addAll(ASSETS_TO_CACHE).catch(() => {});
-      // Cache CDN assets silently (optional)
-      await Promise.allSettled(CDN_ASSETS.map(url => 
+      await Promise.allSettled(CDN_ASSETS.map(url =>
         fetch(url).then(r => r.ok ? cache.put(url, r) : null).catch(() => {})
       ));
     }).then(() => self.skipWaiting())
   );
 });
 
-// Activate Event - remove old caches
+// Activate Event — remove old caches + claim clients immediately
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
+    caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-// Fetch Event - Cache-First for HTML pages, Stale-While-Revalidate for everything else
+// Fetch Event — Cache-First with query-param stripping
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
 
@@ -72,48 +78,52 @@ self.addEventListener("fetch", (e) => {
   const isNavigation = e.request.mode === "navigate";
 
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Cache-first for navigation (HTML pages) — instant load!
-        if (isNavigation) {
-          // Revalidate silently in background
-          fetch(e.request).then((r) => {
-            if (r && r.status === 200) {
-              caches.open(CACHE_NAME).then(c => c.put(e.request, r));
-            }
-          }).catch(() => {});
-          return cachedResponse;
-        }
-        // Stale-while-revalidate for JS/CSS assets
-        fetch(e.request).then((r) => {
-          if (r && r.status === 200) {
-            caches.open(CACHE_NAME).then(c => c.put(e.request, r));
-          }
-        }).catch(() => {});
-        return cachedResponse;
+    (async () => {
+      // Try cache with exact URL first, then without query params
+      let cached = await caches.match(e.request);
+      if (!cached && isSelfOrigin) {
+        const cleanUrl = stripQuery(url);
+        cached = await caches.match(cleanUrl);
       }
 
-      // Not in cache — fetch and store
-      return fetch(e.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) return networkResponse;
-        const clone = networkResponse.clone();
-        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+      if (cached) {
+        // Revalidate in background (non-blocking)
+        if (isNavigation || isSelfOrigin) {
+          const cleanUrl = stripQuery(url);
+          fetch(e.request).then(r => {
+            if (r && r.status === 200) {
+              caches.open(CACHE_NAME).then(c => c.put(cleanUrl, r));
+            }
+          }).catch(() => {});
+        }
+        return cached;
+      }
+
+      // Not in cache — fetch from network and store (with clean URL)
+      try {
+        const networkResponse = await fetch(e.request);
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          const cacheKey = isSelfOrigin ? stripQuery(url) : url;
+          caches.open(CACHE_NAME).then(c => c.put(cacheKey, clone));
+        }
         return networkResponse;
-      }).catch(() => {
-        // Return offline fallback for navigation
+      } catch {
         if (isNavigation) return caches.match("./index.html");
-      });
-    })
+      }
+    })()
   );
 });
 
-// Message handler - prefetch all pages on demand
+// Message handler — prefetch all pages on demand
 self.addEventListener("message", (e) => {
   if (e.data && e.data.type === "PREFETCH_ALL") {
     caches.open(CACHE_NAME).then(async (cache) => {
-      await Promise.allSettled(HTML_PAGES.map(url =>
-        fetch(url).then(r => r.ok ? cache.put(url, r) : null).catch(() => {})
-      ));
+      await Promise.allSettled(
+        [...ASSETS_TO_CACHE, ...CDN_ASSETS].map(url =>
+          fetch(url).then(r => r.ok ? cache.put(url, r) : null).catch(() => {})
+        )
+      );
     });
   }
 });

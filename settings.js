@@ -201,6 +201,25 @@
 
 
     let styleRules = `
+        /* === Smooth Page Transition (masks load time as cinematic fade) === */
+        @keyframes fastToolkit_fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        body {
+            animation: fastToolkit_fadeIn 0.15s ease-out both !important;
+        }
+        /* View Transitions API support */
+        @view-transition {
+            navigation: auto;
+        }
+        ::view-transition-old(root) {
+            animation-duration: 0.12s;
+        }
+        ::view-transition-new(root) {
+            animation-duration: 0.12s;
+        }
+
         .container, .app-container {
             width: 230px !important;
             height: 300px !important;
