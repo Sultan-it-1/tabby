@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIA Maker - FAST TOOLKIT</title>
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green, #00e676);
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 8px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+        }
+
+        .header h1 {
+            font-size: 13px;
+            color: var(--accent-green);
+            margin: 0;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--text);
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-decoration: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            color: var(--accent-green);
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .search-box {
+            width: 100%;
+            margin-bottom: 6px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--card-bg, #181818);
+            border: 1px solid var(--border, #333);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--text);
+            outline: none;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 25%, transparent);
+        }
+
+        .content-scroll {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .content-scroll::-webkit-scrollbar { width: 3px; }
+        .content-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+        }
+
+        /* Category Card (Main C Card) */
+        .category-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .category-card:hover {
+            background: rgba(0, 230, 118, 0.08);
+            border-color: var(--accent-green);
+            transform: translateY(-1px);
+        }
+
+        .category-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        .category-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .category-count {
+            font-size: 9px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #aaa;
+            padding: 2px 5px;
+            border-radius: 10px;
+            font-weight: normal;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 3px;
+            opacity: 0.5;
+            transition: 0.2s;
+        }
+
+        .category-card:hover .card-actions, .cia-full-card:hover .card-actions {
+            opacity: 1;
+        }
+
+        .card-act-btn {
+            background: transparent;
+            border: none;
+            color: #aaa;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .card-act-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .card-act-btn.del:hover {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.15);
+        }
+
+        /* Prominent Add Button */
+        .add-card-btn {
+            background: transparent;
+            border: 1px dashed rgba(0, 230, 118, 0.4);
+            color: var(--accent-green);
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .add-card-btn:hover {
+            background: rgba(0, 230, 118, 0.12);
+            border-color: var(--accent-green);
+        }
+
+        /* Sub-View Header Bar */
+        .sub-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 4px 6px;
+            margin-bottom: 6px;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-green);
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 230, 118, 0.15);
+        }
+
+        .sub-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--text);
+            max-width: 100px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Full CIA Card (C + I + A) */
+        .cia-full-card {
+            background: var(--card-bg, #181818);
+            border: 1px solid var(--border, #282828);
+            color: var(--text, #eee);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            max-height: 155px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .cia-full-card:hover {
+            border-color: var(--accent-green);
+            background: color-mix(in srgb, var(--accent-green) 12%, var(--card-bg));
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
+
+        .cia-row {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            overflow: hidden;
+        }
+
+        .cia-badge {
+            font-size: 8.5px;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 3px;
+            display: inline-block;
+            width: fit-content;
+        }
+        .cia-badge.c { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); border: 1px solid rgba(0, 230, 118, 0.3); }
+        .cia-badge.i { background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.3); }
+        .cia-badge.a { background: rgba(255, 159, 67, 0.15); color: #ff9f43; border: 1px solid rgba(255, 159, 67, 0.3); }
+
+        .cia-text {
+            font-size: 9.5px;
+            color: var(--text, #eee);
+            line-height: 1.3;
+            max-height: 32px;
+            overflow-y: auto;
+            word-break: break-word;
+            padding-left: 2px;
+            text-align: start;
+            unicode-bidi: plaintext;
+        }
+
+        .cia-text::-webkit-scrollbar {
+            width: 2px;
+        }
+        .cia-text::-webkit-scrollbar-thumb {
+            background: rgba(0, 230, 118, 0.4);
+            border-radius: 4px;
+        }
+
+
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 4px;
+            margin-top: 2px;
+        }
+
+        .copy-hint {
+            font-size: 9px;
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        /* Bottom Action Bar */
+        .backup-row {
+            display: flex;
+            gap: 4px;
+            border-top: 1px solid var(--border);
+            padding-top: 5px;
+            margin-top: 4px;
+        }
+
+        .backup-btn {
+            flex: 1;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #999;
+            padding: 5px 4px;
+            border-radius: 6px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .backup-btn:hover {
+            color: #eee;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .backup-btn.danger:hover {
+            color: #ff4444;
+            border-color: rgba(255, 68, 68, 0.3);
+            background: rgba(255, 68, 68, 0.1);
+        }
+        .backup-btn.primary:hover {
+            color: #4285f4;
+            border-color: rgba(66, 133, 244, 0.3);
+            background: rgba(66, 133, 244, 0.1);
+        }
+
+        /* Modal Overlay & Fields */
+        .modal {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            padding: 8px;
+        }
+        .modal.open { display: flex; }
+
+        .modal-content {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 8px;
+            width: 100%;
+            border: 1px solid var(--accent-green);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .modal-label {
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--accent-green);
+            margin-top: 2px;
+        }
+
+        .modal-content input, .modal-content textarea {
+            background: var(--card-bg, #111);
+            color: var(--text);
+            border: 1px solid var(--border, #333);
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 10px;
+            outline: none;
+            font-family: inherit;
+            box-sizing: border-box;
+            width: 100%;
+            text-align: start;
+            unicode-bidi: plaintext;
+        }
+        .modal-content textarea { resize: vertical; min-height: 38px; }
+        .modal-content input:focus, .modal-content textarea:focus { border-color: var(--accent-green); }
+
+        .modal-btns {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .modal-btns button {
+            flex: 1;
+            padding: 5px;
+            border-radius: 4px;
+            border: none;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-save { background: var(--accent-green); color: #000; }
+        .btn-cancel { background: #333; color: #fff; }
+
+        /* Toast Container */
+        .toast-container {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 200;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(15, 15, 15, 0.95);
+            color: #fff;
+            border: 1px solid var(--accent-green);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { border-color: #ff4444; color: #ff4444; }
+        /* Filter Chips Bar */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            overflow-x: auto;
+            padding: 2px 0 6px 0;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            user-select: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            height: 2px;
+        }
+        .filter-bar::-webkit-scrollbar-thumb {
+            background: rgba(0, 230, 118, 0.4);
+            border-radius: 4px;
+        }
+
+        .filter-chip {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 9.5px;
+            font-weight: bold;
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+
+        .filter-chip:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .filter-chip.active {
+            color: #111;
+            background: var(--accent-green, #00e676);
+            border-color: var(--accent-green, #00e676);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 35%, transparent);
+        }
+        /* In-App Confirm Box */
+        .confirm-box {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            background: var(--card-bg, #1c1c1c);
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            right: 10px;
+            z-index: 150;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+        }
+
+        .confirm-txt {
+            font-size: 11px;
+            color: var(--text, #fff);
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <h1 style="flex-grow: 1; text-align: center; margin: 0; font-size: 13px;">بطاقات CIA الجاهزة 📋</h1>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-box">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 ابحث في بطاقات CIA..." oninput="filterCards()">
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar" id="filterBar"></div>
+
+        <!-- Main Content Area -->
+        <div class="content-scroll" id="contentScroll">
+            <!-- Rendered Dynamically -->
+        </div>
+
+        <!-- Bottom Backup Row -->
+        <div class="backup-row">
+            <button class="backup-btn danger" style="flex: 1;" onclick="triggerDeleteAll()" title="مسح الكل">🗑️ مسح البيانات</button>
+        </div>
+        
+        <div class="backup-row" style="margin-top: 3px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
+            <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('backup')">☁️ نسخ (Drive)</button>
+            <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('restore')">☁️ استعادة (Drive)</button>
+        </div>
+
+        <div class="toast-container" id="toastContainer"></div>
+
+        <!-- Custom In-App Delete Confirmation Modal -->
+        <div id="confirmBox" class="confirm-box">
+            <div id="confirmTxt" class="confirm-txt">هل أنت متأكد من حذف هذه البطاقة؟</div>
+            <div class="modal-btns">
+                <button class="btn-save" style="background:#ff4444; color:#fff;" id="confirmYesBtn">حذف</button>
+                <button class="btn-cancel" onclick="closeConfirmBox()">إلغاء</button>
+            </div>
+        </div>
+
+        <!-- Add/Edit CIA Card Modal (C + I + A) -->
+        <div class="modal" id="ciaCardModal">
+            <div class="modal-content">
+                <div style="font-size: 11px; font-weight: bold; color: var(--accent-green); text-align:center;" id="modalTitle">إضافة بطاقة CIA جديدة</div>
+                
+                <div class="modal-label">C : Customer Problem (المشكلة)</div>
+                <input type="text" id="inputC" placeholder="Customer's view: why they contacted, in their own words..." dir="auto">
+
+                <div class="modal-label">I : Investigation (الفحص / التحقق)</div>
+                <textarea id="inputI" placeholder="What you checked, what you found, what you think the issue is..." rows="2" dir="auto"></textarea>
+
+                <div class="modal-label">A : Action (الإجراء / الحل)</div>
+                <textarea id="inputA" placeholder="What's next: resolution, escalation, or what the customer must do..." rows="2" dir="auto"></textarea>
+
+                <div class="modal-btns">
+                    <button class="btn-save" onclick="saveCiaCardModal()">حفظ البطاقة</button>
+                    <button class="btn-cancel" onclick="closeCiaModal()">إلغاء</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete All Confirmation Modal -->
+        <div class="modal" id="deleteAllModal">
+            <div class="modal-content" style="border-color: #ff4444 !important;">
+                <h3 style="color:#ff4444; margin: 0 0 4px 0; font-size:12px; text-align:center;">⚠️ مسح جميع البطاقات؟</h3>
+                <p style="font-size:10px; color: var(--text); margin:0 0 6px 0; text-align:center;">
+                    سيتم حذف جميع بطاقات CIA نهائياً. اكتب <strong style="color:#ff3333;">delete all</strong> للتأكيد:
+                </p>
+                <input type="text" id="deleteAllConfirmInput" placeholder="اكتب التأكيد هنا..." dir="ltr" style="text-align:center; border-color:#ff4444 !important; margin-bottom:6px;">
+                <div class="modal-btns">
+                    <button class="btn-save" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
+                    <button class="btn-cancel" onclick="closeCiaModal()">إلغاء</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Duplicate Conflict Resolution Modal -->
+        <div class="modal" id="conflictModal" style="z-index: 300;">
+            <div class="modal-content" style="border-color: #ffaa00 !important; max-width: 220px; text-align: center;">
+                <div style="font-size: 12px; font-weight: bold; color: #ffaa00; margin-bottom: 4px;">⚠️ تعارض استيراد بطاقات مكررة</div>
+                <div id="conflictItemName" style="font-size: 10px; color: var(--text); background: rgba(255, 170, 0, 0.12); padding: 5px; border-radius: 6px; margin-bottom: 6px; word-break: break-word; font-weight: bold;"></div>
+                <p style="font-size: 10px; color: var(--text); opacity: 0.8; margin: 0 0 6px 0;">هذه البطاقة موجودة بالفعل، اختر الإجراء المطلوب:</p>
+
+                <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px;">
+                    <button class="btn-save" style="background: var(--accent-green); color: #000; padding: 5px; font-size: 10px;" onclick="resolveCiaConflict('replace')">🔄 استبدال (Replace)</button>
+                    <button class="btn-save" style="background: #3b82f6; color: #fff; padding: 5px; font-size: 10px;" onclick="resolveCiaConflict('keep_both')">📋 إبقاء كلاهما (إنشاء نسخة)</button>
+                    <button class="btn-cancel" style="padding: 5px; font-size: 10px;" onclick="resolveCiaConflict('skip')">⏭️ تجاوز (Skip)</button>
+                </div>
+
+                <label style="font-size: 9.5px; color: var(--text); display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
+                    <input type="checkbox" id="conflictApplyAllCb" style="accent-color: var(--accent-green); cursor: pointer;">
+                    تطبيق الإجراء على كافة البطاقات المكررة
+                </label>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        document.write('<script src="cia.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</body>
+</html>

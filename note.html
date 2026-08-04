@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Copy Pro - Secured & Maximized</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #0f0f0f;
+            color: #eee;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* الأبعاد الهندسية الصارمة للحاوية */
+        .app-container {
+            width: 230px;
+            height: 300px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 6px 6px 10px 6px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .backup-dot {
+            width: 6px;
+            height: 6px;
+            background: #ffaa00;
+            border-radius: 50%;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 0 6px #ffaa00;
+            cursor: help;
+        }
+
+        .backup-dot::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            background: #333;
+            color: #ffaa00;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.2s;
+            border: 1px solid #ffaa00;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .backup-dot:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+            gap: 4px;
+            border-bottom: none;
+            padding-bottom: 5px;
+            position: relative;
+        }
+        .header-row::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to left, transparent, var(--accent-green, #00c864) 40%, var(--accent-green, #00c864) 60%, transparent);
+            opacity: 0.35;
+        }
+
+        .header-right,
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .search-container {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: #1a1a1a;
+            align-items: center;
+            padding: 0 4px 5px 4px;
+            z-index: 5;
+            gap: 6px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: #000;
+            color: var(--accent-green);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            height: 20px;
+            box-sizing: border-box;
+        }
+
+        .search-close {
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 0 4px;
+            user-select: none;
+        }
+
+        .nav-btn {
+            background: #252525;
+            border: 1px solid #444;
+            color: var(--accent-green);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            height: 20px;
+            box-sizing: border-box;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            background: #122212;
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes sort-pulse {
+            0%   { box-shadow: 0 0 0px #ffaa00; }
+            50%  { box-shadow: 0 0 7px 2px #ffaa00; }
+            100% { box-shadow: 0 0 0px #ffaa00; }
+        }
+
+        .nav-btn.active-mode {
+            background: #ffaa00;
+            color: #000;
+            border-color: #ffaa00;
+            font-weight: bold;
+            animation: sort-pulse 1.2s ease-in-out infinite;
+        }
+
+        .add-main-btn {
+            background: transparent;
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            height: 20px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-main-btn:hover {
+            background: rgba(0, 200, 80, 0.12);
+        }
+
+        .container-switch-btn {
+            font-weight: bold;
+            min-width: 45px;
+            color: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        .content-scroll {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 2px;
+            margin-top: 2px;
+        }
+
+        .content-scroll::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .content-scroll::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 2px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0 2px;
+            border-right: 3px solid var(--accent-green);
+            padding-right: 5px;
+            transition: background 0.15s;
+        }
+
+        .section-header.drag-over-section {
+            background: rgba(var(--accent-green-rgb, 0,200,100), 0.08);
+            border-right-color: #fff;
+            border-radius: 3px;
+            outline: 1px dashed var(--accent-green);
+        }
+
+        .section-label {
+            font-size: 10px;
+            color: #aaa;
+            text-transform: uppercase;
+            font-weight: bold;
+            user-select: none;
+            cursor: inherit;
+        }
+
+        .del-section {
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 3px;
+            user-select: none;
+        }
+
+        .sort-order-active .section-sort-controls {
+            display: inline-flex;
+        }
+
+        .sort-order-active .add-item-trigger {
+            display: none;
+        }
+
+        .sort-btn {
+            color: var(--accent-green);
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 0 2px;
+            user-select: none;
+        }
+
+        .move-tab-btn {
+            color: #888;
+            cursor: pointer;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border: 1px solid #444;
+            border-radius: 3px;
+            background: #1a1a1a;
+            user-select: none;
+            transition: 0.15s;
+            white-space: nowrap;
+        }
+
+        .move-tab-btn:hover {
+            border-color: #b07fff;
+            color: #b07fff;
+            background: #1a0f2e;
+        }
+
+        .section-sort-controls {
+            display: none;
+            gap: 3px;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+
+        .chip {
+            background: #222;
+            padding: 9px 2px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid #444;
+            color: #fff;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            user-select: none;
+            transition: border-color 0.15s, background-color 0.15s, opacity 0.1s;
+        }
+
+        .chip:hover {
+            border-color: var(--accent-green);
+            background: #2a2a2a;
+        }
+
+        .chip.dragging {
+            opacity: 0.4;
+            border: 1px dashed #444;
+        }
+
+        .chip.drag-over {
+            border-color: var(--accent-green);
+            border-style: dashed;
+            background: #122212;
+            opacity: 0.8;
+        }
+
+        .backup-row {
+            display: flex;
+            gap: 4px;
+            margin-top: auto;
+            padding-top: 5px;
+            border-top: none;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .backup-row:first-of-type::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to left, transparent, #333 30%, #333 70%, transparent);
+        }
+
+        .backup-btn {
+            flex: 1;
+            background: #111;
+            border: 1px solid #333;
+            color: #777;
+            padding: 5px 3px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .backup-btn:hover {
+            color: #ccc;
+            border-color: #555;
+            background: #1a1a1a;
+        }
+
+        /* Tooltip على أزرار backup */
+        .backup-btn[data-tip]::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2a2a2a;
+            color: #ccc;
+            font-size: 9px;
+            padding: 3px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+            border: 1px solid #444;
+            z-index: 50;
+        }
+        .backup-btn[data-tip]:hover::after {
+            opacity: 1;
+        }
+
+
+        /* Toast Notifications */
+        .toast-container {
+            position: absolute;
+            bottom: 35px;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 1000;
+            gap: 4px;
+        }
+
+        .toast {
+            background: rgba(20, 20, 20, 0.95);
+            color: var(--accent-green);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            border: 1px solid rgba(var(--accent-green-rgb, 0,200,100), 0.2);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 10px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+
+
+        @keyframes modal-slide-in {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-content {
+            background: rgba(25, 25, 25, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 14px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 190px;
+            border: 1px solid rgba(var(--accent-green-rgb, 0, 200, 100), 0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            animation: modal-slide-in 0.22s ease;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            background: #000;
+            color: var(--accent-green);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 7px;
+            font-size: 12px;
+            box-sizing: border-box;
+            margin-bottom: 6px;
+            font-family: sans-serif;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .m-btn {
+            flex: 1;
+            padding: 7px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .confirm-box {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px;
+            background: #222;
+            border: 1px solid #ff4444;
+            border-radius: 6px;
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            right: 10px;
+            z-index: 110;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+        }
+
+        .confirm-txt {
+            font-size: 11px;
+            color: #fff;
+            text-align: center;
+        }
+    </style>
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <div class="header-row">
+            <div id="searchBar" class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="بحث شامل..."
+                    oninput="handleSearch()" dir="auto">
+                <span class="search-close" onclick="closeSearch()">×</span>
+            </div>
+
+            <div class="header-right">
+                <a href="index.html" class="nav-btn" title="الرئيسية" style="padding: 4px 6px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                </a>
+                <button class="nav-btn" onclick="openSearch()" title="بحث سريع">🔍</button>
+            </div>
+            <div class="header-left">
+                <button class="nav-btn" onclick="toggleSortMode()" id="sortModeBtn" title="ترتيب الأقسام"
+                    style="font-size: 12px; font-weight: bold; padding: 3px 6px;">⇅</button>
+                <button class="add-main-btn" onclick="openSectionModal()">+ قسم</button>
+                <button class="nav-btn container-switch-btn" onclick="switchContainer()" id="containerBtn">Tab
+                    1</button>
+            </div>
+            <div id="cardSyncBadge" style="display:none; font-size:8px; font-weight:bold; padding:2px 5px; border-radius:4px; background:#001a00; border:1px solid var(--accent-green); color:var(--accent-green); white-space:nowrap; cursor:default; direction:ltr; align-self:center;" title="بيانات البطاقة النشطة — xxxx و yyyy ستُستبدلان تلقائياً"></div>
+        </div>
+
+        <div id="main-content" class="content-scroll"></div>
+
+        <div class="backup-row">
+            <button class="backup-btn" style="color: #ff5555; border-color: #3a1818; flex: 1;" onclick="triggerDeleteAll()" data-tip="مسح كل البيانات">🗑️ مسح الكل</button>
+        </div>
+        <div class="backup-row" style="margin-top: 4px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
+            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f; flex: 1;" onclick="triggerCloudAction('backup')">☁️ نسخ (Drive)</button>
+            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f; flex: 1;" onclick="triggerCloudAction('restore')">☁️ استعادة (Drive)</button>
+
+        </div>
+
+        <div style="display: flex; justify-content: flex-start; padding-top: 4px; margin-bottom: -4px; height: 6px;">
+            <div id="backupDot" class="backup-dot" data-tooltip=""></div>
+        </div>
+
+        <div id="toastContainer" class="toast-container"></div>
+
+        <div id="confirmBox" class="confirm-box">
+            <div id="confirmTxt" class="confirm-txt">هل أنت متأكد؟</div>
+            <div class="modal-btns">
+                <button class="m-btn" style="background:#ff4444;color:#fff;padding:4px;" id="confirmYesBtn">نعم</button>
+                <button class="m-btn" style="background:#444;color:#fff;padding:4px;"
+                    onclick="closeConfirmBox()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <input type="text" id="itemName" placeholder="الاسم المختصر" dir="auto">
+            <textarea id="itemText" placeholder="النص الكامل..." rows="3" dir="auto"></textarea>
+            <div class="modal-btns">
+                <button class="m-btn" style="background:var(--accent-green);color:#000"
+                    onclick="saveItem()">حفظ</button>
+                <button class="m-btn" style="background:#333;color:#fff" onclick="closeModal()">إلغاء</button>
+            </div>
+            <button id="delItemBtn"
+                style="background:none;border:none;color:#ff4444;width:100%;margin-top:6px;cursor:pointer;font-size:11px; display:none;"
+                onclick="triggerDeleteItem()">حذف 🗑️</button>
+        </div>
+    </div>
+
+    <div class="modal" id="sectionModal">
+        <div class="modal-content">
+            <input type="text" id="sectionName" placeholder="اسم القسم الجديد" dir="auto">
+            <div class="modal-btns">
+                <button class="m-btn" style="background:var(--accent-green);color:#000"
+                    onclick="addSection()">إضافة</button>
+                <button class="m-btn" style="background:#333;color:#fff" onclick="closeModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="editSectionModal">
+        <div class="modal-content">
+            <input type="text" id="editSectionName" placeholder="اسم القسم" dir="auto">
+            <div class="modal-btns">
+                <button class="m-btn" style="background:var(--accent-green);color:#000"
+                    onclick="saveSectionName()">تعديل</button>
+                <button class="m-btn" style="background:#333;color:#fff" onclick="closeModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="deleteAllModal">
+        <div class="modal-content" style="border-color: #ff4444 !important; max-width: 200px;">
+            <h3 style="color:#ff4444; margin: 0 0 8px 0; font-size:13px; text-align:center;">⚠️ مسح جميع البيانات؟</h3>
+            <p style="font-size:11px; color: var(--text); margin:0 0 10px 0; line-height:1.4; text-align:center; font-weight:bold;">
+                سيتم حذف جميع الأقسام والنوتات نهائياً من كافة التبويبات (Tab 1, Tab 2, Tab 3) ولا يمكن استعادتها.
+            </p>
+            <p style="font-size:10px; color: var(--text); opacity: 0.9; margin:0 0 8px 0; text-align:center;">
+                اكتب <strong style="color:#ff3333; background:rgba(255, 68, 68, 0.15); padding:2px 5px; border-radius:3px; font-family:monospace; user-select:all;">delete all</strong> للتأكيد:
+            </p>
+            <input type="text" id="deleteAllConfirmInput" placeholder="اكتب التأكيد هنا..." dir="ltr" style="text-align:center; border-color:#ff4444 !important; margin-bottom:8px;">
+            <div class="modal-btns">
+                <button class="m-btn" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
+                <button class="m-btn" style="background:#333; color:#fff" onclick="closeModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Conflict Resolution Modal -->
+    <div class="modal" id="conflictModal" style="z-index: 300;">
+        <div class="modal-content" style="border-color: #ffaa00 !important; max-width: 220px; text-align: center;">
+            <div style="font-size: 12px; font-weight: bold; color: #ffaa00; margin-bottom: 4px;">⚠️ تعارض استيراد عناصر مكررة</div>
+            <div id="conflictItemName" style="font-size: 10px; color: var(--text); background: rgba(255, 170, 0, 0.12); padding: 5px; border-radius: 6px; margin-bottom: 6px; word-break: break-word; font-weight: bold;"></div>
+            <p style="font-size: 10px; color: var(--text); opacity: 0.8; margin: 0 0 6px 0;">هذا العنصر موجود بالفعل، اختر الإجراء المطلوب:</p>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px;">
+                <button class="m-btn" style="background: var(--accent-green); color: #000; padding: 5px; font-size: 10px;" onclick="resolveConflict('replace')">🔄 استبدال (Replace)</button>
+                <button class="m-btn" style="background: #3b82f6; color: #fff; padding: 5px; font-size: 10px;" onclick="resolveConflict('keep_both')">📋 إبقاء كلاهما (إنشاء نسخة)</button>
+                <button class="m-btn" style="background: #444; color: #fff; padding: 5px; font-size: 10px;" onclick="resolveConflict('skip')">⏭️ تجاوز (Skip)</button>
+            </div>
+
+            <label style="font-size: 9.5px; color: var(--text); display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
+                <input type="checkbox" id="conflictApplyAllCb" style="accent-color: var(--accent-green); cursor: pointer;">
+                تطبيق الإجراء على كافة المكررات
+            </label>
+        </div>
+    </div>
+
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        document.write('<script src="note.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</body>
+
+</html>
