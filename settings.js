@@ -18,11 +18,24 @@
         themeColor: '#00e676'
     };
 
+    function isValidHexColor(value) {
+        return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+    }
+
     let savedSettings = null;
     try {
         const stored = localStorage.getItem('fastToolkitSettings');
         if (stored) {
             savedSettings = JSON.parse(stored);
+            if (!savedSettings || typeof savedSettings !== 'object' || Array.isArray(savedSettings)) {
+                savedSettings = {};
+            }
+            if (savedSettings.mode !== 'light' && savedSettings.mode !== 'dark') {
+                savedSettings.mode = defaultSettings.mode;
+            }
+            if (!isValidHexColor(savedSettings.themeColor)) {
+                savedSettings.themeColor = defaultSettings.themeColor;
+            }
             if (savedSettings.themeColor === '#007aff') {
                 savedSettings.themeColor = '#00e676';
                 localStorage.setItem('fastToolkitSettings', JSON.stringify(savedSettings));

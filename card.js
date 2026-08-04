@@ -10,6 +10,16 @@ const settingsModal = document.getElementById('settingsModal');
 const geminiKeyInput = document.getElementById('geminiKeyInput');
 const groqKeyInput = document.getElementById('groqKeyInput');
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[character]));
+}
+
 function showToast(message, isError = false, duration = 2500) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -1194,7 +1204,7 @@ function renderHistoryModal() {
             const timeStr = t.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
             const dateStr = t.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' });
             return `<div onclick="restoreFromHistory(${i})" style="cursor:pointer;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-right:3px solid ${accent};border-radius:6px;padding:6px 8px;margin-bottom:4px;direction:ltr;transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.borderColor='${accent}'" onmouseout="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.05)'" title="اضغط لاستعادة وتحديد">
-                <div style="font-family:monospace;font-size:11px;font-weight:bold;color:#eee;">${h.fullText}</div>
+                <div style="font-family:monospace;font-size:11px;font-weight:bold;color:#eee;">${escapeHtml(h.fullText)}</div>
                 <div style="font-size:8px;color:#777;margin-top:4px;display:flex;justify-content:space-between;"><span>${dateStr}</span><span>${timeStr}</span></div>
             </div>`;
         }).join('')}

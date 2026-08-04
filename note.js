@@ -1,7 +1,6 @@
-function escapeJS(str) { return str ? str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : ''; }
+function escapeJS(str) { return String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 function escapeHTML(str) {
-    if (!str) return '';
-    return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+    return String(str ?? '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
 }
 
 let currentContainer = 'c1';
@@ -79,7 +78,7 @@ function render() {
             const safeCatJS = escapeJS(cat);
             const safeCatHTML = escapeHTML(cat);
 
-            const displayCatName = isSearching ? `${safeCatHTML} <span style="font-size:9px;color:var(--accent-green);margin-right:4px;">(${tabLabels[cId]})</span>` : safeCatHTML;
+            const displayCatName = isSearching ? `${safeCatHTML} <span style="font-size:9px;color:var(--accent-green);margin-right:4px;">(${escapeHTML(tabLabels[cId])})</span>` : safeCatHTML;
 
             const secHeader = document.createElement('div');
             secHeader.className = 'section-header';

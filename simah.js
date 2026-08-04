@@ -52,7 +52,9 @@ let savedAccountsList = [];
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
 let isAIActive = true;
 localStorage.setItem('simah_ai_pref', 'true');
-let globalVoiceSpeed = localStorage.getItem('simah_voice_speed') || '1';
+const allowedVoiceSpeeds = ['1', '1.5', '2', '0.25', '0.5'];
+const storedVoiceSpeed = localStorage.getItem('simah_voice_speed');
+let globalVoiceSpeed = allowedVoiceSpeeds.includes(storedVoiceSpeed) ? storedVoiceSpeed : '1';
 let lastRateLimitInfo = {};
 if (aiBtn) {
     aiBtn.className = 'ai-btn active';
