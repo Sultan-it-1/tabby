@@ -14,7 +14,8 @@ chrome.runtime.onInstalled.addListener(() => {
         ]
       },
       condition: {
-        urlFilter: "*://127.0.0.1:5500/*",
+        urlFilter: "|http://127.0.0.1:5500/",
+        initiatorDomains: [chrome.runtime.id],
         resourceTypes: ["sub_frame"]
       }
     },
@@ -29,7 +30,8 @@ chrome.runtime.onInstalled.addListener(() => {
         ]
       },
       condition: {
-        urlFilter: "*://localhost:5500/*",
+        urlFilter: "|http://localhost:5500/",
+        initiatorDomains: [chrome.runtime.id],
         resourceTypes: ["sub_frame"]
       }
     }

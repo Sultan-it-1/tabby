@@ -510,6 +510,39 @@
             const importAllBtn = document.getElementById('importAllBtn');
             const importAllFile = document.getElementById('importAllFile');
 
+            const BACKUP_KEYS = Object.freeze([
+                'fastToolkitSettings',
+                'fastToolkitShortcuts',
+                'fastToolkitExpanded',
+                'copyGridDataV6',
+                'unbackedUpCountV6',
+                'quick_sticky_note',
+                'stickyNotesData',
+                'currentStickyNoteId',
+                'cardScannerData',
+                'cardScannerHistory',
+                'simahApprovedAccounts',
+                'simahAccountsHistory',
+                'simah_ai_provider',
+                'simah_ai_pref',
+                'simah_usage',
+                'autoSyncGDrive',
+                'cardLinkToggle'
+            ]);
+            const BACKUP_KEY_SET = new Set(BACKUP_KEYS);
+
+            function restoreBackupData(imported) {
+                if (!imported || typeof imported !== 'object' || Array.isArray(imported)) {
+                    throw new Error('Invalid backup format');
+                }
+
+                Object.entries(imported).forEach(([key, value]) => {
+                    if (BACKUP_KEY_SET.has(key) && typeof value === 'string') {
+                        localStorage.setItem(key, value);
+                    }
+                });
+            }
+
 
 
             let selectedColor = currentSettings.themeColor;
@@ -649,27 +682,8 @@
 
             // Unified Backup Export
             exportAllBtn.addEventListener('click', () => {
-                const backupKeys = [
-                    'fastToolkitSettings',
-                    'fastToolkitShortcuts',
-                    'fastToolkitExpanded',
-                    'copyGridDataV6',
-                    'unbackedUpCountV6',
-                    'quick_sticky_note',
-                    'stickyNotesData',
-                    'currentStickyNoteId',
-                    'cardScannerData',
-                    'cardScannerHistory',
-                    'simahApprovedAccounts',
-                    'simahAccountsHistory',
-                    'simah_ai_provider',
-                    'simah_ai_pref',
-                    'simah_usage',
-                    'autoSyncGDrive',
-                    'cardLinkToggle'
-                ];
                 const backupData = {};
-                backupKeys.forEach(key => {
+                BACKUP_KEYS.forEach(key => {
                     const value = localStorage.getItem(key);
                     if (value !== null) {
                         backupData[key] = value;
@@ -706,9 +720,7 @@
                         const imported = JSON.parse(x.target.result);
                         if (!imported || typeof imported !== 'object') throw new Error();
                         
-                        Object.keys(imported).forEach(key => {
-                            localStorage.setItem(key, imported[key]);
-                        });
+                        restoreBackupData(imported);
                         
                         alert("تم استيراد كافة البيانات وإعادة ضبط التطبيق بنجاح! 🎉");
                         window.location.reload();
@@ -775,15 +787,8 @@
             }
 
             function getBackupData() {
-                const backupKeys = [
-                    'fastToolkitSettings', 'fastToolkitShortcuts', 'fastToolkitExpanded',
-                    'copyGridDataV6', 'unbackedUpCountV6', 'quick_sticky_note',
-                    'stickyNotesData', 'currentStickyNoteId', 'cardScannerData',
-                    'cardScannerHistory', 'simahApprovedAccounts', 'simahAccountsHistory',
-                    'simah_ai_provider', 'simah_ai_pref', 'simah_usage', 'autoSyncGDrive', 'cardLinkToggle'
-                ];
                 const backupData = {};
-                backupKeys.forEach(key => {
+                BACKUP_KEYS.forEach(key => {
                     const value = localStorage.getItem(key);
                     if (value !== null) backupData[key] = value;
                 });
@@ -884,9 +889,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data && typeof data === 'object') {
-                        Object.keys(data).forEach(key => {
-                            localStorage.setItem(key, data[key]);
-                        });
+                        restoreBackupData(data);
                         showDriveStatus("تم الاستعادة بنجاح! جاري التحديث... 🔄");
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
