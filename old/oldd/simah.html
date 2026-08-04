@@ -738,7 +738,7 @@ const APP_VERSION = "2.0.14";
         window.open(window.getGasUrl(), '_blank', 'width=640,height=680');
     };
 
-    // جلب الإيميل من خادم قوقل عبر JSONP (يحمل كوكيز المتصفح)
+    // جلب الإيميل من الخادم عبر JSONP (يحمل كوكيز المتصفح تلقائياً)
     window.gasFetchEmail = function() {
         return new Promise((resolve) => {
             const gasUrl = window.getGasUrl();
@@ -746,16 +746,12 @@ const APP_VERSION = "2.0.14";
             const cbName = 'emailCB_' + Date.now();
             const script = document.createElement('script');
             const sep = gasUrl.includes('?') ? '&' : '?';
-            let timer = setTimeout(() => {
-                delete window[cbName]; script.remove(); resolve(null);
-            }, 8000);
+            let timer = setTimeout(() => { delete window[cbName]; script.remove(); resolve(null); }, 8000);
             window[cbName] = function(result) {
                 clearTimeout(timer); delete window[cbName]; script.remove();
                 resolve(result && result.email && result.email.includes('@') ? result.email : null);
             };
-            script.onerror = function() {
-                clearTimeout(timer); delete window[cbName]; script.remove(); resolve(null);
-            };
+            script.onerror = function() { clearTimeout(timer); delete window[cbName]; script.remove(); resolve(null); };
             script.src = gasUrl + sep + 'action=get_email&callback=' + cbName + '&t=' + Date.now();
             document.body.appendChild(script);
         });
@@ -773,8 +769,8 @@ const APP_VERSION = "2.0.14";
         }
     };
 
-    // === رفع البيانات للسيرفر مع credentials لضمان حمل الكوكيز ===
-    window.autoPushToGAS = async function(customData = null) {
+    // === إرسال البيانات عبر Hidden Form POST (يحمل كوكيز قوقل تلقائياً) ===
+    window.autoPushToGAS = function(customData) {
         const gasUrl = window.getGasUrl();
         if (!gasUrl) return;
         if (!isCloudPullComplete && !customData && !localStorage.getItem('copyGridDataV6') && !localStorage.getItem('fastToolkitCIA_v4')) return;
@@ -798,22 +794,41 @@ const APP_VERSION = "2.0.14";
                 data: payloadData
             });
 
-            // POST مع credentials لضمان وصول كوكيز قوقل للسيرفر
-            await fetch(gasUrl, {
-                method: 'POST',
-                mode: 'no-cors',
-                credentials: 'include',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: payloadStr
-            });
-            console.log('Fast Toolkit: Data saved to cloud ☁️ (' + window.getFastToolkitUserId() + ')');
+            // إنشاء iframe + form مخفيين يحملان كوكيز قوقل تلقائياً
+            const iframeName = 'gasPostFrame_' + Date.now();
+            const iframe = document.createElement('iframe');
+            iframe.name = iframeName;
+            iframe.style.cssText = 'display:none;width:0;height:0;border:none;position:absolute;left:-9999px;';
+            document.body.appendChild(iframe);
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = gasUrl;
+            form.target = iframeName;
+            form.style.display = 'none';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'payload';
+            input.value = payloadStr;
+            form.appendChild(input);
+            document.body.appendChild(form);
+
+            form.submit();
+
+            // تنظيف بعد الإرسال
+            setTimeout(() => {
+                try { form.remove(); iframe.remove(); } catch(e) {}
+            }, 5000);
+
+            console.log('Fast Toolkit: Data pushed via form POST ☁️ (' + window.getFastToolkitUserId() + ')');
         } catch (err) {
             console.warn('Fast Toolkit: Push failed:', err);
         }
     };
 
-    // === جلب البيانات من السيرفر عبر JSONP (يحمل كوكيز المتصفح) ===
-    window.autoPullFromGAS = function(showFeedback = false) {
+    // === جلب البيانات من الخادم عبر JSONP ===
+    window.autoPullFromGAS = function(showFeedback) {
         return new Promise((resolve) => {
             const gasUrl = window.getGasUrl();
             if (!gasUrl) return resolve(false);
@@ -841,19 +856,17 @@ const APP_VERSION = "2.0.14";
                         if (updated) {
                             if (showFeedback) { alert('تمت استعادة بياناتك بنجاح! ☁️🎉'); window.location.reload(); }
                             else { if (window.render) window.render(); else if (window.renderCards) window.renderCards(); }
-                        } else if (showFeedback) {
-                            alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
-                        }
+                        } else if (showFeedback) alert('تمت المزامنة بنجاح! ☁️🚀');
                         resolve(updated); return;
                     }
                 }
-                if (showFeedback) alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
+                if (showFeedback) alert('تمت المزامنة بنجاح! ☁️🚀');
                 resolve(false);
             };
             script.onerror = function() {
                 delete window[cbName]; script.remove();
                 isCloudPullComplete = true;
-                if (showFeedback) alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
+                if (showFeedback) alert('تمت المزامنة بنجاح! ☁️🚀');
                 resolve(false);
             };
             script.src = gasUrl + sep + 'action=read&userId=' + encodeURIComponent(uId) + '&callback=' + cbName + '&t=' + Date.now();
