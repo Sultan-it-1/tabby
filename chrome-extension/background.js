@@ -14,7 +14,8 @@ chrome.runtime.onInstalled.addListener(() => {
         ]
       },
       condition: {
-        urlFilter: "*://*.sultanops.com/*",
+        // Only the embedded Fast Toolkit app needs the framing-header override.
+        urlFilter: "*://tabby.sultanops.com/*",
         resourceTypes: ["sub_frame"]
       }
     }
@@ -62,5 +63,4 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     checkAndBroadcastTicketTab();
   }
 });
-
 

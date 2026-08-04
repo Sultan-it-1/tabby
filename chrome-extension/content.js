@@ -257,6 +257,11 @@
 
       // Listen for message from Extension / SidePanel
       window.addEventListener("message", (e) => {
+        // SidePanel messages arrive in the embedded app frame from its parent.
+        // Ignore page-originated messages to avoid letting arbitrary scripts
+        // control the ticket timer state.
+        const extensionOrigin = chrome.runtime.getURL("").replace(/\/$/, "");
+        if (window.parent === window || e.source !== window.parent || e.origin !== extensionOrigin) return;
         if (e.data) {
           if (e.data.action === "updateTicketState") {
             updateTicketState(e.data.hasTicket, e.data.ticketUrl);
