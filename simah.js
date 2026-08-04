@@ -480,8 +480,21 @@ function extractAccounts(rawText) {
     }
 }
 
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+}
+
 function highlightSuspectCharacters(text) {
-    return text.replace(/[0DO8BIL15S]/g, m => `<span class="highlight">${m}</span>`);
+    return String(text).split('').map(char => {
+        const escaped = escapeHtml(char);
+        return /[0DO8BIL15S]/.test(char) ? `<span class="highlight">${escaped}</span>` : escaped;
+    }).join('');
 }
 
 function speakAccount(inputId, cardId) {
@@ -536,7 +549,7 @@ function addReviewCard(value) {
         </div>
     </div>
     <div class="visual-check" id="v_${cardId}">${highlightSuspectCharacters(value)}</div>
-    <input type="text" class="edit-input" id="i_${cardId}" value="${value}" oninput="updateCounter('${cardId}')">
+    <input type="text" class="edit-input" id="i_${cardId}" value="${escapeHtml(value)}" oninput="updateCounter('${cardId}')">
     <button class="action-btn" onclick="approve('${cardId}')">إعتماد للحفظ</button>
 `;
     resultsArea.appendChild(div);
@@ -565,9 +578,9 @@ function approve(cardId) {
 function renderList() {
     listCounter.innerText = `(${savedAccountsList.length})`;
     finalListArea.innerHTML = savedAccountsList.map((acc, index) => `
-    <div class="final-card" id="fc_${index}" onclick="copy('${acc}', ${index})">
+    <div class="final-card" id="fc_${index}" onclick="copy(decodeURIComponent('${encodeURIComponent(acc)}'), ${index})">
         <div class="final-value">
-            <span>${acc}</span>
+            <span>${escapeHtml(acc)}</span>
             <span class="check-mark">✔</span>
         </div>
     </div>
