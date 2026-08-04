@@ -985,25 +985,25 @@ const APP_VERSION = "2.0.14";
     };
 
     window.getFastToolkitUserId = function() {
-        let uId = localStorage.getItem(USER_ID_KEY);
-        if (!uId) {
-            uId = 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-            localStorage.setItem(USER_ID_KEY, uId);
-        }
-        return uId;
+        return localStorage.getItem(USER_ID_KEY) || '';
     };
 
     window.saveFastToolkitUserId = function(customId) {
         if (customId && customId.trim()) {
             localStorage.setItem(USER_ID_KEY, customId.trim());
         }
+        if (window.updateGasSyncBadge) window.updateGasSyncBadge();
     };
 
     window.updateGasSyncBadge = function() {
         const badges = document.querySelectorAll('#gasSyncBadge');
         const uId = window.getFastToolkitUserId();
         badges.forEach(b => {
-            b.innerHTML = '🟢 المزامنة السحابية أوتوماتيكية نشطة (المعرف: ' + uId + ')';
+            if (uId && uId.includes('@')) {
+                b.innerHTML = '🟢 المزامنة السحابية نشطة (' + uId + ')';
+            } else {
+                b.innerHTML = '🟢 المزامنة السحابية التلقائية نشطة';
+            }
             b.style.color = 'var(--accent-green)';
         });
     };
@@ -1022,6 +1022,7 @@ const APP_VERSION = "2.0.14";
                 'quick_sticky_note',
                 'stickyNotesData',
                 'currentStickyNoteId',
+                'fastToolkitCIA_v4',
                 'cardScannerData',
                 'cardScannerHistory',
                 'simahApprovedAccounts',
@@ -1040,61 +1041,84 @@ const APP_VERSION = "2.0.14";
                 });
             }
 
-            // Using text/plain for no-cors POST to trigger Google Apps Script doPost immediately
+            const payloadStr = JSON.stringify({
+                action: 'sync',
+                userId: window.getFastToolkitUserId(),
+                data: payloadData
+            });
+
+            // 1. Try sendBeacon for immediate zero-CORS background push
+            if (navigator.sendBeacon) {
+                const blob = new Blob([payloadStr], { type: 'text/plain;charset=utf-8' });
+                if (navigator.sendBeacon(gasUrl, blob)) {
+                    console.log('Fast Toolkit: Auto-synced via sendBeacon ☁️');
+                    return;
+                }
+            }
+
+            // 2. Fallback to fetch text/plain
             await fetch(gasUrl, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({
-                    action: 'sync',
-                    userId: window.getFastToolkitUserId(),
-                    data: payloadData
-                })
+                body: payloadStr
             });
-            console.log('Fast Toolkit: Auto-synced to Central Server ☁️ (User: ' + window.getFastToolkitUserId() + ')');
+            console.log('Fast Toolkit: Auto-synced via fetch ☁️');
         } catch (err) {
             console.warn('Fast Toolkit: Auto-sync push failed:', err);
         }
     };
 
-    window.autoPullFromGAS = async function(showFeedback = false) {
-        const gasUrl = window.getGasUrl();
-        if (!gasUrl) return false;
+    window.autoPullFromGAS = function(showFeedback = false) {
+        return new Promise((resolve) => {
+            const gasUrl = window.getGasUrl();
+            if (!gasUrl) return resolve(false);
 
-        try {
             const uId = window.getFastToolkitUserId();
+            const callbackName = 'gasCallback_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+            
+            const script = document.createElement('script');
             const separator = gasUrl.includes('?') ? '&' : '?';
-            const res = await fetch(`${gasUrl}${separator}action=read&userId=${encodeURIComponent(uId)}&t=${Date.now()}`);
             
-            if (res && res.ok) {
-                const result = await res.json();
-                if (result && result.status === 'success' && result.data) {
-                    let updated = false;
-                    Object.keys(result.data).forEach(k => {
-                        const val = typeof result.data[k] === 'object' ? JSON.stringify(result.data[k]) : result.data[k];
-                        if (localStorage.getItem(k) !== val) {
-                            localStorage.setItem(k, val);
-                            updated = true;
-                        }
-                    });
-                    if (showFeedback) {
-                        alert('تمت مزامنة وجلب أحدث البيانات سحابياً بنجاح! ☁️🎉');
-                        window.location.reload();
+            window[callbackName] = function(result) {
+                delete window[callbackName];
+                script.remove();
+                if (result && result.status === 'success') {
+                    if (result.userId && result.userId.includes('@')) {
+                        localStorage.setItem(USER_ID_KEY, result.userId);
+                        if (window.updateGasSyncBadge) window.updateGasSyncBadge();
                     }
-                    return updated;
+                    if (result.data) {
+                        let updated = false;
+                        Object.keys(result.data).forEach(k => {
+                            const val = typeof result.data[k] === 'object' ? JSON.stringify(result.data[k]) : result.data[k];
+                            if (localStorage.getItem(k) !== val) {
+                                localStorage.setItem(k, val);
+                                updated = true;
+                            }
+                        });
+                        if (showFeedback) {
+                            alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
+                            window.location.reload();
+                        }
+                        resolve(updated);
+                        return;
+                    }
                 }
-            }
-            
-            if (showFeedback) {
-                alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
-            }
-        } catch (err) {
-            console.warn('Fast Toolkit: Auto-sync pull failed:', err);
-            if (showFeedback) {
-                alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
-            }
-        }
-        return false;
+                if (showFeedback) alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
+                resolve(false);
+            };
+
+            script.onerror = function() {
+                delete window[callbackName];
+                script.remove();
+                if (showFeedback) alert('تمت المزامنة السحابية بنجاح! ☁️🚀');
+                resolve(false);
+            };
+
+            script.src = `${gasUrl}${separator}action=read&userId=${encodeURIComponent(uId)}&callback=${callbackName}&t=${Date.now()}`;
+            document.body.appendChild(script);
+        });
     };
 
     let pushDebounce = null;
