@@ -145,6 +145,11 @@ function doGet(e) {
       return responseOutput({ status: 'success', message: 'Company Fast Toolkit Multi-User Server is Online 🚀' }, callback);
     }
 
+    // إرجاع إيميل الموظف فوراً — يُستخدم لتعريفه تلقائياً عند فتح الصفحة
+    if (action === 'get_email') {
+      return responseOutput({ status: 'success', email: userId }, callback);
+    }
+
     if (action === 'read' || action === 'get_all') {
       let parsedData = readUserFromSheet(userId);
 
