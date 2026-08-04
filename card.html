@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Scanner - Context Aware</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="./vendor/tesseract/tesseract.min.js"></script>
     <style>
         :root {
             --bg: #0f0f0f;
@@ -769,7 +769,7 @@
             <div id="sectionGemini" class="provider-section active">
                 <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
                     مفتاح
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
                         style="color: var(--accent-green); text-decoration: underline;">Gemini API</a>:
                 </div>
                 <input type="password" id="geminiKeyInput" placeholder="Gemini Key...">
@@ -777,14 +777,14 @@
             <div id="sectionGroq" class="provider-section">
                 <div style="font-size: 9px; color: #aaa; text-align: right; margin-bottom: 4px; font-weight: bold;">
                     مفتاح
-                    <a href="https://console.groq.com/keys" target="_blank"
+                    <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer"
                         style="color: var(--accent-green); text-decoration: underline;">Groq API</a>:
                 </div>
                 <input type="password" id="groqKeyInput" placeholder="Groq Key...">
             </div>
             <div
                 style="font-size: 8px; color: #ff9f43; text-align: right; margin-bottom: 6px; font-weight: bold; direction: rtl;">
-                🔒 مفاتيحك تُحفظ محلياً بالكامل على متصفحك ولا يتم إرسالها لأي خادم خارجي.
+                مفاتيحك تحفظ للجلسة الحالية فقط داخل المتصفح، وترسل فقط إلى المزود المختار عند استخدام الاستخراج.
             </div>
             <div class="settings-modal-btns">
                 <button class="save-key-btn" onclick="saveApiKey()">حفظ</button>

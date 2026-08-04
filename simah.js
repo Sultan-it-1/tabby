@@ -7,6 +7,41 @@ const settingsModal = document.getElementById('settingsModal');
 const geminiKeyInput = document.getElementById('geminiKeyInput');
 const groqKeyInput = document.getElementById('groqKeyInput');
 
+function getAiSecret(key) {
+    if (typeof window.fastToolkitGetAiSecret === 'function') {
+        return window.fastToolkitGetAiSecret(key);
+    }
+    try {
+        return sessionStorage.getItem(key) || '';
+    } catch (e) {
+        return '';
+    }
+}
+
+function setAiSecret(key, value) {
+    if (typeof window.fastToolkitSetAiSecret === 'function') {
+        window.fastToolkitSetAiSecret(key, value);
+        return;
+    }
+    try {
+        localStorage.removeItem(key);
+        if (value) {
+            sessionStorage.setItem(key, value);
+        } else {
+            sessionStorage.removeItem(key);
+        }
+    } catch (e) { }
+}
+
+function getTesseractOptions() {
+    return {
+        workerBlobURL: false,
+        workerPath: './vendor/tesseract/worker.min.js',
+        corePath: './vendor/tesseract/core',
+        langPath: './vendor/tesseract/lang'
+    };
+}
+
 function showToast(message, isError = false, duration = 2500) {
     const container = document.getElementById('toastContainer');
     if (!container) return { remove: () => {}, update: () => {} };
@@ -104,8 +139,8 @@ function openSettings() {
     if (typeof window.fastToolkitSetExpand === 'function') {
         window.fastToolkitSetExpand(true);
     }
-    geminiKeyInput.value = localStorage.getItem('simah_ai_key') || '';
-    groqKeyInput.value = localStorage.getItem('simah_groq_key') || '';
+    geminiKeyInput.value = getAiSecret('simah_ai_key');
+    groqKeyInput.value = getAiSecret('simah_groq_key');
     switchProvider(currentProvider);
     settingsModal.style.display = 'block';
 }
@@ -117,8 +152,8 @@ function closeSettings() {
 function saveApiKey() {
     const geminiKey = geminiKeyInput.value.trim();
     const groqKey = groqKeyInput.value.trim();
-    localStorage.setItem('simah_ai_key', geminiKey);
-    localStorage.setItem('simah_groq_key', groqKey);
+    setAiSecret('simah_ai_key', geminiKey);
+    setAiSecret('simah_groq_key', groqKey);
     localStorage.setItem('simah_ai_provider', currentProvider);
     closeSettings();
 
@@ -271,7 +306,7 @@ async function processImage(file) {
     let loadingToast;
 
     if (currentProvider === 'groq') {
-        const groqKey = localStorage.getItem('simah_groq_key');
+        const groqKey = getAiSecret('simah_groq_key');
         if (!groqKey) {
             showToast("⚠️ مفتاح Groq مفقود! يرجى إدخال مفتاح الـ AI لاستخدام أداة سمة ⚙️", true, 4000);
             openSettings();
@@ -281,7 +316,7 @@ async function processImage(file) {
         loadingToast = showToast("جاري الاستخراج بالذكاء الاصطناعي عبر Groq... 🧠", false, 0);
         await extractWithGroq(file, groqKey);
     } else {
-        const apiKey = localStorage.getItem('simah_ai_key');
+        const apiKey = getAiSecret('simah_ai_key');
         if (!apiKey) {
             showToast("⚠️ مفتاح Gemini مفقود! يرجى إدخال مفتاح الـ AI لاستخدام أداة سمة ⚙️", true, 4000);
             openSettings();
@@ -312,9 +347,12 @@ async function extractWithAI(file, apiKey) {
                     }]
                 };
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey
+                    },
                     body: JSON.stringify(payload)
                 });
 
@@ -348,7 +386,7 @@ async function extractWithGroq(file, groqKey) {
             let rawOcrText = "";
             if (typeof Tesseract !== 'undefined') {
                 try {
-                    const result = await Tesseract.recognize(file, 'eng+ara');
+                    const result = await Tesseract.recognize(file, 'eng+ara', getTesseractOptions());
                     rawOcrText = result?.data?.text || "";
                 } catch(e) {}
             }

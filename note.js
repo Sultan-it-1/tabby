@@ -191,7 +191,7 @@ function render() {
                     }
                     
                     try {
-                        const htmlText = textToCopy.replace(/\n/g, '<br>');
+                        const htmlText = escapeHTML(textToCopy).replace(/\n/g, '<br>');
                         const clipboardItem = new ClipboardItem({
                             "text/plain": new Blob([textToCopy], { type: "text/plain" }),
                             "text/html": new Blob([htmlText], { type: "text/html" })

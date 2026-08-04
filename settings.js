@@ -4,6 +4,45 @@
     const GOOGLE_CLIENT_ID = "391323775541-770j7b9e1bgtv57fnhi77cgcc10mnojp.apps.googleusercontent.com";
     window.GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID;
 
+    const AI_SECRET_KEYS = new Set(['simah_ai_key', 'simah_groq_key']);
+
+    function migrateLegacyAiSecret(key) {
+        if (!AI_SECRET_KEYS.has(key)) return;
+        try {
+            const legacyValue = localStorage.getItem(key);
+            if (legacyValue && !sessionStorage.getItem(key)) {
+                sessionStorage.setItem(key, legacyValue);
+            }
+            localStorage.removeItem(key);
+        } catch (e) { }
+    }
+
+    function getAiSecret(key) {
+        if (!AI_SECRET_KEYS.has(key)) return '';
+        migrateLegacyAiSecret(key);
+        try {
+            return sessionStorage.getItem(key) || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function setAiSecret(key, value) {
+        if (!AI_SECRET_KEYS.has(key)) return;
+        try {
+            localStorage.removeItem(key);
+            if (value) {
+                sessionStorage.setItem(key, value);
+            } else {
+                sessionStorage.removeItem(key);
+            }
+        } catch (e) { }
+    }
+
+    AI_SECRET_KEYS.forEach(migrateLegacyAiSecret);
+    window.fastToolkitGetAiSecret = getAiSecret;
+    window.fastToolkitSetAiSecret = setAiSecret;
+
     // Apply expanded and full-window states to document element instantly to prevent page transition flickering
     document.documentElement.classList.add('expanded');
     const path = window.location.pathname;

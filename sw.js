@@ -1,5 +1,5 @@
-// استيراد ملف الإصدار لربط اسم الكاش ديناميكياً
-try { importScripts('./version.js'); } catch (e) {}
+try { importScripts('./version.js'); } catch (e) { }
+
 const CACHE_NAME = "fast-toolkit-cache-" + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'v1');
 
 const ASSETS_TO_CACHE = [
@@ -10,7 +10,13 @@ const ASSETS_TO_CACHE = [
   "./card.html",
   "./sticky.html",
   "./cia.html",
+  "./date.html",
   "./settings.html",
+  "./download.html",
+  "./privacy.html",
+  "./terms.html",
+  "./404.html",
+  "./manifest.json",
   "./settings.js",
   "./version.js",
   "./note.js",
@@ -18,74 +24,72 @@ const ASSETS_TO_CACHE = [
   "./simah.js",
   "./sticky.js",
   "./cia.js",
+  "./date.js",
   "./icon.png",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/maskable-512.png",
   "./Apple.png",
-  "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"
+  "./vendor/tesseract/tesseract.min.js",
+  "./vendor/tesseract/worker.min.js",
+  "./vendor/tesseract/core/tesseract-core-simd-lstm.wasm.js",
+  "./vendor/tesseract/core/tesseract-core-simd.wasm.js",
+  "./vendor/tesseract/core/tesseract-core-lstm.wasm.js",
+  "./vendor/tesseract/core/tesseract-core.wasm.js",
+  "./vendor/tesseract/lang/eng.traineddata.gz",
+  "./vendor/tesseract/lang/ara.traineddata.gz",
+  "./vendor/flatpickr/flatpickr.min.js",
+  "./vendor/flatpickr/flatpickr.min.css",
+  "./vendor/flatpickr/dark.css"
 ];
 
-// Install Event
-self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS_TO_CACHE))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Activate Event
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(
+      keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null))
+    ))
   );
   self.clients.claim();
 });
 
-// Fetch Event (Stale-While-Revalidate cache strategy)
-self.addEventListener("fetch", (e) => {
-  // Filter for GET requests and secure origins
-  if (e.request.method !== "GET") return;
-  
-  const url = e.request.url;
-  const isSelfOrigin = url.startsWith(self.location.origin);
-  const isCDN = url.includes("jsdelivr.net") || url.includes("googleapis.com") || url.includes("gstatic.com");
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
 
-  if (!isSelfOrigin && !isCDN) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch new version in background and update cache
-        fetch(e.request)
+        fetch(event.request)
           .then((networkResponse) => {
-            if (networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(e.request, networkResponse));
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
             }
           })
-          .catch(() => {});
+          .catch(() => { });
         return cachedResponse;
       }
 
-      return fetch(e.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
+      return fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
-
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(e.request, responseToCache);
-        });
-
         return networkResponse;
       }).catch(() => {
-        // Fallback for offline navigation errors if needed
+        if (event.request.mode === "navigate") {
+          return caches.match("./index.html");
+        }
+        return new Response("", { status: 504, statusText: "Offline" });
       });
     })
   );

@@ -20,6 +20,41 @@ function escapeHtml(value) {
     }[character]));
 }
 
+function getAiSecret(key) {
+    if (typeof window.fastToolkitGetAiSecret === 'function') {
+        return window.fastToolkitGetAiSecret(key);
+    }
+    try {
+        return sessionStorage.getItem(key) || '';
+    } catch (e) {
+        return '';
+    }
+}
+
+function setAiSecret(key, value) {
+    if (typeof window.fastToolkitSetAiSecret === 'function') {
+        window.fastToolkitSetAiSecret(key, value);
+        return;
+    }
+    try {
+        localStorage.removeItem(key);
+        if (value) {
+            sessionStorage.setItem(key, value);
+        } else {
+            sessionStorage.removeItem(key);
+        }
+    } catch (e) { }
+}
+
+function getTesseractOptions() {
+    return {
+        workerBlobURL: false,
+        workerPath: './vendor/tesseract/worker.min.js',
+        corePath: './vendor/tesseract/core',
+        langPath: './vendor/tesseract/lang'
+    };
+}
+
 function showToast(message, isError = false, duration = 2500) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -191,7 +226,7 @@ async function processImage(file) {
     if (isAIActive) {
         if (currentProvider === 'groq') {
             loadingToast = showToast("جاري الاستخراج عبر Groq... 🧠", false, 0);
-            const groqKey = localStorage.getItem('simah_groq_key');
+            const groqKey = getAiSecret('simah_groq_key');
             if (!groqKey) {
                 loadingToast.remove();
                 showToast("مفتاح Groq مفقود ❌", true);
@@ -201,7 +236,7 @@ async function processImage(file) {
             await extractCardWithGroq(file, groqKey, loadingToast);
         } else {
             loadingToast = showToast("جاري الاستخراج عبر Gemini... 🧠", false, 0);
-            const apiKey = localStorage.getItem('simah_ai_key');
+            const apiKey = getAiSecret('simah_ai_key');
             if (!apiKey) {
                 loadingToast.remove();
                 showToast("مفتاح Gemini مفقود ❌", true);
@@ -215,7 +250,7 @@ async function processImage(file) {
         try {
             const processedFile = await preprocessImage(file);
             loadingToast.update("جاري القراءة... ⏳");
-            const { data: { text } } = await Tesseract.recognize(processedFile, 'eng+ara');
+            const { data: { text } } = await Tesseract.recognize(processedFile, 'eng+ara', getTesseractOptions());
             loadingToast.remove();
             parseData(text);
         } catch (err) {
@@ -788,8 +823,8 @@ function openSettings() {
     if (typeof window.fastToolkitSetExpand === 'function') {
         window.fastToolkitSetExpand(true);
     }
-    geminiKeyInput.value = localStorage.getItem('simah_ai_key') || '';
-    groqKeyInput.value = localStorage.getItem('simah_groq_key') || '';
+    geminiKeyInput.value = getAiSecret('simah_ai_key');
+    groqKeyInput.value = getAiSecret('simah_groq_key');
     switchProvider(currentProvider);
     settingsModal.style.display = 'block';
 }
@@ -801,8 +836,8 @@ function closeSettings() {
 function saveApiKey() {
     const geminiKey = geminiKeyInput.value.trim();
     const groqKey = groqKeyInput.value.trim();
-    localStorage.setItem('simah_ai_key', geminiKey);
-    localStorage.setItem('simah_groq_key', groqKey);
+    setAiSecret('simah_ai_key', geminiKey);
+    setAiSecret('simah_groq_key', groqKey);
     localStorage.setItem('simah_ai_provider', currentProvider);
     closeSettings();
 
@@ -957,9 +992,12 @@ async function extractCardWithAI(file, apiKey, loadingToast) {
                     }]
                 };
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey
+                    },
                     body: JSON.stringify(payload)
                 });
 
@@ -1001,7 +1039,7 @@ async function extractCardWithGroq(file, groqKey, loadingToast) {
             let rawOcrText = "";
             if (typeof Tesseract !== 'undefined') {
                 try {
-                    const result = await Tesseract.recognize(file, 'eng+ara');
+                    const result = await Tesseract.recognize(file, 'eng+ara', getTesseractOptions());
                     rawOcrText = result?.data?.text || "";
                 } catch(e) {}
             }
