@@ -69,7 +69,7 @@ function saveUserToSheet(userId, dataObj) {
 
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim().toLowerCase() === String(userId).trim().toLowerCase()) {
-        userRowIndex = i + 1; // 1-based index
+        userRowIndex = i + 1;
         break;
       }
     }
@@ -110,6 +110,59 @@ function readUserFromSheet(userId) {
   return null;
 }
 
+// === 4b. دالة حفظ بيانات الموظف في Google Drive كملف JSON ===
+function saveUserToDrive(userId, dataObj) {
+  try {
+    const folderName = 'TabbyUserData';
+    const fileName = userId.replace(/[^a-zA-Z0-9@._-]/g, '_') + '.json';
+    const dataStr = typeof dataObj === 'string' ? dataObj : JSON.stringify(dataObj);
+
+    // إيجاد أو إنشاء مجلد TabbyUserData في Drive
+    let folder;
+    const folders = DriveApp.getFoldersByName(folderName);
+    if (folders.hasNext()) {
+      folder = folders.next();
+    } else {
+      folder = DriveApp.createFolder(folderName);
+    }
+
+    // إيجاد أو إنشاء ملف المستخدم
+    const files = folder.getFilesByName(fileName);
+    if (files.hasNext()) {
+      // تحديث الملف الموجود
+      files.next().setContent(dataStr);
+    } else {
+      // إنشاء ملف جديد
+      folder.createFile(fileName, dataStr, MimeType.PLAIN_TEXT);
+    }
+    Logger.log('Saved to Drive: ' + fileName);
+  } catch (err) {
+    Logger.log('Drive save error: ' + err);
+  }
+}
+
+// === 4c. دالة قراءة بيانات الموظف من Google Drive ===
+function readUserFromDrive(userId) {
+  try {
+    const folderName = 'TabbyUserData';
+    const fileName = userId.replace(/[^a-zA-Z0-9@._-]/g, '_') + '.json';
+
+    const folders = DriveApp.getFoldersByName(folderName);
+    if (!folders.hasNext()) return null;
+
+    const folder = folders.next();
+    const files = folder.getFilesByName(fileName);
+    if (!files.hasNext()) return null;
+
+    const content = files.next().getBlob().getDataAsString();
+    return JSON.parse(content);
+  } catch (err) {
+    Logger.log('Drive read error: ' + err);
+    return null;
+  }
+}
+
+
 // === 5. دالة ترحيل جميع المستخدمين القدامى لجدول الشيت ===
 function migrateAllUsersToSheet() {
   const store = PropertiesService.getScriptProperties();
@@ -131,7 +184,7 @@ function migrateAllUsersToSheet() {
   Logger.log("تم ترحيل " + count + " مستخدمين إلى جدول قوقل شيت بنجاح! 📊🎉");
 }
 
-// === 6. التعامل مع طلبات GET (القراءة والجلب تلقائياً ببريد الموظف) ===
+// === 6. التعامل مع طلبات GET (القراءة والكتابة والجلب تلقائياً ببريد الموظف) ===
 function doGet(e) {
   try {
     const params = (e && e.parameter) ? e.parameter : {};
@@ -145,13 +198,49 @@ function doGet(e) {
       return responseOutput({ status: 'success', message: 'Company Fast Toolkit Multi-User Server is Online 🚀' }, callback);
     }
 
-    // إرجاع إيميل الموظف فوراً — يُستخدم لتعريفه تلقائياً عند فتح الصفحة
+    // إرجاع إيميل الموظف فوراً
     if (action === 'get_email') {
       return responseOutput({ status: 'success', email: userId }, callback);
     }
 
+    // === الكتابة عبر GET (يتجاوز مشكلة CORS/POST تماماً) ===
+    if (action === 'save') {
+      try {
+        const rawData = params.data || '{}';
+        const dataObj = JSON.parse(decodeURIComponent(rawData));
+
+        // جلب بيانات قديمة للدمج معها
+        let existingData = readUserFromSheet(userId);
+        if (!existingData) {
+          const existingRaw = store.getProperty('user_data_' + userId);
+          if (existingRaw) { try { existingData = JSON.parse(existingRaw); } catch(e2) {} }
+        }
+
+        const mergedData = { ...(existingData || {}), ...dataObj };
+
+        // الحفظ في ScriptProperties + الشيت + ملف Drive
+        store.setProperty('user_data_' + userId, JSON.stringify(mergedData));
+        saveUserToSheet(userId, mergedData);
+        saveUserToDrive(userId, mergedData);
+
+        return responseOutput({
+          status: 'success',
+          message: 'تم الحفظ في Drive والشيت بنجاح! 🗂️☁️',
+          userId: userId,
+          timestamp: new Date().toISOString()
+        }, callback);
+      } catch (saveErr) {
+        return responseOutput({ status: 'error', message: 'خطأ في الحفظ: ' + saveErr.toString() }, callback);
+      }
+    }
+
     if (action === 'read' || action === 'get_all') {
-      let parsedData = readUserFromSheet(userId);
+      // البحث في Drive أولاً ثم الشيت ثم ScriptProperties
+      let parsedData = readUserFromDrive(userId);
+
+      if (!parsedData) {
+        parsedData = readUserFromSheet(userId);
+      }
 
       if (!parsedData) {
         const userRawData = store.getProperty('user_data_' + userId);
@@ -173,6 +262,7 @@ function doGet(e) {
     return responseOutput({ status: 'error', message: error.toString() });
   }
 }
+
 
 // === 7. التعامل مع طلبات POST (الحفظ والمزامنة تلقائياً ببريد الموظف) ===
 function doPost(e) {
