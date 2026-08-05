@@ -409,11 +409,19 @@ async function copyScanResult(text, requestPip = false) {
     if (!requestPip || isInsidePipFrame()) return secureCopy(text);
 
     const requestId = requestPipCopy(text);
-    const localCopiedPromise = secureCopy(text);
     const pipCopiedPromise = waitForPipCopyAck(requestId);
-    const [localCopied, pipCopied] = await Promise.all([localCopiedPromise, pipCopiedPromise]);
+    const localCopied = await secureCopy(text);
+    if (localCopied) {
+        pipCopiedPromise.then(
+            () => cleanupPipCopyRequest(requestId),
+            () => cleanupPipCopyRequest(requestId)
+        );
+        return true;
+    }
+
+    const pipCopied = await pipCopiedPromise;
     cleanupPipCopyRequest(requestId);
-    return localCopied || pipCopied;
+    return pipCopied;
 }
 
 async function copyWithToast(text, successMessage, failureMessage = 'تعذر النسخ، حاول مرة أخرى ❌') {
@@ -629,11 +637,10 @@ async function processImage(file) {
         if (isAIActive) {
             context.loadingToast = showToast(`جاري الاستخراج عبر ${provider === 'groq' ? 'Groq' : 'Gemini'}... 🧠`, false, 0);
             setCardScannerTransientState('processing', 'جاري تحليل الصورة بالـ AI...');
-            activateCardScanPopup();
-
             const extraction = provider === 'groq'
                 ? extractCardWithGroq(file, apiKey, context.controller.signal)
                 : extractCardWithAI(file, apiKey, context.controller.signal);
+            activateCardScanPopup();
             const aiText = await runWithScanDeadline(extraction, context);
             if (!isCurrentScan(context)) return false;
 

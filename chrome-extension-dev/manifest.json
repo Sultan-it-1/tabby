@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Royal Family [DEV Mode]",
-  "version": "2.0.29",
+  "version": "2.0.30",
   "description": "نسخة المطور لتجربة التعديلات من الخادم المحلي http://127.0.0.1:5500/",
   "background": {
     "service_worker": "background.js"

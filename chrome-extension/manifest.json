@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Royal Family - Fast Toolkit",
-  "version": "2.0.29",
+  "version": "2.0.30",
   "description": "لوحة الأدوات السريعة تفتح كشريط جانبي بجوار موقع العمل مباشرة",
   "background": {
     "service_worker": "background.js"

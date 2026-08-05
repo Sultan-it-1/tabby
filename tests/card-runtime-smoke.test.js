@@ -77,7 +77,7 @@ function createRuntime(initialStorage = {}, runtimeOptions = {}) {
     };
     const window = {
         CardScannerUtils: cardUtils,
-        fastToolkitIsPip: true,
+        fastToolkitIsPip: runtimeOptions.fastToolkitIsPip ?? true,
         location: { search: '', pathname: '/card.html' },
         addEventListener() {},
         removeEventListener() {},
@@ -135,6 +135,25 @@ test('full card runtime commits and copies a validated AI result', async () => {
     assert.equal(saved.network, 'apple pay');
     assert.equal(saved.transactionStatus, 'declined');
     assert.equal(runtime.elements.get('output').innerText, '250 // 5544 // 14:35 // 05-08');
+});
+
+test('successful local copy does not wait for the PiP acknowledgement timeout', async () => {
+    const runtime = createRuntime({}, { fastToolkitIsPip: false });
+    let resolvePipAcknowledgement;
+    runtime.context.waitForPipCopyAck = () => new Promise(resolve => {
+        resolvePipAcknowledgement = resolve;
+    });
+
+    const copyPromise = runtime.context.copyScanResult('fast-copy', true);
+    const copied = await Promise.race([
+        copyPromise,
+        new Promise((resolve, reject) => setTimeout(() => reject(new Error('copy waited for PiP')), 50))
+    ]);
+
+    assert.equal(copied, true);
+    assert.deepEqual(runtime.copied, ['fast-copy']);
+    resolvePipAcknowledgement(false);
+    await Promise.resolve();
 });
 
 test('full card runtime rejects invalid AI data without saving or copying it', async () => {

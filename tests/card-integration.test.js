@@ -16,6 +16,7 @@ test('card utilities load before the card runtime and are available offline', ()
     assert.ok(runtimeIndex > utilsIndex, 'card-utils.js must load before card.js');
     assert.match(serviceWorker, /["']\.\/card-utils\.js["']/);
     assert.match(html, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/api\.groq\.com["']\s+crossorigin>/i);
+    assert.match(html, /<link\s+rel=["']preconnect["']\s+href=["']https:\/\/generativelanguage\.googleapis\.com["']\s+crossorigin>/i);
 });
 
 test('site, package, production extension, and dev extension versions match', () => {
