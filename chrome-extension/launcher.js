@@ -199,7 +199,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Create and Configure the Iframe pointing to sultanops.com
       const iframe = pipWindow.document.createElement("iframe");
-      iframe.src = "https://tabby.sultanops.com";
+      iframe.src = "https://tabby.sultanops.com/?fastToolkitPip=1";
+      iframe.name = "fast-toolkit-pip";
       iframe.style.width = "100%";
       iframe.style.height = "calc(100% - 33px)";
       iframe.style.border = "none";

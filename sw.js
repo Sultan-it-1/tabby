@@ -20,6 +20,7 @@ const ASSETS_TO_CACHE = [
   "./settings.js",
   "./version.js",
   "./note.js",
+  "./card-utils.js",
   "./card.js",
   "./simah.js",
   "./sticky.js",

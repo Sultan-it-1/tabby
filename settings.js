@@ -1,4 +1,13 @@
 (function () {
+    const PIP_SESSION_KEY = 'fastToolkit_isPipContext';
+    try {
+        const hasPipMarker = new URLSearchParams(window.location.search).get('fastToolkitPip') === '1' || window.name === 'fast-toolkit-pip';
+        if (hasPipMarker) sessionStorage.setItem(PIP_SESSION_KEY, 'true');
+        window.fastToolkitIsPip = hasPipMarker || sessionStorage.getItem(PIP_SESSION_KEY) === 'true';
+    } catch (e) {
+        window.fastToolkitIsPip = false;
+    }
+
     // === إعدادات مطور الموقع (Developer Config) ===
     // استبدل هذا القيمة بمعرف العميل الخاص بمشروعك في Google Cloud لتمكين المزامنة السحابية للجميع
     const GOOGLE_CLIENT_ID = "391323775541-770j7b9e1bgtv57fnhi77cgcc10mnojp.apps.googleusercontent.com";
@@ -1153,7 +1162,10 @@
             // Iframe
             const iframe = pipWindow.document.createElement("iframe");
             iframe.id = "pipIframe";
-            iframe.src = window.location.href; // open this current page!
+            const pipUrl = new URL(window.location.href);
+            pipUrl.searchParams.set('fastToolkitPip', '1');
+            iframe.src = pipUrl.toString();
+            iframe.name = 'fast-toolkit-pip';
             iframe.style.width = "100%";
             iframe.style.height = "calc(100% - 38px)";
             iframe.style.border = "none";
@@ -1162,6 +1174,14 @@
             iframe.style.display = "block";
             iframe.style.backgroundColor = "transparent";
             iframe.setAttribute("allow", "clipboard-read; clipboard-write; camera; microphone; geolocation");
+            iframe.addEventListener('load', () => {
+                try {
+                    for (const key of AI_SECRET_KEYS) {
+                        const value = getAiSecret(key);
+                        if (value) iframe.contentWindow.sessionStorage.setItem(key, value);
+                    }
+                } catch (e) { }
+            });
             body.appendChild(iframe);
 
             // Resize lock
