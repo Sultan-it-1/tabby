@@ -213,112 +213,101 @@
         document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
     </script>
     <script>
+        document.write('<script src="theme-utils.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+    <script>
         document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>
 </head>
 
 <body>
 
-    <div class="container">
-        <div class="header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div class="header-actions">
-                    <a href="download.html" style="text-decoration: none; font-size: 13px; transition: transform 0.2s;" title="تحميل الإضافة الجانبية">🧩</a>
+    <main class="container home-shell">
+        <header class="header home-header">
+            <div class="home-topbar">
+                <span class="brand-mark" aria-hidden="true">FT</span>
+                <div class="home-brand-copy">
+                    <span class="brand-kicker">مساحة العمل</span>
+                    <h1>Fast Toolkit</h1>
                 </div>
-                <h1 style="margin: 0; text-align: center; flex: 1;">FAST TOOLKIT</h1>
-                <a href="settings.html"
-                    style="text-decoration: none; font-size: 14px; transition: transform 0.2s; flex-shrink:0;"
-                    onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'"
-                    title="الإعدادات">⚙️</a>
+                <nav class="header-actions" aria-label="إجراءات سريعة">
+                    <a href="download.html" class="header-icon-btn" title="تحميل الإضافة الجانبية" aria-label="تحميل الإضافة الجانبية">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>
+                    </a>
+                    <a href="settings.html" class="header-icon-btn" title="الإعدادات" aria-label="فتح الإعدادات">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.55V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9a1.7 1.7 0 0 0 1.55 1H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+                    </a>
+                </nav>
             </div>
-            <p style="margin-top: 4px;">اختر الأداة المطلوبة للبدء</p>
-        </div>
+            <p>أدواتك اليومية، مرتبة وجاهزة في مكان واحد.</p>
+        </header>
 
         <div class="menu-grid">
             <a href="note.html" class="menu-item">
-                <div class="icon">📝</div>
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">نسخ سريع</div>
-                    <div class="desc">إدارة ونسخ نصوص واختصارات العملاء بضغطة.</div>
+                    <div class="desc">إدارة النصوص والاختصارات ونسخها فورًا.</div>
                 </div>
             </a>
 
             <a href="simah.html" class="menu-item simah-tool">
-                <div class="icon">📊</div>
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">سمة</div>
-                    <div class="desc">استخراج وتدقيق الحسابات.</div>
+                    <div class="desc">استخراج الحسابات وتدقيقها بسرعة.</div>
                 </div>
             </a>
 
             <a href="card.html" class="menu-item card-tool">
-                <div class="icon">🔍</div>
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M3 9h18M7 14h3"/><circle cx="17" cy="15" r="2.5"/><path d="m19 17 2 2"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Card Scan</div>
-                    <div class="desc">استخراج بيانات البطاقات والمبالغ من الصور تلقائياً.</div>
+                    <div class="desc">قراءة بيانات العمليات من الصور تلقائيًا.</div>
                 </div>
             </a>
 
             <a href="sticky.html" class="menu-item sticky-tool">
-                <div class="icon">📌</div>
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v10l-6 6H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M15 21v-6h6M7 8h10M7 12h6"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Sticky Notes</div>
-                    <div class="desc">تدوين الملاحظات السريعة والمهمة.</div>
+                    <div class="desc">ملاحظات سريعة تبقى معك أثناء العمل.</div>
                 </div>
             </a>
 
             <a href="cia.html" class="menu-item">
-                <div class="icon">📋</div>
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 9h6M9 13h6M9 17h4"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">CIA Maker</div>
-                    <div class="desc">بناء وتنسيق ملاحظات حل المشكلات (C, I, A).</div>
+                    <div class="desc">بناء ملاحظات C وI وA بصياغة مرتبة.</div>
                 </div>
             </a>
 
             <a href="date.html" class="menu-item date-tool">
-                <div class="icon">📅</div>
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Date Helper</div>
-                    <div class="desc">محول التواريخ وحاسبة أيام العمل بدقة.</div>
+                    <div class="desc">تحويل التواريخ وحساب أيام العمل بدقة.</div>
                 </div>
             </a>
 
-            <a href="download.html" class="menu-item" style="border-color: rgba(0, 212, 255, 0.4); background: rgba(0, 212, 255, 0.05);">
-                <div class="icon">🧩</div>
+            <a href="download.html" class="menu-item extension-tool">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M8 13h8m-4-3v6m0 0 3-3m-3 3-3-3"/></svg></span>
                 <div class="text-wrapper">
-                    <div class="title" style="color: var(--accent-blue);">تحميل الإضافة الجانبية</div>
-                    <div class="desc">تحميل وتثبيت حزمة الإضافة لـ Chrome.</div>
+                    <div class="title">إضافة Chrome</div>
+                    <div class="desc">تحميل وتثبيت الإضافة الجانبية للمتصفح.</div>
                 </div>
             </a>
 
         </div>
 
-        <!-- الجزء الخاص بالحقوق المتغيرة -->
-        <div class="footer" id="dynamic-footer">
-            <!-- سيتم توليد المحتوى هنا تلقائياً بواسطة الجافاسكريبت -->
-        </div>
-    </div>
-
-    <script>
-        // مصفوفة الجمل والإيموجيات الخاصة بك
-        const quotes = [
-            { emoji: "❤️", text: "Crafted to make your work easier" },
-            { emoji: "✨", text: "Made to fit your needs perfectly" },
-            { emoji: "🌿", text: "Your productivity, our mission" },
-            { emoji: "🪄", text: "Crafted as if it were made only for you" },
-            { emoji: "💎", text: "Built to match your ambitions" },
-            { emoji: "⭐️", text: "Made specially for you" }
-        ];
-
-        // اختيار جملة عشوائية عند تحميل الصفحة
-        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-
-        // طباعة العبارة داخل الفوتر مع الحفاظ على حركة النبض للإيموجي وثبات الاسم
-        document.getElementById('dynamic-footer').innerHTML = `
-            <span class="pulse-emoji">${randomQuote.emoji}</span> 
-            <span>${randomQuote.text} — by <b>Sultan</b></span>
-        `;
-    </script>
+        <footer class="footer home-footer">
+            <span class="footer-status-dot" aria-hidden="true"></span>
+            <span>Built for focused work</span>
+            <span class="footer-separator">·</span>
+            <b>Sultan</b>
+        </footer>
+    </main>
 </body>
 
 </html>

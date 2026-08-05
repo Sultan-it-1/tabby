@@ -17,6 +17,8 @@ const ASSETS_TO_CACHE = [
   "./terms.html",
   "./404.html",
   "./manifest.json",
+  "./theme.css",
+  "./theme-utils.js",
   "./settings.js",
   "./version.js",
   "./note.js",
@@ -66,14 +68,15 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  const canonicalRequest = new Request(`${url.origin}${url.pathname}`);
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         fetch(event.request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+              caches.open(CACHE_NAME).then((cache) => cache.put(canonicalRequest, networkResponse));
             }
           })
           .catch(() => { });
@@ -83,7 +86,7 @@ self.addEventListener("fetch", (event) => {
       return fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          caches.open(CACHE_NAME).then((cache) => cache.put(canonicalRequest, responseToCache));
         }
         return networkResponse;
       }).catch(() => {

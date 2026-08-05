@@ -1452,7 +1452,7 @@ function renderHistoryModal() {
     modal.innerHTML = `
         <div style="font-size:10px;font-weight:bold;color:${accent};margin-bottom:8px;text-align:center;padding-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
             <span style="flex-grow:1;">🕒 آخر ${history.length} عمليات مسح</span>
-            <button onclick="localStorage.removeItem('cardScannerHistory');renderHistoryModal();showToast('تم مسح السجل 🗑️');" style="background:transparent;border:none;color:#ff4444;cursor:pointer;font-size:12px;opacity:0.6;transition:0.2s;" onmouseover="this.style.opacity=1;this.style.transform='scale(1.1)'" onmouseout="this.style.opacity=0.6;this.style.transform='scale(1)'" title="مسح السجل">🗑️</button>
+            <button class="icon-danger-btn" onclick="localStorage.removeItem('cardScannerHistory');renderHistoryModal();showToast('تم مسح السجل 🗑️');" style="background:transparent;border:none;color:#ff4444;cursor:pointer;font-size:12px;opacity:0.6;transition:0.2s;" onmouseover="this.style.opacity=1;this.style.transform='scale(1.1)'" onmouseout="this.style.opacity=0.6;this.style.transform='scale(1)'" title="مسح السجل" aria-label="مسح سجل العمليات">🗑️</button>
         </div>
         ${history.map((h, i) => {
             const t = new Date(h.scannedAt);

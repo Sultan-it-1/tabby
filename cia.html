@@ -8,6 +8,9 @@
         document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
     </script>
     <script>
+        document.write('<script src="theme-utils.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+    <script>
         document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>
     <style>
@@ -590,7 +593,7 @@
         <div id="confirmBox" class="confirm-box">
             <div id="confirmTxt" class="confirm-txt">هل أنت متأكد من حذف هذه البطاقة؟</div>
             <div class="modal-btns">
-                <button class="btn-save" style="background:#ff4444; color:#fff;" id="confirmYesBtn">حذف</button>
+                <button class="btn-save danger" style="background:#ff4444; color:#fff;" id="confirmYesBtn">حذف</button>
                 <button class="btn-cancel" onclick="closeConfirmBox()">إلغاء</button>
             </div>
         </div>
@@ -625,7 +628,7 @@
                 </p>
                 <input type="text" id="deleteAllConfirmInput" placeholder="اكتب التأكيد هنا..." dir="ltr" style="text-align:center; border-color:#ff4444 !important; margin-bottom:6px;">
                 <div class="modal-btns">
-                    <button class="btn-save" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
+                    <button class="btn-save danger" style="background:#ff4444; color:#fff" onclick="confirmDeleteAll()">مسح نهائي</button>
                     <button class="btn-cancel" onclick="closeCiaModal()">إلغاء</button>
                 </div>
             </div>

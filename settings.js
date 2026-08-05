@@ -61,82 +61,151 @@
         localStorage.setItem('fastToolkit_full_window', 'true');
     }
 
-    const defaultSettings = {
-        mode: 'light',
-        themeColor: '#00e676'
-    };
+    const themeApi = window.FastToolkitThemes;
+    if (!themeApi) throw new Error('FastToolkitThemes is required before settings.js');
 
-    function isValidHexColor(value) {
-        return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+    const defaultSettings = themeApi.normalizeSettings(null);
+    let savedSettings = null;
+    let storedSettingsText = '';
+    try {
+        storedSettingsText = localStorage.getItem('fastToolkitSettings') || '';
+        savedSettings = storedSettingsText ? JSON.parse(storedSettingsText) : null;
+    } catch (e) {
+        savedSettings = null;
     }
 
-    let savedSettings = null;
+    const settings = themeApi.normalizeSettings(savedSettings);
     try {
-        const stored = localStorage.getItem('fastToolkitSettings');
-        if (stored) {
-            savedSettings = JSON.parse(stored);
-            if (!savedSettings || typeof savedSettings !== 'object' || Array.isArray(savedSettings)) {
-                savedSettings = {};
-            }
-            if (savedSettings.mode !== 'light' && savedSettings.mode !== 'dark') {
-                savedSettings.mode = defaultSettings.mode;
-            }
-            if (!isValidHexColor(savedSettings.themeColor)) {
-                savedSettings.themeColor = defaultSettings.themeColor;
-            }
-            if (savedSettings.themeColor === '#007aff') {
-                savedSettings.themeColor = '#00e676';
-                localStorage.setItem('fastToolkitSettings', JSON.stringify(savedSettings));
-            }
-        }
+        const normalizedText = JSON.stringify(settings);
+        if (normalizedText !== storedSettingsText) localStorage.setItem('fastToolkitSettings', normalizedText);
     } catch (e) { }
 
-    const settings = { ...defaultSettings, ...savedSettings };
-
-    function hexToRgb(hex) {
-        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : { r: 0, g: 255, b: 0 };
-    }
-
     const root = document.documentElement;
-    const rgb = hexToRgb(settings.themeColor);
+    root.classList.add('modern-ui');
 
-    let containerBg, containerBorder, textColor, itemBg, itemBorder;
+    const themeStylesheet = document.createElement('link');
+    themeStylesheet.id = 'fast-toolkit-theme-styles';
+    themeStylesheet.rel = 'stylesheet';
+    themeStylesheet.href = `theme.css?v=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0'}`;
+    document.head.appendChild(themeStylesheet);
+    document.addEventListener('DOMContentLoaded', () => {
+        if (themeStylesheet.parentNode === document.head) document.head.appendChild(themeStylesheet);
+    }, { once: true });
 
-    if (settings.mode === 'light') {
-        // Create soft light colors based on the theme color
-        containerBg = `rgb(${Math.round(rgb.r * 0.08 + 255 * 0.92)}, ${Math.round(rgb.g * 0.08 + 255 * 0.92)}, ${Math.round(rgb.b * 0.08 + 255 * 0.92)})`;
-        containerBorder = `rgb(${Math.round(rgb.r * 0.2 + 255 * 0.8)}, ${Math.round(rgb.g * 0.2 + 255 * 0.8)}, ${Math.round(rgb.b * 0.2 + 255 * 0.8)})`;
-        itemBg = '#ffffff';
-        itemBorder = containerBorder;
-        textColor = '#111111';
+    let activeTheme;
+    let containerBg;
+    let containerBorder;
+    let textColor;
+    let itemBg;
+    let itemBorder;
+    let settingsPreviewSnapshot = null;
 
-        root.style.setProperty('--bg', '#0f0f0f'); // Keep outside body dark
-        root.style.setProperty('--card-bg', itemBg);
-        root.style.setProperty('--text', textColor);
-        root.style.setProperty('--border', itemBorder);
-    } else {
-        containerBg = '#111111';
-        containerBorder = '#222222';
-        itemBg = '#1a1a1a';
-        itemBorder = '#333333';
-        textColor = '#eeeeee';
+    function applyThemeVariables(nextSettings) {
+        activeTheme = themeApi.resolveTheme(nextSettings);
+        const accentRgb = themeApi.hexToRgb(activeTheme.accent);
+        const secondaryRgb = themeApi.hexToRgb(activeTheme.secondary);
+        const accentContrast = themeApi.getContrastColor(activeTheme.accent);
 
-        root.style.setProperty('--bg', '#0f0f0f');
-        root.style.setProperty('--card-bg', itemBg);
-        root.style.setProperty('--text', textColor);
-        root.style.setProperty('--border', itemBorder);
+        containerBg = activeTheme.panel;
+        containerBorder = activeTheme.border;
+        itemBg = activeTheme.surface;
+        itemBorder = activeTheme.border;
+        textColor = activeTheme.text;
+
+        root.dataset.themePreset = activeTheme.id;
+        root.dataset.themeMode = activeTheme.mode;
+        root.style.colorScheme = activeTheme.mode;
+        root.style.setProperty('--app-background', activeTheme.background);
+        root.style.setProperty('--app-shell', activeTheme.shell);
+        root.style.setProperty('--app-panel', activeTheme.panel);
+        root.style.setProperty('--app-surface', activeTheme.surface);
+        root.style.setProperty('--app-elevated', activeTheme.elevated);
+        root.style.setProperty('--app-border', activeTheme.border);
+        root.style.setProperty('--app-shadow', activeTheme.mode === 'light'
+            ? '0 20px 55px rgba(29, 43, 68, .15)'
+            : '0 22px 65px rgba(0, 0, 0, .42)');
+        root.style.setProperty('--text-muted', activeTheme.muted);
+        root.style.setProperty('--accent', activeTheme.accent);
+        root.style.setProperty('--secondary', activeTheme.secondary);
+        root.style.setProperty('--accent-rgb', `${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}`);
+        root.style.setProperty('--secondary-rgb', `${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}`);
+        root.style.setProperty('--accent-contrast', accentContrast);
+
+        // Legacy aliases used by the existing tools.
+        root.style.setProperty('--bg', activeTheme.background);
+        root.style.setProperty('--card-bg', activeTheme.surface);
+        root.style.setProperty('--text', activeTheme.text);
+        root.style.setProperty('--border', activeTheme.border);
+        root.style.setProperty('--accent-green', activeTheme.accent);
+        root.style.setProperty('--accent-green-rgb', `${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}`);
+        root.style.setProperty('--accent-blue', activeTheme.secondary);
+
+        window._appContainerBg = activeTheme.panel;
+        window.fastToolkitActiveTheme = activeTheme;
+
+        const themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) themeMeta.setAttribute('content', activeTheme.background);
+        return activeTheme;
     }
 
-    // Store for PiP usage
-    window._appContainerBg = containerBg;
+    function readLatestStoredSettings() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem('fastToolkitSettings') || 'null');
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    }
 
-    // Apply Theme Color
-    root.style.setProperty('--accent-green', settings.themeColor);
+    function applySettingsState(nextSettings, source = 'local') {
+        const normalized = themeApi.normalizeSettings(nextSettings);
+        Object.keys(settings).forEach(key => delete settings[key]);
+        Object.assign(settings, normalized);
+        applyThemeVariables(settings);
+        window.fastToolkitSettings = settings;
+
+        syncThemeToPipWindow();
+        try {
+            window.dispatchEvent(new CustomEvent('fasttoolkit:settingschange', {
+                detail: { settings: { ...settings }, theme: { ...activeTheme }, source }
+            }));
+        } catch (e) { }
+        return settings;
+    }
+
+    function saveSettingsPatch(patch) {
+        const latest = readLatestStoredSettings();
+        settingsPreviewSnapshot = null;
+        const normalized = applySettingsState({ ...settings, ...latest, ...patch }, 'save');
+        try { localStorage.setItem('fastToolkitSettings', JSON.stringify(normalized)); } catch (e) { }
+        return normalized;
+    }
+
+    function previewSettingsPatch(patch) {
+        if (!settingsPreviewSnapshot) settingsPreviewSnapshot = { ...settings };
+        return applySettingsState({ ...settings, ...patch }, 'preview');
+    }
+
+    function cancelSettingsPreview() {
+        if (!settingsPreviewSnapshot) return settings;
+        const snapshot = settingsPreviewSnapshot;
+        settingsPreviewSnapshot = null;
+        return applySettingsState(snapshot, 'preview-cancel');
+    }
+
+    applyThemeVariables(settings);
+    window.fastToolkitSaveSettings = saveSettingsPatch;
+    window.fastToolkitPreviewSettings = previewSettingsPatch;
+    window.fastToolkitCancelSettingsPreview = cancelSettingsPreview;
+    window.fastToolkitThemePresets = themeApi.PRESETS;
+
+    window.addEventListener('storage', event => {
+        if (event.key !== 'fastToolkitSettings') return;
+        let incoming = null;
+        try { incoming = event.newValue ? JSON.parse(event.newValue) : null; } catch (e) { }
+        settingsPreviewSnapshot = null;
+        applySettingsState(incoming, 'storage');
+    });
 
     // Apply Container Size and Overrides
     const styleId = 'dynamic-settings-styles';
@@ -162,30 +231,17 @@
 
         const bar = document.createElement('div');
         bar.id = 'quickToolsBar';
-        bar.style.cssText = `
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 2px;
-            padding: 2px 4px;
-            margin-bottom: 4px;
-            background: transparent;
-            border: none;
-            box-sizing: border-box;
-            width: 100%;
-            flex-shrink: 0;
-            user-select: none;
-            direction: rtl;
-        `;
+        bar.className = 'quick-tools-bar';
+        bar.setAttribute('aria-label', 'التنقل السريع بين الأدوات');
 
         const tools = [
-            { href: 'note.html', icon: '📝', title: 'نسخ سريع' },
-            { href: 'simah.html', icon: '📊', title: 'سمة' },
-            { href: 'card.html', icon: '🔍', title: 'Card Scan' },
-            { href: 'sticky.html', icon: '📌', title: 'Sticky Notes' },
-            { href: 'cia.html', icon: '📋', title: 'CIA Maker' },
-            { href: 'date.html', icon: '📅', title: 'Date Helper' },
-            { href: 'index.html', icon: '🏠', title: 'الرئيسية' }
+            { href: 'note.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>', title: 'نسخ سريع' },
+            { href: 'simah.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg>', title: 'سمة' },
+            { href: 'card.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M3 9h18M7 14h3"/><circle cx="17" cy="15" r="2.5"/></svg>', title: 'Card Scan' },
+            { href: 'sticky.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v10l-6 6H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M15 21v-6h6"/></svg>', title: 'Sticky Notes' },
+            { href: 'cia.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 9h6M9 13h6M9 17h4"/></svg>', title: 'CIA Maker' },
+            { href: 'date.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>', title: 'Date Helper' },
+            { href: 'index.html', icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg>', title: 'الرئيسية' }
         ];
 
         const currentPath = window.location.pathname.split('/').pop() || 'index.html';
@@ -197,43 +253,12 @@
             const btn = document.createElement('a');
             btn.href = tool.href;
             btn.title = tool.title;
+            btn.setAttribute('aria-label', tool.title);
             btn.innerHTML = tool.icon;
             
             const isActive = currentPath === tool.href || (currentPath === '' && tool.href === 'index.html');
-
-            btn.style.cssText = `
-                flex: 1;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 4px 0;
-                border-radius: 6px;
-                text-decoration: none;
-                font-size: 14px;
-                opacity: ${isActive ? '1' : '0.45'};
-                background: ${isActive ? 'rgba(0, 230, 118, 0.15)' : 'transparent'};
-                border: ${isActive ? '1px solid rgba(0, 230, 118, 0.35)' : '1px solid transparent'};
-                box-shadow: ${isActive ? '0 0 10px rgba(0, 230, 118, 0.2)' : 'none'};
-                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-                filter: ${isActive ? 'none' : 'grayscale(30%)'};
-            `;
-
-            btn.onmouseover = () => {
-                if (!isActive) {
-                    btn.style.opacity = '1';
-                    btn.style.filter = 'none';
-                    btn.style.background = 'rgba(255, 255, 255, 0.08)';
-                    btn.style.transform = 'translateY(-1px) scale(1.12)';
-                }
-            };
-            btn.onmouseout = () => {
-                if (!isActive) {
-                    btn.style.opacity = '0.45';
-                    btn.style.filter = 'grayscale(30%)';
-                    btn.style.background = 'transparent';
-                    btn.style.transform = 'scale(1)';
-                }
-            };
+            btn.className = `quick-tool-btn${isActive ? ' active' : ''}`;
+            if (isActive) btn.setAttribute('aria-current', 'page');
 
             bar.appendChild(btn);
         });
@@ -242,7 +267,7 @@
 
         // Hide duplicate original Home button in subpages since Quick Access Bar handles Home navigation
         document.querySelectorAll('a[href="index.html"]').forEach(btn => {
-            if (btn.parentNode && btn.parentNode.id !== 'quickToolsBar') {
+            if (btn.parentNode && btn.parentNode.id !== 'quickToolsBar' && !btn.classList.contains('settings-back-btn')) {
                 btn.style.display = 'none';
             }
         });
@@ -265,9 +290,9 @@
         .container, .app-container {
             width: 230px !important;
             height: 300px !important;
-            background: ${containerBg} !important;
-            border-color: ${containerBorder} !important;
-            color: ${textColor} !important;
+            background: var(--app-panel) !important;
+            border-color: var(--app-border) !important;
+            color: var(--text) !important;
             position: relative !important;
         }
         .container.expanded, .app-container.expanded,
@@ -364,7 +389,7 @@
             display: flex !important;
             align-items: stretch !important;
             justify-content: stretch !important;
-            background: ${containerBg} !important;
+            background: var(--app-panel) !important;
         }
 
         html.full-window .container,
@@ -409,7 +434,7 @@
                 width: 100vw !important;
                 height: 100vh !important;
                 overflow: hidden !important;
-                background: ${containerBg} !important;
+                background: var(--app-panel) !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
@@ -461,12 +486,12 @@
                 left: 12px;
                 width: 34px;
                 height: 34px;
-                background: ${settings.mode === 'light' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(30, 30, 30, 0.75)'};
+                background: var(--app-elevated);
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
-                border: 1px solid ${settings.mode === 'light' ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.15)'};
+                border: 1px solid var(--app-border);
                 border-radius: 50%;
-                color: ${settings.themeColor};
+                color: var(--accent);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -477,88 +502,14 @@
             }
             #pipFloatingBtn:hover {
                 transform: scale(1.1) translateY(-2px);
-                background: ${settings.themeColor};
-                color: ${settings.mode === 'light' && settings.themeColor !== '#00ff00' && settings.themeColor !== '#00e5ff' ? '#fff' : '#111'};
-                border-color: ${settings.themeColor};
-                box-shadow: 0 6px 16px ${settings.themeColor}66;
+                background: var(--accent);
+                color: var(--accent-contrast);
+                border-color: var(--accent);
+                box-shadow: 0 6px 16px rgba(var(--accent-rgb), .32);
             }
             #pipFloatingBtn:active {
                 transform: scale(0.95);
             }
-        `;
-    }
-
-    if (settings.mode === 'light') {
-        styleRules += `
-            /* Overrides for hardcoded dark colors in various tools */
-            .header p, .footer, .footer b, .desc { color: #555 !important; }
-            .menu-item:hover { background: #fff !important; }
-            
-            .nav-btn, .action-btn, .chip { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: ${textColor} !important; }
-            .nav-btn:hover, .action-btn:hover, .chip:hover { background: #f8f8f8 !important; border-color: var(--accent-green) !important; color: #000 !important; }
-            
-            .paste-zone { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: #666 !important; }
-            .paste-zone.active { background: #fff !important; border-color: var(--accent-green) !important; color: var(--accent-green) !important; }
-            
-            #output { background: #fff !important; border-color: ${itemBorder} !important; color: ${textColor} !important; font-weight: bold; }
-            #output-edit { background: #fff !important; color: ${textColor} !important; border-color: var(--accent-green) !important; }
-            
-            .lock-label { color: #555 !important; }
-            .slider { background-color: ${itemBorder} !important; border-color: #aaa !important; }
-            input:checked+.slider { background-color: var(--accent-green) !important; border-color: var(--accent-green) !important; }
-            hr { border-top-color: ${itemBorder} !important; }
-
-            .checkout-search-box { background: #f0f8ff !important; border-color: #00b0ff !important; }
-            .checkout-search-header { color: #0088cc !important; }
-            .checkout-mode-toggle { background: #e6f7ff !important; border-color: #0099ff !important; color: #0077cc !important; }
-            .checkout-param-chip { background: #f5f5f5 !important; color: #555 !important; border-color: #ddd !important; opacity: 0.8 !important; }
-            .checkout-param-chip.active { background: #e6f7ff !important; color: #0077cc !important; border-color: #0099ff !important; opacity: 1 !important; font-weight: bold !important; }
-            .checkout-search-btn { background: linear-gradient(135deg, #00b0ff, #0088cc) !important; color: #ffffff !important; border-color: #0088cc !important; }
-            .checkout-search-btn:hover { background: #0077cc !important; }
-            
-            textarea { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
-            
-            .size-inputs input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
-            .size-input-wrapper span { color: #555 !important; }
-            
-            /* Fix for Simah tool */
-            .expand-btn, .ai-btn, .upload-btn, .settings-btn, #globalExpandBtn { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: ${textColor} !important; }
-            .expand-btn:hover, .ai-btn:hover, .upload-btn:hover, .settings-btn:hover, #globalExpandBtn:hover { background: #fff !important; border-color: var(--accent-green) !important; color: #000 !important; }
-            .ai-btn.active { background: var(--accent-green) !important; color: #000 !important; border-color: var(--accent-green) !important; }
-            .card { background: ${itemBg} !important; border: 1px solid ${itemBorder} !important; border-left: 3px solid #ffcc00 !important; }
-            .final-card { background: ${itemBg} !important; border: 1px solid ${itemBorder} !important; border-left: 3px solid var(--accent-green) !important; }
-            .final-card.copied { background: #e0e0e0 !important; border-left-color: #999 !important; }
-            .final-card.copied .final-value { color: #888 !important; }
-            .visual-check { background: #fff !important; }
-            .edit-input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
-            .scan-zone { background: ${itemBg} !important; }
-            .settings-modal { background: ${itemBg} !important; border-color: ${containerBorder} !important; box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
-            .settings-modal input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
-            .provider-tab { background: #fff !important; border-color: ${itemBorder} !important; color: #888 !important; }
-            .provider-tab.active { background: var(--accent-green) !important; color: #000 !important; border-color: var(--accent-green) !important; }
-            .close-key-btn { background: #fff !important; color: #555 !important; border: 1px solid ${itemBorder} !important; }
-            .close-key-btn:hover { background: #f0f0f0 !important; color: #111 !important; }
-            .save-key-btn { background: var(--accent-green) !important; color: #000 !important; border: none !important; }
-            .usage-btn { background: ${itemBg} !important; border-color: ${itemBorder} !important; color: ${textColor} !important; }
-            .usage-btn:hover { background: #fff !important; border-color: var(--accent-green) !important; }
-            .usage-modal { background: ${itemBg} !important; border-color: ${containerBorder} !important; box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
-            .usage-card { background: #fff !important; border-color: ${itemBorder} !important; }
-            .usage-bar-container { background: #fff !important; border-color: ${itemBorder} !important; }
-            .usage-close-btn { background: #fff !important; color: #555 !important; border-color: ${itemBorder} !important; }
-            .usage-close-btn:hover { background: #f0f0f0 !important; color: #111 !important; }
-            .char-counter { background: #e0e0e0 !important; color: ${textColor} !important; }
-            .speed-toggle-btn { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
-            .speed-toggle-btn:hover { background: #eee !important; color: #000 !important; }
-
-            /* Fixes for note.html text colors in light mode */
-            .search-input { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
-            .add-main-btn, .container-switch-btn, .sort-btn, .status { color: ${textColor} !important; }
-            .add-main-btn { border-color: ${itemBorder} !important; background: transparent !important; }
-            .add-item-trigger { color: ${textColor} !important; }
-            .modal-content { background: ${itemBg} !important; border-color: ${containerBorder} !important; }
-            .modal-content input, .modal-content textarea { background: #fff !important; color: ${textColor} !important; border-color: ${itemBorder} !important; }
-            .backup-btn { background: #fff !important; color: #555 !important; border-color: ${itemBorder} !important; }
-            .backup-btn:hover { background: #f0f0f0 !important; color: #111 !important; }
         `;
     }
 
@@ -608,21 +559,34 @@
     // Sync header/titlebar theme dynamically from iframe
     function syncThemeToPipWindow() {
         try {
-            const pDoc = window.parent.document;
+            const pipHost = window.self !== window.top ? window.parent : window.activePipWindow;
+            if (!pipHost || !pipHost.document) return;
+            const pDoc = pipHost.document;
             const headerBar = pDoc.getElementById('pipHeaderBar');
             const titleSpan = pDoc.getElementById('pipTitleSpan');
             const minBtn = pDoc.getElementById('pipMinBtn');
             const divider = pDoc.getElementById('pipDivider');
+            const timerSpan = pDoc.getElementById('pipTimerSpan');
+            const visibilityBtn = pDoc.getElementById('pipTimerVisibilityBtn');
             const pBody = pDoc.body;
 
             if (headerBar || pBody) {
-                const accentColor = settings.themeColor;
-                const isLight = settings.mode === 'light';
-                const currentText = isLight ? "#111" : "#fff";
+                const currentTheme = window.fastToolkitActiveTheme || themeApi.resolveTheme(settings);
+                const accentColor = currentTheme.accent;
+                const currentText = currentTheme.text;
 
-                if (headerBar) headerBar.style.backgroundColor = "transparent";
+                pDoc.documentElement.style.setProperty('--pip-accent', currentTheme.accent);
+                pDoc.documentElement.style.setProperty('--pip-accent-contrast', themeApi.getContrastColor(currentTheme.accent));
+                pDoc.documentElement.style.setProperty('--pip-panel', currentTheme.panel);
+                pDoc.documentElement.style.setProperty('--pip-surface', currentTheme.surface);
+                pDoc.documentElement.style.setProperty('--pip-elevated', currentTheme.elevated);
+                pDoc.documentElement.style.setProperty('--pip-border', currentTheme.border);
+                pDoc.documentElement.style.setProperty('--pip-text', currentTheme.text);
+                pDoc.documentElement.style.setProperty('--pip-muted', currentTheme.muted);
+
+                if (headerBar) headerBar.style.backgroundColor = currentTheme.panel;
                 if (pBody) {
-                    const bgColor = window._appContainerBg || (isLight ? '#f0f0f0' : '#111111');
+                    const bgColor = currentTheme.panel;
                     pBody.style.backgroundColor = bgColor;
                     pBody.ownerDocument.documentElement.style.backgroundColor = bgColor;
                 }
@@ -635,105 +599,51 @@
                     }
                 }
                 if (divider) {
-                    divider.style.backgroundColor = isLight ? "#ccc" : "#2a2a2a";
+                    divider.style.backgroundColor = currentTheme.border;
                 }
                 if (minBtn) {
-                    if (isLight) {
-                        minBtn.style.color = "#444";
-                        minBtn.style.background = "rgba(0, 0, 0, 0.05)";
-                        minBtn.style.borderColor = "rgba(0, 0, 0, 0.1)";
-                    } else {
-                        minBtn.style.color = "#ccc";
-                        minBtn.style.background = "rgba(255, 255, 255, 0.04)";
-                        minBtn.style.borderColor = "rgba(255, 255, 255, 0.08)";
-                    }
+                    minBtn.style.color = currentTheme.text;
+                    minBtn.style.background = currentTheme.surface;
+                    minBtn.style.borderColor = currentTheme.border;
                 }
+                if (timerSpan && Number(timerSpan.dataset.minutes || '0') < 7) {
+                    timerSpan.style.color = currentTheme.accent;
+                }
+                if (timerSpan) {
+                    timerSpan.style.backgroundColor = currentTheme.surface;
+                    timerSpan.style.borderColor = currentTheme.border;
+                }
+                if (visibilityBtn) visibilityBtn.style.color = currentTheme.muted;
             }
         } catch (e) {
             console.warn("Theme sync to PiP failed:", e);
         }
     }
 
+    let pipOverlayReturnFocus = null;
+
     function showOpenerOverlay() {
         let overlay = document.getElementById("pipOpenerOverlay");
         if (!overlay) {
+            pipOverlayReturnFocus = document.activeElement;
             overlay = document.createElement("div");
             overlay.id = "pipOpenerOverlay";
-            const isLight = settings.mode === 'light';
-            const bg = isLight ? "#f0f2f5" : "#0f0f0f";
-            const textColor = isLight ? "#111" : "#fff";
-            const cardBg = isLight ? "#ffffff" : "#1a1a1a";
-            const border = isLight ? "rgba(0,0,0,0.1)" : "#333";
-            const accent = settings.themeColor;
-
-            overlay.style.cssText = `
-                position: fixed;
-                inset: 0;
-                background: ${bg};
-                background-image: ${isLight ? 
-                    `radial-gradient(at 10% 20%, rgba(0, 122, 255, 0.03) 0px, transparent 50%), radial-gradient(at 90% 80%, rgba(0, 230, 118, 0.03) 0px, transparent 50%)` :
-                    `radial-gradient(at 10% 20%, rgba(0, 230, 118, 0.05) 0px, transparent 50%), radial-gradient(at 90% 80%, rgba(0, 176, 255, 0.05) 0px, transparent 50%)`
-                };
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-family: 'Cairo', 'Segoe UI', sans-serif;
-                color: ${textColor};
-                padding: 20px;
-                box-sizing: border-box;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            `;
-
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'pipOverlayTitle');
             overlay.innerHTML = `
-                <div style="
-                    background: ${cardBg};
-                    border: 1px solid ${border};
-                    padding: 30px;
-                    border-radius: 20px;
-                    max-width: 400px;
-                    width: 100%;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, ${isLight ? '0.1' : '0.5'}), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-                    text-align: center;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 15px;
-                ">
-                    <div style="font-size: 50px; filter: drop-shadow(0 0 10px ${accent}66); margin-bottom: 5px; animation: float 4s ease-in-out infinite;">📌</div>
-                    <h2 style="margin: 0; font-size: 22px; font-weight: 800; color: ${accent};">FAST TOOLKIT</h2>
-                    <p style="margin: 0; font-size: 14px; color: ${isLight ? '#555' : '#aaa'}; line-height: 1.6;">
-                        النافذة العائمة (PiP) نشطة حالياً دائماً في المقدمة!
-                    </p>
-                    <div style="display: flex; flex-direction: column; width: 100%; gap: 10px; margin-top: 15px;">
-                        <button id="pipOverlayFocusBtn" style="
-                            background: ${accent};
-                            color: ${isLight && accent !== '#00ff00' && accent !== '#00e5ff' ? '#fff' : '#0b0c10'};
-                            border: none;
-                            border-radius: 12px;
-                            padding: 12px;
-                            font-size: 14px;
-                            font-weight: 700;
-                            cursor: pointer;
-                            box-shadow: 0 4px 15px ${accent}66;
-                            transition: all 0.2s;
-                        ">التركيز على النافذة العائمة</button>
-                        <button id="pipOverlayCloseBtn" style="
-                            background: rgba(255, 255, 255, 0.05);
-                            color: ${textColor};
-                            border: 1px solid ${border};
-                            border-radius: 12px;
-                            padding: 12px;
-                            font-size: 14px;
-                            font-weight: 700;
-                            cursor: pointer;
-                            transition: all 0.2s;
-                        ">إغلاق النافذة العائمة</button>
+                <div class="pip-overlay-card">
+                    <span class="pip-overlay-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><rect x="11" y="11" width="10" height="10" rx="2"/></svg>
+                    </span>
+                    <span class="brand-kicker">Always on top</span>
+                    <h2 id="pipOverlayTitle">النافذة العائمة تعمل الآن</h2>
+                    <p>يمكنك متابعة أدواتك فوق أي نافذة أخرى أثناء العمل.</p>
+                    <div class="pip-overlay-actions">
+                        <button id="pipOverlayFocusBtn" class="primary">الانتقال إلى النافذة</button>
+                        <button id="pipOverlayCloseBtn">إغلاق النافذة</button>
                     </div>
-                    <p style="font-size: 11px; color: ${isLight ? '#888' : '#666'}; margin: 10px 0 0 0;">
-                        💡 يرجى عدم إغلاق هذه الصفحة لتستمر النافذة العائمة بالعمل.
-                    </p>
+                    <small>أبقِ هذه الصفحة مفتوحة لاستمرار النافذة العائمة.</small>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -747,20 +657,43 @@
                 const openerWin = window;
                 if (openerWin.activePipWindow) openerWin.activePipWindow.close();
             });
+            overlay.addEventListener('keydown', event => {
+                const focusBtn = document.getElementById('pipOverlayFocusBtn');
+                const closeBtn = document.getElementById('pipOverlayCloseBtn');
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    if (window.activePipWindow) window.activePipWindow.close();
+                    return;
+                }
+                if (event.key !== 'Tab' || !focusBtn || !closeBtn) return;
+                if (event.shiftKey && document.activeElement === focusBtn) {
+                    event.preventDefault();
+                    closeBtn.focus();
+                } else if (!event.shiftKey && document.activeElement === closeBtn) {
+                    event.preventDefault();
+                    focusBtn.focus();
+                }
+            });
         }
         
         overlay.offsetHeight; // force reflow
-        overlay.style.opacity = "1";
+        overlay.classList.add('visible');
+        requestAnimationFrame(() => document.getElementById('pipOverlayFocusBtn')?.focus());
     }
 
     function hideOpenerOverlay() {
         const overlay = document.getElementById("pipOpenerOverlay");
         if (overlay) {
-            overlay.style.opacity = "0";
+            overlay.classList.remove('visible');
             setTimeout(() => {
                 if (overlay.parentNode) {
                     overlay.parentNode.removeChild(overlay);
                 }
+                const returnTarget = pipOverlayReturnFocus && pipOverlayReturnFocus.isConnected
+                    ? pipOverlayReturnFocus
+                    : document.getElementById('pipBtn');
+                if (returnTarget && typeof returnTarget.focus === 'function') returnTarget.focus();
+                pipOverlayReturnFocus = null;
             }, 300);
         }
     }
@@ -839,8 +772,8 @@
             pulseDot.style.width = "6px";
             pulseDot.style.height = "6px";
             pulseDot.style.borderRadius = "50%";
-            pulseDot.style.backgroundColor = settings.themeColor;
-            pulseDot.style.boxShadow = `0 0 8px ${settings.themeColor}`;
+            pulseDot.style.backgroundColor = activeTheme.accent;
+            pulseDot.style.boxShadow = `0 0 8px ${activeTheme.accent}`;
             pulseDot.style.display = "inline-block";
 
             // Pulse style
@@ -872,7 +805,7 @@
             minBtn.id = "pipMinBtn";
             minBtn.innerHTML = `
                 <span style="font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; font-size: 11px; letter-spacing: 0.2px;">تصغير</span>
-                <span style="font-size: 13px; color: #7c4dff; font-weight: bold; line-height: 1; margin-top: -1px;">—</span>
+                <span style="font-size: 13px; color: currentColor; font-weight: bold; line-height: 1; margin-top: -1px;">—</span>
             `;
             minBtn.style.display = "flex";
             minBtn.style.alignItems = "center";
@@ -891,38 +824,28 @@
                 #pipMinBtn {
                     -webkit-tap-highlight-color: transparent;
                 }
-                #pipMinBtn:focus, #pipMinBtn:focus-visible {
-                    outline: none;
+                #pipMinBtn:focus-visible {
+                    outline: 2px solid var(--pip-accent);
+                    outline-offset: 2px;
                 }
                 #pipMinBtn:active {
                     transform: scale(0.94);
                     opacity: 0.8;
+                }
+                #pipTimerVisibilityBtn:focus-visible {
+                    opacity: 1 !important;
+                    outline: 2px solid var(--pip-accent);
+                    outline-offset: 1px;
                 }
             `;
             pipWindow.document.head.appendChild(btnStyle);
 
             let isCollapsed = false;
 
-            // Apply style dynamically
-            const isLight = settings.mode === 'light';
-            
-            if (isLight) {
-                headerBar.style.backgroundColor = "transparent";
-                titleSpan.style.color = "#111";
-                minBtn.style.color = "#222";
-                minBtn.style.background = "rgba(0,0,0,0.06)";
-                minBtn.style.borderColor = "rgba(0,0,0,0.12)";
-                minBtn.onmouseover = () => { minBtn.style.background = "rgba(0,0,0,0.12)"; };
-                minBtn.onmouseout = () => { minBtn.style.background = "rgba(0,0,0,0.06)"; };
-            } else {
-                headerBar.style.backgroundColor = "transparent";
-                titleSpan.style.color = "#eee";
-                minBtn.style.color = "#eee";
-                minBtn.style.background = "#1e1e1e";
-                minBtn.style.borderColor = "#333";
-                minBtn.onmouseover = () => { minBtn.style.background = "#2a2a2a"; };
-                minBtn.onmouseout = () => { minBtn.style.background = "#1e1e1e"; };
-            }
+            const getCurrentPipTheme = () => window.fastToolkitActiveTheme || themeApi.resolveTheme(settings);
+            headerBar.style.backgroundColor = "transparent";
+            minBtn.onmouseover = () => { minBtn.style.background = getCurrentPipTheme().elevated; };
+            minBtn.onmouseout = () => { minBtn.style.background = getCurrentPipTheme().surface; };
 
             // Timer & Actions Wrapper
             const middleWrapper = pipWindow.document.createElement("div");
@@ -954,15 +877,16 @@
 
             // Timer display (Premium Glassmorphic Badge)
             const timerSpan = pipWindow.document.createElement("span");
+            timerSpan.id = "pipTimerSpan";
             timerSpan.style.fontFamily = "'Outfit', 'Segoe UI', monospace";
             timerSpan.style.fontWeight = "700";
             timerSpan.style.fontSize = "13px";
             timerSpan.style.letterSpacing = "0.5px";
-            timerSpan.style.color = "#00e676";
+            timerSpan.style.color = getCurrentPipTheme().accent;
             timerSpan.style.padding = "2px 8px";
             timerSpan.style.borderRadius = "8px";
-            timerSpan.style.backgroundColor = isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)";
-            timerSpan.style.border = isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.05)";
+            timerSpan.style.backgroundColor = getCurrentPipTheme().surface;
+            timerSpan.style.border = `1px solid ${getCurrentPipTheme().border}`;
             timerSpan.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.1)";
             timerSpan.style.transition = "all 0.3s ease";
             timerSpan.innerText = "00:00";
@@ -971,10 +895,11 @@
 
             // Visibility Button
             const visibilityBtn = pipWindow.document.createElement("button");
+            visibilityBtn.id = "pipTimerVisibilityBtn";
             visibilityBtn.title = "إخفاء/إظهار العداد";
             visibilityBtn.style.background = "none";
             visibilityBtn.style.border = "none";
-            visibilityBtn.style.color = isLight ? "#777" : "#888";
+            visibilityBtn.style.color = getCurrentPipTheme().muted;
             visibilityBtn.style.cursor = "pointer";
             visibilityBtn.style.padding = "4px";
             visibilityBtn.style.borderRadius = "50%";
@@ -985,11 +910,12 @@
             visibilityBtn.style.opacity = "0"; // hidden by default
             
             visibilityBtn.onmouseover = () => {
-                visibilityBtn.style.color = settings.themeColor;
-                visibilityBtn.style.backgroundColor = isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.1)";
+                const currentTheme = getCurrentPipTheme();
+                visibilityBtn.style.color = currentTheme.accent;
+                visibilityBtn.style.backgroundColor = currentTheme.elevated;
             };
             visibilityBtn.onmouseout = () => {
-                visibilityBtn.style.color = isLight ? "#777" : "#888";
+                visibilityBtn.style.color = getCurrentPipTheme().muted;
                 visibilityBtn.style.backgroundColor = "transparent";
             };
 
@@ -1022,9 +948,8 @@
 
             visibilityBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                settings.pipTimerVisible = !settings.pipTimerVisible;
+                saveSettingsPatch({ pipTimerVisible: !settings.pipTimerVisible });
                 updateVisibility();
-                localStorage.setItem('fastToolkitSettings', JSON.stringify(settings));
             });
 
             middleWrapper.appendChild(visibilityBtn);
@@ -1056,19 +981,21 @@
                 const m = Math.floor(pipTimerSeconds / 60);
                 const s = pipTimerSeconds % 60;
                 timerSpan.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                timerSpan.dataset.minutes = String(m);
+                const currentTheme = getCurrentPipTheme();
 
                 timerSpan.style.animation = "none";
                 if (m >= 16) {
-                    timerSpan.style.color = isLight ? "#b71c1c" : "#ff5252"; // dark red / bright red
+                    timerSpan.style.color = currentTheme.mode === 'light' ? "#B91C1C" : "#FB7185";
                     timerSpan.style.animation = "pipPulse 0.8s infinite ease-in-out"; // blink
                 } else if (m >= 14) {
-                    timerSpan.style.color = isLight ? "#d32f2f" : "#ff8a80"; // red
+                    timerSpan.style.color = currentTheme.mode === 'light' ? "#DC2626" : "#FDA4AF";
                 } else if (m >= 10) {
-                    timerSpan.style.color = isLight ? "#f57f17" : "#ffd600"; // yellow
+                    timerSpan.style.color = currentTheme.mode === 'light' ? "#A16207" : "#FACC15";
                 } else if (m >= 7) {
-                    timerSpan.style.color = isLight ? "#e65100" : "#ffab40"; // orange
+                    timerSpan.style.color = currentTheme.mode === 'light' ? "#C2410C" : "#FB923C";
                 } else {
-                    timerSpan.style.color = settings.themeColor; // theme color
+                    timerSpan.style.color = currentTheme.accent;
                 }
             }
 
@@ -1084,7 +1011,7 @@
 
                 // Flash feedback pulse
                 timerSpan.style.transform = "scale(1.18)";
-                timerSpan.style.boxShadow = "0 0 10px rgba(0, 230, 118, 0.6)";
+                timerSpan.style.boxShadow = `0 0 12px ${getCurrentPipTheme().accent}99`;
                 setTimeout(() => {
                     timerSpan.style.transform = "scale(1)";
                     timerSpan.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.1)";
@@ -1119,18 +1046,21 @@
             document.addEventListener('click', handleGlobalClick);
 
             // Listen for Ticket URL Navigation / Change events from Extension or SidePanel
-            window.addEventListener("message", (e) => {
+            const handleTimerMessage = (e) => {
                 if (e.data && (e.data.action === "resetTicketTimer" || e.data.action === "ticketUrlChanged")) {
                     resetSmartTicketTimer(e.data.reason || "url_changed");
                 }
-            });
+            };
+            window.addEventListener("message", handleTimerMessage);
 
+            let handleRuntimeTimerMessage = null;
             if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-                chrome.runtime.onMessage.addListener((msg) => {
+                handleRuntimeTimerMessage = (msg) => {
                     if (msg && msg.action === "resetTicketTimer") {
                         resetSmartTicketTimer(msg.reason || "url_changed");
                     }
-                });
+                };
+                chrome.runtime.onMessage.addListener(handleRuntimeTimerMessage);
             }
 
 
@@ -1158,6 +1088,7 @@
             headerBar.appendChild(middleWrapper);
             headerBar.appendChild(minBtn);
             body.appendChild(headerBar);
+            syncThemeToPipWindow();
 
             // Iframe
             const iframe = pipWindow.document.createElement("iframe");
@@ -1206,7 +1137,7 @@
                     isCollapsed = true;
                     iframe.style.display = "none";
                     minBtn.innerHTML = `
-                        <span style="font-size: 7px; margin-top: 1px;">➕</span>
+                        <span style="font-size: 14px; line-height: 1;">+</span>
                         <span style="font-size: 10px; font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; letter-spacing: -0.2px;">توسيع</span>
                     `;
                     titleSpan.innerText = "";
@@ -1219,7 +1150,7 @@
                     isCollapsed = false;
                     iframe.style.display = "block";
                     minBtn.innerHTML = `
-                        <span style="font-size: 7px; margin-top: 1px;">➖</span>
+                        <span style="font-size: 14px; line-height: 1;">−</span>
                         <span style="font-size: 10px; font-weight: 700; font-family: 'Cairo', 'Segoe UI', sans-serif; letter-spacing: -0.2px;">تصغير</span>
                     `;
                     titleSpan.innerText = "";
@@ -1247,6 +1178,15 @@
 
             pipWindow.addEventListener("pagehide", () => {
                 clearInterval(pipTimerInterval);
+                window.removeEventListener("copy", handleSmartCopy);
+                pipWindow.removeEventListener("copy", handleSmartCopy);
+                document.removeEventListener("click", handleGlobalClick);
+                window.removeEventListener("message", handleTimerMessage);
+                window.removeEventListener("mousemove", resetIdle);
+                window.removeEventListener("keydown", resetIdle);
+                if (handleRuntimeTimerMessage && typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.removeListener) {
+                    chrome.runtime.onMessage.removeListener(handleRuntimeTimerMessage);
+                }
                 window.activePipWindow = null;
                 hideOpenerOverlay();
             });
@@ -1254,6 +1194,12 @@
         } catch (error) {
             console.error("Failed to open Picture-in-Picture window:", error);
         }
+    }
+
+    function getFullWindowIcon(isFull) {
+        return isFull
+            ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5"/></svg>'
+            : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5"/></svg>';
     }
 
     function toggleFullWindow() {
@@ -1276,8 +1222,9 @@
 
         const fullBtn = document.getElementById('fullWindowBtn');
         if (fullBtn) {
-            fullBtn.innerHTML = enable ? '🗗' : '🗖';
+            fullBtn.innerHTML = getFullWindowIcon(enable);
             fullBtn.title = enable ? 'إلغاء التكبير (الحجم العادي)' : 'تكبير الصفحة (لوضع تقسيم العرض)';
+            fullBtn.setAttribute('aria-label', fullBtn.title);
         }
     }
     window.toggleFullWindow = toggleFullWindow;
@@ -1293,29 +1240,15 @@
         if (document.getElementById('pipBtn') || document.getElementById('pipFloatingBtn')) return;
         if (window.self !== window.top) return;
 
-        const isLight = settings.mode === 'light';
-
         // 1. Check for index.html header actions wrapper
         const headerActions = document.querySelector('.header-actions');
         if (headerActions) {
             const btn = document.createElement('button');
             btn.id = 'pipBtn';
+            btn.className = 'header-icon-btn';
             btn.title = 'تشغيل النافذة العائمة (PiP)';
-            btn.style.cssText = `
-                background: none;
-                border: none;
-                color: #555;
-                cursor: pointer;
-                padding: 2px 3px;
-                line-height: 1;
-                transition: color 0.2s;
-                font-size: 14px;
-                display: flex;
-                align-items: center;
-            `;
-            btn.innerHTML = '📌';
-            btn.onmouseover = () => btn.style.color = 'var(--accent-green, #00c864)';
-            btn.onmouseout = () => btn.style.color = '#555';
+            btn.setAttribute('aria-label', 'تشغيل النافذة العائمة');
+            btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><rect x="11" y="11" width="10" height="10" rx="2"/></svg>';
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 launchPip();
@@ -1333,8 +1266,8 @@
             btn.id = 'pipBtn';
             btn.className = 'nav-btn';
             btn.title = 'تشغيل النافذة العائمة (PiP)';
-            btn.innerHTML = '📌';
-            btn.style.fontSize = '12px';
+            btn.setAttribute('aria-label', 'تشغيل النافذة العائمة');
+            btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><rect x="11" y="11" width="10" height="10" rx="2"/></svg>';
             btn.style.display = 'inline-flex';
             btn.style.alignItems = 'center';
             btn.style.justifyContent = 'center';
@@ -1352,7 +1285,8 @@
                 fullBtn.className = 'nav-btn';
                 const isFull = document.documentElement.classList.contains('full-window');
                 fullBtn.title = isFull ? 'إلغاء التكبير (الحجم العادي)' : 'تكبير الصفحة (لوضع تقسيم العرض)';
-                fullBtn.innerHTML = isFull ? '🗗' : '🗖';
+                fullBtn.setAttribute('aria-label', fullBtn.title);
+                fullBtn.innerHTML = getFullWindowIcon(isFull);
                 fullBtn.style.fontSize = '12px';
                 fullBtn.style.display = 'inline-flex';
                 fullBtn.style.alignItems = 'center';
@@ -1379,9 +1313,11 @@
         }
 
         // 3. Fallback: FAB (Floating Action Button) in the viewport
-        const btn = document.createElement('div');
+        const btn = document.createElement('button');
         btn.id = 'pipFloatingBtn';
+        btn.type = 'button';
         btn.title = 'تشغيل النافذة العائمة (PiP)';
+        btn.setAttribute('aria-label', 'تشغيل النافذة العائمة');
         btn.innerHTML = `
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -1569,48 +1505,17 @@
 
     // ====== Dark/Light Mode Toggle ======
     function fastToolkitToggleTheme() {
-        let s;
-        try { s = JSON.parse(localStorage.getItem('fastToolkitSettings') || '{}'); } catch { s = {}; }
-        const newMode = (s.mode === 'dark') ? 'light' : 'dark';
-        s.mode = newMode;
-        localStorage.setItem('fastToolkitSettings', JSON.stringify(s));
-
-        const root = document.documentElement;
-        const themeColor = s.themeColor || '#00e676';
-
-        // إعادة تطبيق الألوان فوراً
-        if (newMode === 'dark') {
-            root.style.setProperty('--bg', '#0f0f0f');
-            root.style.setProperty('--card-bg', '#1a1a1a');
-            root.style.setProperty('--text', '#eeeeee');
-            root.style.setProperty('--border', '#333333');
-        } else {
-            const hex = themeColor;
-            const r = parseInt(hex.slice(1,3),16)||0, g = parseInt(hex.slice(3,5),16)||0, b = parseInt(hex.slice(5,7),16)||0;
-            root.style.setProperty('--bg', '#0f0f0f');
-            root.style.setProperty('--card-bg', '#ffffff');
-            root.style.setProperty('--text', '#111111');
-            root.style.setProperty('--border', `rgb(${Math.round(r*.2+255*.8)},${Math.round(g*.2+255*.8)},${Math.round(b*.2+255*.8)})`);
-        }
-
-        // تحديث الحاويات بخلفية جديدة
-        const styleEl = document.getElementById('dynamic-settings-styles');
-        if (styleEl) {
-            const bg = newMode === 'dark' ? '#111111' : '#ffffff';
-            const border = newMode === 'dark' ? '#222222' : '#dddddd';
-            const textC = newMode === 'dark' ? '#eeeeee' : '#111111';
-            styleEl.textContent = styleEl.textContent
-                .replace(/background: #[0-9a-fA-F]{6,8} !important; \/\* container-bg \*\//g, `background: ${bg} !important; /* container-bg */`);
-        }
+        const newMode = settings.mode === 'dark' ? 'light' : 'dark';
+        saveSettingsPatch({ mode: newMode, themePreset: 'custom' });
 
         // إظهار toast سريع
         const toast = document.createElement('div');
-        toast.textContent = newMode === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        toast.textContent = newMode === 'dark' ? 'تم تفعيل الوضع الداكن' : 'تم تفعيل الوضع الفاتح';
         toast.style.cssText = `
             position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-            background:#222;color:#fff;padding:6px 14px;border-radius:20px;
+            background:var(--app-elevated);color:var(--text);padding:7px 14px;border-radius:999px;
             font-size:11px;font-weight:bold;z-index:999999;
-            border:1px solid #444;box-shadow:0 4px 12px rgba(0,0,0,0.5);
+            border:1px solid var(--app-border);box-shadow:0 12px 30px rgba(0,0,0,.24);
             opacity:1;transition:opacity 0.4s;
         `;
         document.body.appendChild(toast);

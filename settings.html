@@ -10,6 +10,9 @@
         document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
     </script>
     <script>
+        document.write('<script src="theme-utils.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+    <script>
         document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>
     <style>
@@ -334,37 +337,59 @@
 
 <body>
 
-    <div class="container">
-        <div class="header">
-            <a href="index.html" class="nav-btn">🔙 رجوع</a>
-            <h1>الإعدادات ⚙️</h1>
-        </div>
+    <main class="container settings-shell">
+        <header class="header settings-header">
+            <div class="settings-title-wrap">
+                <span class="settings-title-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.55V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9a1.7 1.7 0 0 0 1.55 1H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+                </span>
+                <div>
+                    <span class="brand-kicker">التخصيص</span>
+                    <h1>الإعدادات</h1>
+                </div>
+            </div>
+            <a href="index.html" class="nav-btn settings-back-btn" aria-label="العودة إلى الرئيسية">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                <span>الرئيسية</span>
+            </a>
+        </header>
 
         <div class="settings-content">
 
-            <div class="setting-group">
-                <div class="switch-container">
-                    <label style="margin:0;">الوضع العام</label>
-                    <label class="switch">
-                        <input type="checkbox" id="modeToggle">
-                        <span class="slider"></span>
-                    </label>
+            <div class="setting-group appearance-settings">
+                <div class="appearance-heading">
+                    <div>
+                        <strong>مظهر الواجهة</strong>
+                        <span>اختر ثيمًا جاهزًا أو خصّص لونك</span>
+                    </div>
+                    <span class="active-theme-pill" id="activeThemeLabel">ليلي</span>
                 </div>
-            </div>
 
+                <div class="theme-preset-grid" id="themePresetGrid" role="radiogroup" aria-label="الثيمات الجاهزة"></div>
 
-            <div class="setting-group">
-                <label>اللون الأساسي</label>
-                <div class="color-options">
-                    <div class="color-btn" style="background:#00ff00" data-color="#00ff00" title="أخضر"></div>
-                    <div class="color-btn" style="background:#ff3399" data-color="#ff3399" title="وردي"></div>
-                    <div class="color-btn" style="background:#00e5ff" data-color="#00e5ff" title="تركوازي"></div>
-                    <div class="color-btn" style="background:#ff9f43" data-color="#ff9f43" title="برتقالي"></div>
-                    <div class="color-btn" style="background:#007aff" data-color="#007aff" title="أزرق"></div>
-                    <label class="color-btn" id="customColorBtn" style="background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-sizing: border-box;" title="لون مخصص">
-                        <input type="color" id="customColorInput" style="opacity: 0; position: absolute; inset: 0; width: 200%; height: 200%; top: -50%; left: -50%; cursor: pointer;">
-                        <span style="color: white; font-size: 16px; font-weight: bold; text-shadow: 0 0 4px rgba(0,0,0,0.8); pointer-events: none; margin-top: -2px;">+</span>
-                    </label>
+                <div class="custom-theme-controls">
+                    <div>
+                        <label style="margin:0 0 6px;">لون مخصص</label>
+                        <div class="color-options" aria-label="الألوان المخصصة">
+                            <button type="button" class="color-btn" style="background:#34d399" data-color="#34D399" aria-label="أخضر"></button>
+                            <button type="button" class="color-btn" style="background:#f43f5e" data-color="#F43F5E" aria-label="وردي"></button>
+                            <button type="button" class="color-btn" style="background:#22d3ee" data-color="#22D3EE" aria-label="تركوازي"></button>
+                            <button type="button" class="color-btn" style="background:#fb923c" data-color="#FB923C" aria-label="برتقالي"></button>
+                            <button type="button" class="color-btn" style="background:#4f46e5" data-color="#4F46E5" aria-label="أزرق"></button>
+                            <label class="color-btn" id="customColorBtn" style="background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;" aria-label="اختيار لون مخصص">
+                                <input type="color" id="customColorInput" aria-label="اللون الأساسي المخصص" style="opacity:0;position:absolute;inset:-50%;width:200%;height:200%;cursor:pointer;">
+                                <span style="color:white;font-size:15px;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;">+</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="switch-container" style="display:grid;justify-items:center;gap:5px;">
+                        <label for="modeToggle" style="margin:0;font-size:8px;">وضع فاتح</label>
+                        <label class="switch">
+                            <input type="checkbox" id="modeToggle" aria-label="تفعيل الوضع الفاتح">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -386,8 +411,8 @@
                     </div>
                 </label>
                 <div style="display: flex; gap: 4px; margin-top: 4px;">
-                    <button class="action-btn" id="exportAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">تصدير كامل 💾</button>
-                    <button class="action-btn" id="importAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">استيراد كامل 📂</button>
+                    <button class="action-btn primary" id="exportAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">تصدير النسخة</button>
+                    <button class="action-btn" id="importAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">استيراد النسخة</button>
                 </div>
                 <input type="file" id="importAllFile" style="display:none;" accept=".json">
             </div>
@@ -410,8 +435,8 @@
                     </div>
                 </label>
                 <div style="display: flex; gap: 4px; margin-top: 4px;">
-                    <button class="action-btn" id="driveBackupBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">رفع للـ Drive ☁️</button>
-                    <button class="action-btn" id="driveRestoreBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">استعادة من Drive ☁️</button>
+                    <button class="action-btn primary" id="driveBackupBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">رفع إلى Drive</button>
+                    <button class="action-btn" id="driveRestoreBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">استعادة من Drive</button>
                 </div>
                 <div id="driveStatus" style="font-size: 9px; color: #aaa; margin-top: 4px;"></div>
             </div>
@@ -493,9 +518,9 @@
         </div>
 
         <div class="footer-btns">
-            <button class="action-btn btn-reset" id="resetBtn">استعادة الافتراضي 🔄</button>
+            <button class="action-btn btn-reset" id="resetBtn">استعادة الإعدادات الافتراضية</button>
         </div>
-    </div>
+    </main>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -545,8 +570,87 @@
 
 
 
+            const themeApi = window.FastToolkitThemes;
+            const themePresetGrid = document.getElementById('themePresetGrid');
+            const activeThemeLabel = document.getElementById('activeThemeLabel');
             let selectedColor = currentSettings.themeColor;
+            let selectedPreset = currentSettings.themePreset || 'custom';
             modeToggle.checked = (currentSettings.mode === 'light');
+
+            function updateThemePresetSelection() {
+                const presetCards = [...document.querySelectorAll('.theme-preset-card')];
+                presetCards.forEach((card, index) => {
+                    const active = card.dataset.themePreset === selectedPreset;
+                    card.classList.toggle('active', active);
+                    card.setAttribute('aria-checked', String(active));
+                    card.tabIndex = active || (!themeApi.PRESETS[selectedPreset] && index === 0) ? 0 : -1;
+                });
+
+                const preset = themeApi.PRESETS[selectedPreset];
+                activeThemeLabel.textContent = preset ? preset.name : 'مخصص';
+            }
+
+            function commitTheme(patch) {
+                const saved = window.fastToolkitSaveSettings(patch);
+                selectedColor = saved.themeColor;
+                selectedPreset = saved.themePreset;
+                modeToggle.checked = saved.mode === 'light';
+                const customInput = document.getElementById('customColorInput');
+                if (customInput && /^#[0-9A-F]{6}$/i.test(selectedColor)) customInput.value = selectedColor;
+                updateThemePresetSelection();
+                updateColorSelection();
+            }
+
+            themeApi.getPresetList().forEach(preset => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'theme-preset-card';
+                button.dataset.themePreset = preset.id;
+                button.setAttribute('role', 'radio');
+                button.setAttribute('aria-label', `${preset.name}: ${preset.description}`);
+
+                const swatch = document.createElement('span');
+                swatch.className = 'theme-preset-swatch';
+                swatch.style.background = `linear-gradient(145deg, ${preset.panel}, ${preset.surface})`;
+                swatch.style.setProperty('--preview-accent', preset.accent);
+
+                const copy = document.createElement('span');
+                copy.className = 'theme-preset-copy';
+                const name = document.createElement('span');
+                name.className = 'theme-preset-name';
+                name.textContent = preset.name;
+                const description = document.createElement('span');
+                description.className = 'theme-preset-description';
+                description.textContent = preset.description;
+                copy.append(name, description);
+                button.append(swatch, copy);
+
+                button.addEventListener('click', () => {
+                    commitTheme({
+                        themePreset: preset.id,
+                        mode: preset.mode,
+                        themeColor: preset.accent
+                    });
+                });
+                themePresetGrid.appendChild(button);
+            });
+
+            themePresetGrid.addEventListener('keydown', event => {
+                const cards = [...themePresetGrid.querySelectorAll('.theme-preset-card')];
+                const currentIndex = cards.indexOf(event.target.closest('.theme-preset-card'));
+                if (currentIndex < 0 || cards.length === 0) return;
+
+                let nextIndex = currentIndex;
+                if (event.key === 'Home') nextIndex = 0;
+                else if (event.key === 'End') nextIndex = cards.length - 1;
+                else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + cards.length) % cards.length;
+                else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % cards.length;
+                else return;
+
+                event.preventDefault();
+                cards[nextIndex].focus();
+                cards[nextIndex].click();
+            });
 
             function updateColorSelection() {
                 let foundMatch = false;
@@ -570,37 +674,68 @@
                 }
             }
             updateColorSelection();
-
-            const autoSave = () => {
-                const newSettings = {
-                    mode: modeToggle.checked ? 'light' : 'dark',
-                    themeColor: selectedColor
-                };
-                localStorage.setItem('fastToolkitSettings', JSON.stringify(newSettings));
-                window.location.reload();
-            };
+            updateThemePresetSelection();
 
             // Event Listeners for auto-save
-            modeToggle.addEventListener('change', autoSave);
+            modeToggle.addEventListener('change', () => {
+                commitTheme({
+                    themePreset: 'custom',
+                    mode: modeToggle.checked ? 'light' : 'dark',
+                    themeColor: selectedColor
+                });
+            });
 
             colorBtns.forEach(btn => {
                 if (btn.id === 'customColorBtn') return;
                 btn.addEventListener('click', () => {
                     selectedColor = btn.dataset.color;
-                    autoSave();
+                    commitTheme({ themePreset: 'custom', themeColor: selectedColor });
                 });
             });
 
             const customColorInput = document.getElementById('customColorInput');
             if (customColorInput) {
+                let hasPendingColorPreview = false;
                 const isHex = /^#[0-9A-F]{6}$/i.test(selectedColor);
                 if (isHex) customColorInput.value = selectedColor;
                 
-                customColorInput.addEventListener('change', (e) => {
+                customColorInput.addEventListener('input', (e) => {
+                    hasPendingColorPreview = true;
                     selectedColor = e.target.value;
-                    autoSave();
+                    window.fastToolkitPreviewSettings({ themePreset: 'custom', themeColor: selectedColor });
+                });
+                customColorInput.addEventListener('change', (e) => {
+                    hasPendingColorPreview = false;
+                    selectedColor = e.target.value;
+                    commitTheme({ themePreset: 'custom', themeColor: selectedColor });
+                });
+                customColorInput.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        if (!hasPendingColorPreview) return;
+                        hasPendingColorPreview = false;
+                        const restored = window.fastToolkitCancelSettingsPreview();
+                        selectedColor = restored.themeColor;
+                        selectedPreset = restored.themePreset;
+                        modeToggle.checked = restored.mode === 'light';
+                        customColorInput.value = selectedColor;
+                        updateThemePresetSelection();
+                        updateColorSelection();
+                    }, 0);
                 });
             }
+
+            window.addEventListener('fasttoolkit:settingschange', event => {
+                const nextSettings = event.detail && event.detail.settings;
+                if (!nextSettings) return;
+                selectedColor = nextSettings.themeColor;
+                selectedPreset = nextSettings.themePreset;
+                modeToggle.checked = nextSettings.mode === 'light';
+                if (customColorInput && /^#[0-9A-F]{6}$/i.test(selectedColor)) {
+                    customColorInput.value = selectedColor;
+                }
+                updateThemePresetSelection();
+                updateColorSelection();
+            });
 
             // Keyboard Shortcuts Config
             const shortcuts = window.getFastToolkitShortcuts ? window.getFastToolkitShortcuts() : {
@@ -670,11 +805,11 @@
             });
 
             resetBtn.addEventListener('click', () => {
-                const newDefaults = {
-                    mode: 'light',
-                    themeColor: '#00e676'
-                };
-                localStorage.setItem('fastToolkitSettings', JSON.stringify(newDefaults));
+                window.fastToolkitSaveSettings({
+                    themePreset: themeApi.DEFAULT_PRESET_ID,
+                    mode: themeApi.PRESETS[themeApi.DEFAULT_PRESET_ID].mode,
+                    themeColor: themeApi.PRESETS[themeApi.DEFAULT_PRESET_ID].accent
+                });
                 localStorage.removeItem('fastToolkitExpanded');
                 localStorage.removeItem('fastToolkitShortcuts');
                 window.location.reload();
