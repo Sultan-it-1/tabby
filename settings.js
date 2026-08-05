@@ -81,16 +81,59 @@
     } catch (e) { }
 
     const root = document.documentElement;
-    root.classList.add('modern-ui');
+    root.classList.add('modern-ui', 'ui-booting');
 
-    const themeStylesheet = document.createElement('link');
-    themeStylesheet.id = 'fast-toolkit-theme-styles';
-    themeStylesheet.rel = 'stylesheet';
-    themeStylesheet.href = `theme.css?v=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0'}`;
-    document.head.appendChild(themeStylesheet);
-    document.addEventListener('DOMContentLoaded', () => {
-        if (themeStylesheet.parentNode === document.head) document.head.appendChild(themeStylesheet);
-    }, { once: true });
+    // Keep the first frame covered until all synchronous page enhancements
+    // (expanded sizing, quick navigation and PiP controls) have settled.
+    // This prevents the compact legacy layout from flashing before the final
+    // full-window layout. The timer is a safety fallback if load never fires.
+    let uiRevealQueued = false;
+    let uiRevealTimer = null;
+
+    function finishToolkitUiBoot() {
+        if (uiRevealTimer !== null) {
+            clearTimeout(uiRevealTimer);
+            uiRevealTimer = null;
+        }
+        root.classList.remove('ui-booting');
+        root.classList.add('ui-ready');
+    }
+
+    function revealToolkitUi() {
+        if (uiRevealQueued || !root.classList.contains('ui-booting')) return;
+        uiRevealQueued = true;
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => requestAnimationFrame(finishToolkitUiBoot));
+        } else {
+            setTimeout(finishToolkitUiBoot, 0);
+        }
+    }
+
+    uiRevealTimer = setTimeout(finishToolkitUiBoot, 2500);
+    if (document.readyState === 'complete') {
+        revealToolkitUi();
+    } else {
+        window.addEventListener('load', revealToolkitUi, { once: true });
+    }
+
+    // The themed pages load this stylesheet as a blocking <link> in <head>.
+    // Keep a late fallback for any standalone consumer, but never move an
+    // existing link after first paint because changing cascade order causes
+    // a visible size/theme flash during navigation.
+    function ensureThemeStylesheet() {
+        if (document.getElementById('fast-toolkit-theme-styles')) return;
+        const themeStylesheet = document.createElement('link');
+        themeStylesheet.id = 'fast-toolkit-theme-styles';
+        themeStylesheet.rel = 'stylesheet';
+        themeStylesheet.href = `theme.css?v=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0'}`;
+        document.head.appendChild(themeStylesheet);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ensureThemeStylesheet, { once: true });
+    } else {
+        ensureThemeStylesheet();
+    }
 
     let activeTheme;
     let containerBg;

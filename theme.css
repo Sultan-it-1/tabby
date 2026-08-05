@@ -14,6 +14,10 @@ html.modern-ui[data-theme-mode="light"] {
     color-scheme: light;
 }
 
+html.modern-ui.ui-booting body {
+    visibility: hidden !important;
+}
+
 html.modern-ui,
 html.modern-ui body {
     background: var(--app-background) !important;
