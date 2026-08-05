@@ -4,6 +4,11 @@ const linkToggle = document.getElementById('linkToggle');
 const outputDiv = document.getElementById('output');
 const outputEdit = document.getElementById('output-edit');
 const editBtn = document.getElementById('editBtn');
+const scanProgress = document.getElementById('scanProgress');
+const scanProgressTitle = document.getElementById('scanProgressTitle');
+const scanProgressTime = document.getElementById('scanProgressTime');
+const scanProgressDetail = document.getElementById('scanProgressDetail');
+const scanProgressBar = document.getElementById('scanProgressBar');
 
 const aiBtn = document.getElementById('aiBtn');
 const settingsModal = document.getElementById('settingsModal');
@@ -211,6 +216,14 @@ let lastHandledCopyRequestAt = 0;
 let activeScanContext = null;
 let scanSequence = 0;
 const cardUtils = window.CardScannerUtils;
+const SCAN_PROGRESS_STEPS = {
+    ai_start: { pct: 18, detail: 'رفع الصورة وبدء التحليل...' },
+    ai_waiting: { pct: 48, detail: 'بانتظار نتيجة AI...' },
+    ai_parsing: { pct: 78, detail: 'تنسيق البيانات وتجهيز النسخ...' },
+    local_preprocess: { pct: 22, detail: 'تحسين الصورة للقراءة...' },
+    local_reading: { pct: 58, detail: 'قراءة النص من الصورة...' },
+    local_parsing: { pct: 82, detail: 'استخراج بيانات العملية...' }
+};
 
 if (!cardUtils) {
     throw new Error('CardScannerUtils is required before card.js');
@@ -545,6 +558,43 @@ function setCardScannerTransientState(status, message) {
     loadSavedCardData();
 }
 
+function setScanProgress(context, stepKey, title) {
+    if (!isCurrentScan(context) || !scanProgress) return;
+    const step = SCAN_PROGRESS_STEPS[stepKey] || { pct: 10, detail: 'جاري المعالجة...' };
+    if (scanProgressTitle) scanProgressTitle.textContent = title || 'جاري التحليل';
+    if (scanProgressDetail) scanProgressDetail.textContent = step.detail;
+    if (scanProgressBar) scanProgressBar.style.width = `${Math.max(8, Math.min(95, step.pct))}%`;
+}
+
+function startScanProgress(context, title) {
+    if (!scanProgress) return;
+    context.progressStartedAt = Date.now();
+    scanProgress.hidden = false;
+    scanProgress.classList.remove('done', 'error');
+    if (scanProgressBar) scanProgressBar.style.width = '8%';
+    if (scanProgressTime) scanProgressTime.textContent = '0s';
+    setScanProgress(context, 'ai_start', title);
+    context.progressTimer = setInterval(() => {
+        if (!isCurrentScan(context)) return;
+        const seconds = Math.max(0, Math.floor((Date.now() - context.progressStartedAt) / 1000));
+        if (scanProgressTime) scanProgressTime.textContent = `${seconds}s`;
+    }, 250);
+}
+
+function stopScanProgress(context, mode = 'done') {
+    if (context && context.progressTimer) {
+        clearInterval(context.progressTimer);
+        context.progressTimer = null;
+    }
+    if (!scanProgress) return;
+    if (scanProgressBar && mode === 'done') scanProgressBar.style.width = '100%';
+    scanProgress.classList.toggle('done', mode === 'done');
+    scanProgress.classList.toggle('error', mode === 'error');
+    setTimeout(() => {
+        if (!activeScanContext && scanProgress) scanProgress.hidden = true;
+    }, mode === 'done' ? 550 : 1400);
+}
+
 function createScanError(name, message) {
     const error = new Error(message);
     error.name = name;
@@ -557,7 +607,10 @@ function beginScan() {
         id: ++scanSequence,
         controller: new AbortController(),
         loadingToast: null,
-        timedOut: false
+        timedOut: false,
+        progressMode: 'done',
+        progressTimer: null,
+        progressStartedAt: 0
     };
     dropZone.classList.add('active', 'processing');
     return activeScanContext;
@@ -571,6 +624,7 @@ function cancelActiveScan(removeProcessing = true) {
     if (activeScanContext) {
         try { activeScanContext.controller.abort(); } catch (e) { }
         if (activeScanContext.loadingToast) activeScanContext.loadingToast.remove();
+        stopScanProgress(activeScanContext, 'idle');
         activeScanContext = null;
     }
     if (removeProcessing) dropZone.classList.remove('active', 'processing');
@@ -581,6 +635,7 @@ function finishScan(context) {
     if (isCurrentScan(context)) {
         activeScanContext = null;
         dropZone.classList.remove('active', 'processing');
+        stopScanProgress(context, context.progressMode || 'done');
     }
 }
 
@@ -635,8 +690,11 @@ async function processImage(file) {
 
     try {
         if (isAIActive) {
-            context.loadingToast = showToast(`جاري الاستخراج عبر ${provider === 'groq' ? 'Groq' : 'Gemini'}... 🧠`, false, 0);
-            setCardScannerTransientState('processing', 'جاري تحليل الصورة بالـ AI...');
+            const providerName = provider === 'groq' ? 'Groq' : 'Gemini';
+            startScanProgress(context, `AI: ${providerName}`);
+            context.loadingToast = showToast(`جاري الاستخراج عبر ${providerName}... 🧠`, false, 0);
+            setCardScannerTransientState('processing', `جاري تحليل الصورة عبر ${providerName}...`);
+            setScanProgress(context, 'ai_waiting', `AI: ${providerName}`);
             const extraction = provider === 'groq'
                 ? extractCardWithGroq(file, apiKey, context.controller.signal)
                 : extractCardWithAI(file, apiKey, context.controller.signal);
@@ -644,20 +702,25 @@ async function processImage(file) {
             const aiText = await runWithScanDeadline(extraction, context);
             if (!isCurrentScan(context)) return false;
 
+            setScanProgress(context, 'ai_parsing', `AI: ${providerName}`);
             const parsed = await parseAIResult(aiText);
             if (!parsed) throw createScanError('InvalidAIResult', 'نتيجة AI غير مكتملة أو غير صالحة');
         } else {
+            startScanProgress(context, 'القارئ المحلي');
             context.loadingToast = showToast('جاري معالجة الصورة... 🔧', false, 0);
             setCardScannerTransientState('processing', 'جاري قراءة الصورة...');
+            setScanProgress(context, 'local_preprocess', 'القارئ المحلي');
             const localExtraction = (async () => {
                 const processedFile = await preprocessImage(file);
                 if (context.controller.signal.aborted) throw createScanError('AbortError', 'تم إلغاء العملية');
                 context.loadingToast.update('جاري القراءة... ⏳');
+                setScanProgress(context, 'local_reading', 'القارئ المحلي');
                 const result = await recognizeImageText(processedFile, context.controller.signal);
                 return result?.data?.text || '';
             })();
             const text = await runWithScanDeadline(localExtraction, context, LOCAL_SCAN_TIMEOUT_MS);
             if (!isCurrentScan(context)) return false;
+            setScanProgress(context, 'local_parsing', 'القارئ المحلي');
             const parsed = await parseData(text);
             if (!parsed) throw createScanError('InvalidOCRResult', 'تعذر استخراج بيانات مكتملة من الصورة');
         }
@@ -669,6 +732,7 @@ async function processImage(file) {
 
         const message = error && error.message ? error.message : 'تعذر تحليل الصورة';
         setCardScannerTransientState('error', `فشل التحليل: ${message}`);
+        context.progressMode = 'error';
         showToast(message + ' ❌', true, 5000);
         return false;
     } finally {

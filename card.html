@@ -863,6 +863,14 @@
 
         <div class="scrollable-content">
             <div class="paste-zone" id="dropZone">الصق الصورة هنا مباشرة (Ctrl + V)</div>
+            <div class="scan-progress" id="scanProgress" hidden aria-live="polite">
+                <div class="scan-progress-top">
+                    <span class="scan-progress-title" id="scanProgressTitle">جاري التحليل</span>
+                    <span class="scan-progress-time" id="scanProgressTime">0s</span>
+                </div>
+                <div class="scan-progress-bar" aria-hidden="true"><span id="scanProgressBar"></span></div>
+                <div class="scan-progress-detail" id="scanProgressDetail">تجهيز الصورة...</div>
+            </div>
 
             <div class="output-wrapper">
                 <div id="output" onclick="copyFull()">البيانات ستظهر هنا</div>
