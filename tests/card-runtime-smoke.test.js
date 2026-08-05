@@ -44,7 +44,7 @@ class MockElement {
     }
 }
 
-function createRuntime(initialStorage = {}) {
+function createRuntime(initialStorage = {}, runtimeOptions = {}) {
     const storage = new Map(Object.entries(initialStorage).map(([key, value]) => [key, String(value)]));
     const elements = new Map();
     const copied = [];
@@ -113,6 +113,7 @@ function createRuntime(initialStorage = {}) {
         requestAnimationFrame: callback => callback(),
         sessionStorage,
         setTimeout: callback => { callback(); return 1; },
+        Tesseract: runtimeOptions.Tesseract,
         window
     });
     context.globalThis = context;
@@ -188,4 +189,186 @@ test('missing AI credentials replace stale card data with an error state', async
     assert.equal(saved.status, 'error');
     assert.match(saved.fullText, /مفتاح Gemini مفقود/);
     assert.equal(runtime.elements.get('chip-card').innerText, '-');
+});
+
+test('reuses one bilingual OCR worker without changing recognition input or mode', async () => {
+    let createWorkerCalls = 0;
+    let terminateCalls = 0;
+    let createWorkerArguments;
+    const recognizedImages = [];
+    const worker = {
+        async recognize(image) {
+            recognizedImages.push(image);
+            return { data: { text: `result-${recognizedImages.length}` } };
+        },
+        terminate() {
+            terminateCalls++;
+            return Promise.resolve();
+        }
+    };
+    const tesseract = {
+        OEM: { LSTM_ONLY: 1 },
+        async createWorker(...args) {
+            createWorkerCalls++;
+            createWorkerArguments = args;
+            return worker;
+        }
+    };
+    const runtime = createRuntime({}, { Tesseract: tesseract });
+    const firstImage = { name: 'first-original-image' };
+    const secondImage = { name: 'second-original-image' };
+
+    const first = await runtime.context.recognizeImageText(firstImage);
+    const second = await runtime.context.recognizeImageText(secondImage);
+
+    assert.equal(first.data.text, 'result-1');
+    assert.equal(second.data.text, 'result-2');
+    assert.equal(createWorkerCalls, 1);
+    assert.deepEqual(recognizedImages, [firstImage, secondImage]);
+    assert.equal(createWorkerArguments[0], 'eng+ara');
+    assert.equal(createWorkerArguments[1], 1);
+    assert.equal(createWorkerArguments[2].workerPath, './vendor/tesseract/worker.min.js');
+    assert.equal(createWorkerArguments[2].langPath, './vendor/tesseract/lang');
+
+    runtime.context.discardOcrWorker();
+    assert.equal(terminateCalls, 1);
+});
+
+test('does not initialize OCR when a scan is already aborted', async () => {
+    let createWorkerCalls = 0;
+    const runtime = createRuntime({}, {
+        Tesseract: {
+            OEM: { LSTM_ONLY: 1 },
+            async createWorker() {
+                createWorkerCalls++;
+                throw new Error('must not initialize');
+            }
+        }
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    await assert.rejects(
+        runtime.context.recognizeImageText({ name: 'unused' }, controller.signal),
+        error => error.name === 'AbortError'
+    );
+    assert.equal(createWorkerCalls, 0);
+});
+
+test('aborting active OCR releases the queue and recreates the worker', async () => {
+    let createWorkerCalls = 0;
+    let firstRecognitionStarted = false;
+    let firstTerminateCalls = 0;
+    let secondTerminateCalls = 0;
+    const firstWorker = {
+        recognize() {
+            firstRecognitionStarted = true;
+            return new Promise(() => { });
+        },
+        terminate() {
+            firstTerminateCalls++;
+            return Promise.resolve();
+        }
+    };
+    const secondWorker = {
+        async recognize() {
+            return { data: { text: 'second-worker-result' } };
+        },
+        terminate() {
+            secondTerminateCalls++;
+            return Promise.resolve();
+        }
+    };
+    const runtime = createRuntime({}, {
+        Tesseract: {
+            OEM: { LSTM_ONLY: 1 },
+            async createWorker() {
+                createWorkerCalls++;
+                return createWorkerCalls === 1 ? firstWorker : secondWorker;
+            }
+        }
+    });
+    const controller = new AbortController();
+    const firstRecognition = runtime.context.recognizeImageText({ name: 'first' }, controller.signal);
+    const firstRejected = assert.rejects(firstRecognition, error => error.name === 'AbortError');
+
+    for (let attempt = 0; attempt < 10 && !firstRecognitionStarted; attempt++) await Promise.resolve();
+    assert.equal(firstRecognitionStarted, true);
+    controller.abort();
+    await firstRejected;
+
+    const secondResult = await runtime.context.recognizeImageText({ name: 'second' });
+    assert.equal(secondResult.data.text, 'second-worker-result');
+    assert.equal(createWorkerCalls, 2);
+    assert.equal(firstTerminateCalls, 1);
+    assert.equal(secondTerminateCalls, 0);
+});
+
+test('retries OCR worker initialization after a transient failure', async () => {
+    let createWorkerCalls = 0;
+    const runtime = createRuntime({}, {
+        Tesseract: {
+            OEM: { LSTM_ONLY: 1 },
+            async createWorker() {
+                createWorkerCalls++;
+                if (createWorkerCalls === 1) throw new Error('temporary init failure');
+                return {
+                    async recognize() {
+                        return { data: { text: 'recovered' } };
+                    },
+                    terminate() {
+                        return Promise.resolve();
+                    }
+                };
+            }
+        }
+    });
+
+    await assert.rejects(
+        runtime.context.recognizeImageText({ name: 'first' }),
+        /temporary init failure/
+    );
+    const recovered = await runtime.context.recognizeImageText({ name: 'second' });
+
+    assert.equal(recovered.data.text, 'recovered');
+    assert.equal(createWorkerCalls, 2);
+});
+
+test('serializes OCR recognition jobs on the shared worker', async () => {
+    let activeRecognitions = 0;
+    let maxActiveRecognitions = 0;
+    let recognitionCalls = 0;
+    let releaseFirstRecognition;
+    const runtime = createRuntime({}, {
+        Tesseract: {
+            OEM: { LSTM_ONLY: 1 },
+            async createWorker() {
+                return {
+                    async recognize() {
+                        recognitionCalls++;
+                        activeRecognitions++;
+                        maxActiveRecognitions = Math.max(maxActiveRecognitions, activeRecognitions);
+                        if (recognitionCalls === 1) {
+                            await new Promise(resolve => { releaseFirstRecognition = resolve; });
+                        }
+                        activeRecognitions--;
+                        return { data: { text: `result-${recognitionCalls}` } };
+                    },
+                    terminate() {
+                        return Promise.resolve();
+                    }
+                };
+            }
+        }
+    });
+
+    const first = runtime.context.recognizeImageText({ name: 'first' });
+    const second = runtime.context.recognizeImageText({ name: 'second' });
+    for (let attempt = 0; attempt < 10 && !releaseFirstRecognition; attempt++) await Promise.resolve();
+
+    assert.equal(recognitionCalls, 1);
+    releaseFirstRecognition();
+    await Promise.all([first, second]);
+    assert.equal(recognitionCalls, 2);
+    assert.equal(maxActiveRecognitions, 1);
 });

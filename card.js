@@ -55,6 +55,119 @@ function getTesseractOptions() {
     };
 }
 
+const OCR_LANGUAGES = 'eng+ara';
+let ocrWorkerPromise = null;
+let ocrWorkerInstance = null;
+let ocrWorkerGeneration = 0;
+let ocrRecognitionQueue = Promise.resolve();
+let ocrWarmupScheduled = false;
+
+function getOcrWorker() {
+    if (typeof Tesseract === 'undefined' || typeof Tesseract.createWorker !== 'function') {
+        return Promise.reject(new Error('قارئ الصور المحلي غير متوفر'));
+    }
+
+    if (!ocrWorkerPromise) {
+        const generation = ocrWorkerGeneration;
+        const oem = Tesseract.OEM?.LSTM_ONLY ?? 1;
+        let workerPromise;
+        workerPromise = Promise.resolve(
+            Tesseract.createWorker(OCR_LANGUAGES, oem, getTesseractOptions())
+        ).then(worker => {
+            if (generation !== ocrWorkerGeneration) {
+                try {
+                    const termination = worker.terminate();
+                    if (termination && typeof termination.catch === 'function') termination.catch(() => { });
+                } catch (e) { }
+                throw createScanError('AbortError', 'تم إلغاء تهيئة قارئ الصور');
+            }
+            ocrWorkerInstance = worker;
+            return worker;
+        }).catch(error => {
+            if (ocrWorkerPromise === workerPromise) {
+                ocrWorkerPromise = null;
+                ocrWorkerInstance = null;
+            }
+            throw error;
+        });
+        ocrWorkerPromise = workerPromise;
+    }
+
+    return ocrWorkerPromise;
+}
+
+function discardOcrWorker() {
+    ocrWorkerGeneration++;
+    const worker = ocrWorkerInstance;
+    ocrWorkerPromise = null;
+    ocrWorkerInstance = null;
+    if (!worker) return;
+
+    try {
+        const termination = worker.terminate();
+        if (termination && typeof termination.catch === 'function') termination.catch(() => { });
+    } catch (e) { }
+}
+
+function recognizeImageText(image, signal) {
+    const recognize = async () => {
+        if (signal?.aborted) throw createScanError('AbortError', 'تم إلغاء قراءة الصورة');
+        const worker = await getOcrWorker();
+        if (signal?.aborted) throw createScanError('AbortError', 'تم إلغاء قراءة الصورة');
+
+        let abortedDuringRecognition = false;
+        let rejectForAbort;
+        const onAbort = () => {
+            abortedDuringRecognition = true;
+            discardOcrWorker();
+            if (rejectForAbort) rejectForAbort(createScanError('AbortError', 'تم إلغاء قراءة الصورة'));
+        };
+        const abortPromise = signal ? new Promise((resolve, reject) => {
+            rejectForAbort = reject;
+            signal.addEventListener('abort', onAbort, { once: true });
+        }) : null;
+        const recognitionPromise = Promise.resolve(worker.recognize(image));
+        recognitionPromise.catch(() => { });
+
+        try {
+            const result = await (abortPromise
+                ? Promise.race([recognitionPromise, abortPromise])
+                : recognitionPromise);
+            if (abortedDuringRecognition || signal?.aborted) {
+                throw createScanError('AbortError', 'تم إلغاء قراءة الصورة');
+            }
+            return result;
+        } catch (error) {
+            if (!abortedDuringRecognition) discardOcrWorker();
+            if (signal?.aborted) throw createScanError('AbortError', 'تم إلغاء قراءة الصورة');
+            throw error;
+        } finally {
+            if (signal) signal.removeEventListener('abort', onAbort);
+        }
+    };
+
+    const queuedRecognition = ocrRecognitionQueue.then(recognize);
+    ocrRecognitionQueue = queuedRecognition.catch(() => { });
+    return queuedRecognition;
+}
+
+function scheduleOcrWarmup() {
+    if (ocrWarmupScheduled || !isAIActive || currentProvider !== 'groq' || !getAiSecret('simah_groq_key')) return;
+    ocrWarmupScheduled = true;
+
+    const warmup = () => {
+        ocrWarmupScheduled = false;
+        if (!isAIActive || currentProvider !== 'groq' || !getAiSecret('simah_groq_key')) return;
+        getOcrWorker().catch(() => { });
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(warmup, { timeout: 1500 });
+    } else {
+        setTimeout(warmup, 350);
+    }
+}
+
 function showToast(message, isError = false, duration = 2500) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -148,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSavedTabbyInput();
     loadSavedCardData();
     handlePipCopyRequest(localStorage.getItem(CARD_SCAN_COPY_REQUEST_KEY));
+    scheduleOcrWarmup();
 });
 
 window.addEventListener('focus', () => {
@@ -155,6 +269,7 @@ window.addEventListener('focus', () => {
     handlePipCopyRequest(localStorage.getItem(CARD_SCAN_COPY_REQUEST_KEY));
 });
 window.addEventListener('pageshow', loadSavedTabbyInput);
+window.addEventListener('pagehide', discardOcrWorker);
 window.addEventListener('storage', (event) => {
     if (event.key === 'cardScannerData') {
         if (event.newValue === null) cancelActiveScan();
@@ -531,7 +646,7 @@ async function processImage(file) {
                 const processedFile = await preprocessImage(file);
                 if (context.controller.signal.aborted) throw createScanError('AbortError', 'تم إلغاء العملية');
                 context.loadingToast.update('جاري القراءة... ⏳');
-                const result = await Tesseract.recognize(processedFile, 'eng+ara', getTesseractOptions());
+                const result = await recognizeImageText(processedFile, context.controller.signal);
                 return result?.data?.text || '';
             })();
             const text = await runWithScanDeadline(localExtraction, context, LOCAL_SCAN_TIMEOUT_MS);
@@ -1004,6 +1119,7 @@ function toggleAI() {
     if (isAIActive) {
         aiBtn.className = 'ai-btn active';
         showToast("تم تفعيل الـ AI للاستخراج 🧠");
+        scheduleOcrWarmup();
     } else {
         aiBtn.className = 'ai-btn';
         showToast("تم إيقاف الـ AI (استخدام القارئ المحلي) 📁");
@@ -1016,6 +1132,7 @@ function switchProvider(provider) {
     document.getElementById('tabGroq').className = provider === 'groq' ? 'provider-tab active' : 'provider-tab';
     document.getElementById('sectionGemini').className = provider === 'gemini' ? 'provider-section active' : 'provider-section';
     document.getElementById('sectionGroq').className = provider === 'groq' ? 'provider-section active' : 'provider-section';
+    scheduleOcrWarmup();
 }
 
 function openSettings() {
@@ -1042,6 +1159,7 @@ function saveApiKey() {
 
     const providerName = currentProvider === 'groq' ? 'Groq' : 'Gemini';
     showToast(`تم الحفظ — المزود: ${providerName} ✅`);
+    scheduleOcrWarmup();
 }
 
 // ======== نظام تتبع الاستخدام المشترك ========
@@ -1244,7 +1362,7 @@ async function extractCardWithGroq(file, groqKey, signal) {
 
     let result;
     try {
-        result = await Tesseract.recognize(file, 'eng+ara', getTesseractOptions());
+        result = await recognizeImageText(file, signal);
     } catch (error) {
         if (signal?.aborted) throw createScanError('AbortError', 'تم إلغاء العملية');
         throw new Error('تعذر قراءة نص الصورة قبل إرساله إلى Groq');

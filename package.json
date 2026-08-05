@@ -1,6 +1,6 @@
 {
   "name": "fast-toolkit",
-  "version": "2.0.28",
+  "version": "2.0.29",
   "private": true,
   "scripts": {
     "test": "node --test tests/card-utils.test.js tests/card-runtime-smoke.test.js tests/card-integration.test.js",
