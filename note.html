@@ -464,13 +464,16 @@
             background: rgba(25, 25, 25, 0.95);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            padding: 14px;
+            padding: 10px;
             border-radius: 12px;
             width: 100%;
-            max-width: 190px;
+            max-width: 215px;
+            max-height: 85vh;
+            overflow-y: auto;
             border: 1px solid rgba(var(--accent-green-rgb, 0, 200, 100), 0.3);
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
             animation: modal-slide-in 0.22s ease;
+            box-sizing: border-box;
         }
 
         input,
@@ -485,6 +488,24 @@
             box-sizing: border-box;
             margin-bottom: 6px;
             font-family: sans-serif;
+        }
+
+        textarea {
+            min-height: 140px;
+            resize: vertical;
+            line-height: 1.5;
+            unicode-bidi: plaintext;
+            text-align: start;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        textarea::-webkit-resizer {
+            background-color: var(--accent-green, #00c864);
+            border: 2px solid #111;
+            border-radius: 3px;
+            box-shadow: 0 0 6px rgba(0, 200, 100, 0.8);
+            outline: 1px solid var(--accent-green, #00c864);
         }
 
         .modal-btns {
@@ -597,8 +618,8 @@
     <div class="modal" id="editModal">
         <div class="modal-content">
             <input type="text" id="itemName" placeholder="الاسم المختصر" dir="auto">
-            <textarea id="itemText" placeholder="النص الكامل..." rows="3" dir="auto"></textarea>
-            <div class="modal-btns">
+            <textarea id="itemText" placeholder="النص الكامل..." rows="6"></textarea>
+            <div id="modalNormalBtns" class="modal-btns">
                 <button class="m-btn" style="background:var(--accent-green);color:#000"
                     onclick="saveItem()">حفظ</button>
                 <button class="m-btn" style="background:#333;color:#fff" onclick="closeModal()">إلغاء</button>
@@ -606,6 +627,13 @@
             <button id="delItemBtn" class="danger"
                 style="background:none;border:none;color:#ff4444;width:100%;margin-top:6px;cursor:pointer;font-size:11px; display:none;"
                 onclick="triggerDeleteItem()">حذف 🗑️</button>
+            <div id="delItemConfirmRow" style="display:none; margin-top:8px; padding-top:6px; border-top:1px dashed rgba(255,68,68,0.4); text-align:center;">
+                <div style="font-size:10px; color:#ff6666; margin-bottom:6px; font-weight:bold;">هل أنت متأكد من حذف هذه النوتة؟</div>
+                <div class="modal-btns">
+                    <button class="m-btn danger" style="background:#ff4444; color:#fff;" onclick="confirmDeleteItem()">تأكيد الحذف 🗑️</button>
+                    <button class="m-btn" style="background:#333; color:#fff;" onclick="cancelDeleteItemConfirm()">إلغاء</button>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -90,6 +90,22 @@ function isSaudiBankHoliday(date) {
     return false;
 }
 
+function getArabicOrdinalDay(n) {
+    const ordinals = {
+        1: 'يوم العمل الأول',
+        2: 'يوم العمل الثاني',
+        3: 'يوم العمل الثالث',
+        4: 'يوم العمل الرابع',
+        5: 'يوم العمل الخامس',
+        6: 'يوم العمل السادس',
+        7: 'يوم العمل السابع',
+        8: 'يوم العمل الثامن',
+        9: 'يوم العمل التاسع',
+        10: 'يوم العمل العاشر'
+    };
+    return ordinals[n] || `يوم العمل الـ ${n}`;
+}
+
 function calculateBusinessDays() {
     const startVal = document.getElementById('startDate').value;
     const endVal = document.getElementById('endDate').value;
@@ -106,7 +122,7 @@ function calculateBusinessDays() {
 
     if (end < start) {
         resultBox.className = 'result-box empty';
-        resultBox.innerText = 'تاريخ النهاية قبل البداية!';
+        resultBox.innerText = 'تاريخ النهاية يسبق تاريخ البداية!';
         return;
     }
 
@@ -147,7 +163,7 @@ function calculateBusinessDays() {
             <div style="text-align: center; color:#aaa;">الأيام العادية<br><span style="font-size: 14px;">0</span></div>
         </div>
         <div style="margin-top: 8px; padding: 6px; background: var(--bg); border-top: 1px dashed var(--border); font-size: 10px; color: #ccc;">
-            نحن الآن في: <strong style="color: var(--accent-green); font-size: 12px;">اليوم الـ 1</strong> من العمل
+            نحن الآن في: <strong style="color: var(--accent-green); font-size: 12px;">يوم العمل الأول</strong>
         </div>`;
     } else {
         const baseWorkDays = workDays + holidaysCount;
@@ -172,7 +188,7 @@ function calculateBusinessDays() {
             <div style="text-align: center; color:#aaa;">الأيام العادية<br><span style="font-size: 14px;">${totalDays}</span></div>
         </div>
         <div style="margin-top: 8px; padding: 6px; background: var(--bg); border-top: 1px dashed var(--border); font-size: 10px; color: #ccc;">
-            نحن الآن في: <strong style="color: var(--accent-green); font-size: 12px;">اليوم الـ ${inclusiveWorkDays}</strong> من العمل
+            نحن الآن في: <strong style="color: var(--accent-green); font-size: 12px;">${getArabicOrdinalDay(inclusiveWorkDays)}</strong>
         </div>`;
     }
 }

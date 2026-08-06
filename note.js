@@ -585,17 +585,40 @@ function triggerDeleteSection(cat) {
 }
 
 function triggerDeleteItem() {
+    const confirmRow = document.getElementById('delItemConfirmRow');
+    const normalBtns = document.getElementById('modalNormalBtns');
+    const delBtn = document.getElementById('delItemBtn');
+    if (confirmRow) confirmRow.style.display = 'block';
+    if (normalBtns) normalBtns.style.display = 'none';
+    if (delBtn) delBtn.style.display = 'none';
+}
+window.triggerDeleteItem = triggerDeleteItem;
+
+function confirmDeleteItem() {
     const catToDelete = activeCat;
     const idToDelete = activeId;
     const targetCId = modalTargetContainer;
-    closeModal();
-    showCustomConfirm('حذف هذا الاختصار؟', () => {
+    if (catToDelete && idToDelete && targetCId) {
         ensureContainerSafety(targetCId);
-        storageData[targetCId][catToDelete] = storageData[targetCId][catToDelete].filter(x => x.id !== idToDelete);
-        saveAndRefresh();
-    });
+        if (storageData[targetCId][catToDelete]) {
+            storageData[targetCId][catToDelete] = storageData[targetCId][catToDelete].filter(x => x.id !== idToDelete);
+            saveAndRefresh();
+            showStatus("تم حذف الاختصار 🗑️");
+        }
+    }
+    closeModal();
 }
-window.triggerDeleteItem = triggerDeleteItem;
+window.confirmDeleteItem = confirmDeleteItem;
+
+function cancelDeleteItemConfirm() {
+    const confirmRow = document.getElementById('delItemConfirmRow');
+    const normalBtns = document.getElementById('modalNormalBtns');
+    const delBtn = document.getElementById('delItemBtn');
+    if (confirmRow) confirmRow.style.display = 'none';
+    if (normalBtns) normalBtns.style.display = 'flex';
+    if (delBtn) delBtn.style.display = 'block';
+}
+window.cancelDeleteItemConfirm = cancelDeleteItemConfirm;
 
 let conflictQueue = [];
 let conflictApplyAllAction = null;
@@ -774,14 +797,45 @@ function addSection() {
 }
 window.addSection = addSection;
 
+
 function openItemModal(cId, cat, item = null) {
     modalTargetContainer = cId || currentContainer;
     activeCat = cat;
     activeId = item ? item.id : null;
     document.getElementById('itemName').value = item ? (item.l || '') : '';
-    document.getElementById('itemText').value = item ? (item.t || '') : '';
+    const itemTextEl = document.getElementById('itemText');
+    const textVal = item ? (item.t || '') : '';
+    itemTextEl.value = textVal;
+
     document.getElementById('delItemBtn').style.display = item ? 'block' : 'none';
+    const confirmRow = document.getElementById('delItemConfirmRow');
+    const normalBtns = document.getElementById('modalNormalBtns');
+    if (confirmRow) confirmRow.style.display = 'none';
+    if (normalBtns) normalBtns.style.display = 'flex';
+
+    // 1. فتح النافذة أولاً لكي تكون مرئية في الـ DOM قبل حساب الارتفاع
     document.getElementById('editModal').classList.add('open');
+
+    // 2. حساب الارتفاع الحقيقي للنص بعد الظهور
+    const adjustHeight = () => {
+        itemTextEl.style.height = 'auto';
+        const contentHeight = itemTextEl.scrollHeight;
+        if (contentHeight > 140) {
+            itemTextEl.style.height = Math.min(340, contentHeight + 14) + 'px';
+        } else {
+            itemTextEl.style.height = '140px';
+        }
+    };
+
+    adjustHeight();
+    requestAnimationFrame(adjustHeight);
+
+    // 3. التمدد التلقائي أثناء الكتابة أو اللصق
+    itemTextEl.oninput = () => {
+        if (itemTextEl.scrollHeight > itemTextEl.clientHeight) {
+            itemTextEl.style.height = Math.min(360, itemTextEl.scrollHeight + 10) + 'px';
+        }
+    };
 }
 
 function saveItem() {
@@ -815,6 +869,10 @@ function closeModal() {
         m.classList.remove('open');
         m.style.display = ''; // تفريغ الـ inline style إذا كان موجوداً
     });
+    const confirmRow = document.getElementById('delItemConfirmRow');
+    const normalBtns = document.getElementById('modalNormalBtns');
+    if (confirmRow) confirmRow.style.display = 'none';
+    if (normalBtns) normalBtns.style.display = 'flex';
     activeCat = null;
     activeId = null;
 }
