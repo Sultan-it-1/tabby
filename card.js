@@ -39,6 +39,9 @@ function isInsidePipFrame() {
 }
 
 function activateCardScanPopup() {
+    const isPopupEnabled = localStorage.getItem('card_popup_enabled') !== 'false';
+    if (!isPopupEnabled) return;
+
     if (!isInsidePipFrame() && typeof window.launchPip === 'function') {
         try {
             const res = window.launchPip();
@@ -93,9 +96,7 @@ function loadSavedTabbyInput() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initCheckoutActionModeUI();
-    loadSavedTabbyInput();
+function syncCardDataFromStorage() {
     const saved = localStorage.getItem('cardScannerData');
     if (saved) {
         try {
@@ -103,11 +104,69 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI(data.fullText, data.card, data.amount, data.time, data.date);
             if (data.cleanText) detectCardMeta(data.cleanText);
         } catch (e) { }
+    } else {
+        clearDataUI();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initCheckoutActionModeUI();
+    loadSavedTabbyInput();
+
+    const popupToggle = document.getElementById('popupToggle');
+    if (popupToggle) {
+        popupToggle.checked = localStorage.getItem('card_popup_enabled') !== 'false';
+        popupToggle.addEventListener('change', () => {
+            const enabled = popupToggle.checked;
+            localStorage.setItem('card_popup_enabled', enabled ? 'true' : 'false');
+            showToast(enabled ? "تم تفعيل البوب اب 🗔" : "تم تعطيل البوب اب 🚫");
+        });
+    }
+
+    syncCardDataFromStorage();
+});
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'cardScannerData') {
+        if (!e.newValue) {
+            clearDataUI();
+        } else {
+            try {
+                const data = JSON.parse(e.newValue);
+                updateUI(data.fullText, data.card, data.amount, data.time, data.date);
+                if (data.cleanText) detectCardMeta(data.cleanText);
+            } catch (err) {}
+        }
+    }
+    if (e.key === 'tabbyInput_saved') {
+        const inputEl = document.getElementById('tabbyInput');
+        if (inputEl) {
+            inputEl.value = e.newValue || '';
+            if (window.processTabbyInput) window.processTabbyInput();
+        }
+    }
+    if (e.key === 'card_popup_enabled') {
+        const popupToggle = document.getElementById('popupToggle');
+        if (popupToggle) {
+            popupToggle.checked = e.newValue !== 'false';
+        }
     }
 });
 
-window.addEventListener('focus', loadSavedTabbyInput);
-window.addEventListener('pageshow', loadSavedTabbyInput);
+window.addEventListener('focus', () => {
+    loadSavedTabbyInput();
+    syncCardDataFromStorage();
+});
+window.addEventListener('pageshow', () => {
+    loadSavedTabbyInput();
+    syncCardDataFromStorage();
+});
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        loadSavedTabbyInput();
+        syncCardDataFromStorage();
+    }
+});
 
 outputEdit.addEventListener('input', () => {
     const parts = outputEdit.value.split('//').map(p => p.trim());
@@ -526,19 +585,25 @@ function toggleEditMode() {
     }
 }
 
-function clearData() {
-    localStorage.removeItem('cardScannerData');
+function clearDataUI() {
     updateUI("البيانات ستظهر هنا", "-", "-", "-", "-");
-    document.getElementById('declineBadge').style.display = 'none';
-    document.getElementById('networkBadge').style.display = 'none';
+    const declineBadge = document.getElementById('declineBadge');
+    if (declineBadge) declineBadge.style.display = 'none';
+    const networkBadge = document.getElementById('networkBadge');
+    if (networkBadge) networkBadge.style.display = 'none';
 
     if (isEditMode) {
         isEditMode = false;
         document.querySelectorAll('.chip').forEach(chip => chip.contentEditable = "false");
-        outputDiv.style.display = 'block';
-        outputEdit.style.display = 'none';
-        editBtn.innerText = '✏️';
+        if (outputDiv) outputDiv.style.display = 'block';
+        if (outputEdit) outputEdit.style.display = 'none';
+        if (editBtn) editBtn.innerText = '✏️';
     }
+}
+
+function clearData() {
+    localStorage.removeItem('cardScannerData');
+    clearDataUI();
 
     if (window.clearTabbyInput) {
         window.clearTabbyInput();
@@ -1260,6 +1325,7 @@ window.closeSettings = closeSettings;
 window.saveApiKey = saveApiKey;
 window.toggleUsageModal = toggleUsageModal;
 window.clearData = clearData;
+window.clearDataUI = clearDataUI;
 window.toggleEditMode = toggleEditMode;
 window.copyFriendlySummary = copyFriendlySummary;
 window.openGateway = openGateway;
