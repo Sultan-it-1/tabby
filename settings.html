@@ -621,10 +621,7 @@
                 const name = document.createElement('span');
                 name.className = 'theme-preset-name';
                 name.textContent = preset.name;
-                const description = document.createElement('span');
-                description.className = 'theme-preset-description';
-                description.textContent = preset.description;
-                copy.append(name, description);
+                copy.append(name);
                 button.append(swatch, copy);
 
                 button.addEventListener('click', () => {
@@ -711,19 +708,7 @@
                     selectedColor = e.target.value;
                     commitTheme({ themePreset: 'custom', themeColor: selectedColor });
                 });
-                customColorInput.addEventListener('blur', () => {
-                    setTimeout(() => {
-                        if (!hasPendingColorPreview) return;
-                        hasPendingColorPreview = false;
-                        const restored = window.fastToolkitCancelSettingsPreview();
-                        selectedColor = restored.themeColor;
-                        selectedPreset = restored.themePreset;
-                        modeToggle.checked = restored.mode === 'light';
-                        customColorInput.value = selectedColor;
-                        updateThemePresetSelection();
-                        updateColorSelection();
-                    }, 0);
-                });
+
             }
 
             window.addEventListener('fasttoolkit:settingschange', event => {

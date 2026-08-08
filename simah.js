@@ -84,6 +84,28 @@ function showToast(message, isError = false, duration = 2500) {
 }
 
 let savedAccountsList = [];
+try {
+    const saved = localStorage.getItem('simahApprovedAccounts');
+    if (saved) {
+        let parsed = JSON.parse(saved);
+        savedAccountsList = parsed.map(item => typeof item === 'string' ? { val: item, copied: false } : item);
+    }
+} catch (e) {}
+
+function saveAccountsList() {
+    localStorage.setItem('simahApprovedAccounts', JSON.stringify(savedAccountsList));
+}
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'simahApprovedAccounts') {
+        try {
+            let parsed = JSON.parse(e.newValue || '[]');
+            savedAccountsList = parsed.map(item => typeof item === 'string' ? { val: item, copied: false } : item);
+            renderList();
+        } catch (err) {}
+    }
+});
+
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
 let isAIActive = true;
 localStorage.setItem('simah_ai_pref', 'true');
@@ -588,7 +610,6 @@ function addReviewCard(value) {
             <button class="play-btn" onclick="speakAccount('i_${cardId}', '${cardId}')" title="استماع للحساب">🔊</button>
         </div>
     </div>
-    <div class="visual-check" id="v_${cardId}">${highlightSuspectCharacters(value)}</div>
     <input type="text" class="edit-input" id="i_${cardId}" value="${escapeHtml(value)}" oninput="updateCounter('${cardId}')">
     <button class="action-btn" onclick="approve('${cardId}')">إعتماد للحفظ</button>
 `;
@@ -607,20 +628,24 @@ function removeCard(cardId) {
 
 function approve(cardId) {
     const val = document.getElementById('i_' + cardId).value.trim().toUpperCase();
-    if (val && !savedAccountsList.includes(val)) {
-        savedAccountsList.push(val);
+    if (val && !savedAccountsList.some(acc => acc.val === val)) {
+        savedAccountsList.push({ val: val, copied: false });
+        saveAccountsList();
         renderList();
     }
     document.getElementById(cardId).remove();
     window.speechSynthesis.cancel();
+    if (resultsArea.children.length === 0) {
+        resultsArea.innerHTML = '<div style="color: #444; text-align: center; margin-top: 15px; font-size: 10px;">بانتظار الصورة...</div>';
+    }
 }
 
 function renderList() {
     listCounter.innerText = `(${savedAccountsList.length})`;
     finalListArea.innerHTML = savedAccountsList.map((acc, index) => `
-    <div class="final-card" id="fc_${index}" onclick="copy(decodeURIComponent('${encodeURIComponent(acc)}'), ${index})">
+    <div class="final-card ${acc.copied ? 'copied' : ''}" id="fc_${index}" onclick="copy(decodeURIComponent('${encodeURIComponent(acc.val)}'), ${index})">
         <div class="final-value">
-            <span>${escapeHtml(acc)}</span>
+            <span>${escapeHtml(acc.val)}</span>
             <span class="check-mark">✔</span>
         </div>
     </div>
@@ -630,6 +655,10 @@ function renderList() {
 function copy(val, index) {
     const proceedWithVisuals = () => {
         showToast("تم النسخ! 📋");
+        if (savedAccountsList[index]) {
+            savedAccountsList[index].copied = true;
+            saveAccountsList();
+        }
         const cardEl = document.getElementById(`fc_${index}`);
         if (cardEl && !cardEl.classList.contains('copied')) {
             cardEl.classList.add('copied');
@@ -661,6 +690,7 @@ function fallbackCopy(text, callback) {
 
 function clearFinalList() {
     savedAccountsList = [];
+    saveAccountsList();
     renderList();
     window.speechSynthesis.cancel();
     showToast("تم مسح القائمة 🗑️");
@@ -712,3 +742,5 @@ document.addEventListener('keydown', (e) => {
         clearFinalList();
     }
 });
+
+renderList();

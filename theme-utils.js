@@ -9,7 +9,7 @@
         root.FastToolkitThemes = api;
     }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-    const DEFAULT_PRESET_ID = 'midnight';
+    const DEFAULT_PRESET_ID = 'cloud';
 
     const PRESETS = Object.freeze({
         midnight: Object.freeze({
