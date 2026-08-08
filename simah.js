@@ -12,7 +12,7 @@ function getAiSecret(key) {
         return window.fastToolkitGetAiSecret(key);
     }
     try {
-        return sessionStorage.getItem(key) || '';
+        return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
     } catch (e) {
         return '';
     }
@@ -24,10 +24,11 @@ function setAiSecret(key, value) {
         return;
     }
     try {
-        localStorage.removeItem(key);
         if (value) {
+            localStorage.setItem(key, value);
             sessionStorage.setItem(key, value);
         } else {
+            localStorage.removeItem(key);
             sessionStorage.removeItem(key);
         }
     } catch (e) { }

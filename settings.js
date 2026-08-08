@@ -15,22 +15,10 @@
 
     const AI_SECRET_KEYS = new Set(['simah_ai_key', 'simah_groq_key']);
 
-    function migrateLegacyAiSecret(key) {
-        if (!AI_SECRET_KEYS.has(key)) return;
-        try {
-            const legacyValue = localStorage.getItem(key);
-            if (legacyValue && !sessionStorage.getItem(key)) {
-                sessionStorage.setItem(key, legacyValue);
-            }
-            localStorage.removeItem(key);
-        } catch (e) { }
-    }
-
     function getAiSecret(key) {
         if (!AI_SECRET_KEYS.has(key)) return '';
-        migrateLegacyAiSecret(key);
         try {
-            return sessionStorage.getItem(key) || '';
+            return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
         } catch (e) {
             return '';
         }
@@ -39,16 +27,16 @@
     function setAiSecret(key, value) {
         if (!AI_SECRET_KEYS.has(key)) return;
         try {
-            localStorage.removeItem(key);
             if (value) {
+                localStorage.setItem(key, value);
                 sessionStorage.setItem(key, value);
             } else {
+                localStorage.removeItem(key);
                 sessionStorage.removeItem(key);
             }
         } catch (e) { }
     }
 
-    AI_SECRET_KEYS.forEach(migrateLegacyAiSecret);
     window.fastToolkitGetAiSecret = getAiSecret;
     window.fastToolkitSetAiSecret = setAiSecret;
 
