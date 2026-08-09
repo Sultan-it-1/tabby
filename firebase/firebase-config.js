@@ -48,6 +48,17 @@ class FastToolkitFirebaseSync {
         try {
             this.auth = firebase.auth();
             this.db = firebase.firestore();
+            
+            // Check for redirect result on page load
+            if (this.auth.getRedirectResult) {
+                this.auth.getRedirectResult().then(res => {
+                    if (res && res.user) {
+                        console.log("Redirect login successful:", res.user.email);
+                    }
+                }).catch(err => {
+                    console.warn("Redirect sign-in check:", err);
+                });
+            }
         } catch (e) {
             return;
         }
@@ -151,18 +162,20 @@ class FastToolkitFirebaseSync {
         try {
             await this.auth.signInWithPopup(provider);
         } catch (err) {
-            console.error("Google Login error:", err);
+            console.error("Google Login popup error:", err);
             if (err.code === 'auth/operation-not-allowed') {
                 alert("⚠️ خيار الدخول بـ Google غير مفعل بعد في لوحة التحكم (Firebase Console).\nالرجاء الذهاب لـ Authentication -> Sign-in method وتفعيل خيار Google.");
+                return;
             } else if (err.code === 'auth/unauthorized-domain') {
                 alert("⚠️ النطاق الحالي غير مصرح به في Firebase.\nالرجاء إضافة النطاق الحالي في Firebase Console -> Authentication -> Settings -> Authorized domains.");
-            } else if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-                try {
-                    await this.auth.signInWithRedirect(provider);
-                } catch (rErr) {
-                    console.error("Redirect login error:", rErr);
-                }
-            } else {
+                return;
+            }
+
+            // Fallback to Redirect mode seamlessly
+            try {
+                await this.auth.signInWithRedirect(provider);
+            } catch (rErr) {
+                console.error("Redirect login error:", rErr);
                 alert(`⚠️ تعذر تسجيل الدخول: ${err.message || 'خطأ غير معروف'}`);
             }
         }
