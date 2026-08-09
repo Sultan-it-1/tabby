@@ -436,7 +436,7 @@
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; font-size: 9px; color: #888;">
                         <span>الحالة:</span>
-                        <span style="color: #34D399; font-weight: bold;">🟢 مزامنة سحابية لحظية تلقائية (0ms)</span>
+                        <span id="settingsSyncStatus" style="color: #34D399; font-weight: bold;">🟢 مزامنة سحابية لحظية تلقائية (0ms)</span>
                     </div>
                     <button class="action-btn" id="settingsSwitchAccBtn" style="background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9.5px; padding: 5px; margin-top: 2px;">🔄 تبديل حساب Google</button>
                 </div>
@@ -992,10 +992,9 @@
                 })
                 .catch(err => {
                     console.error("Drive restore failed:", err);
-                    if (err.message !== "Unauthorized") showDriveStatus("فشل استعادة الملف ❌", true);
-                });
             }
-
+        });
+    </script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -1003,14 +1002,23 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const emailTxt = document.getElementById('settingsUserEmail');
+            const statusTxt = document.getElementById('settingsSyncStatus');
             const switchBtn = document.getElementById('settingsSwitchAccBtn');
 
             if (window.FastToolkitFirebase) {
                 window.FastToolkitFirebase.onUserChange((user) => {
                     if (user && user.email) {
                         if (emailTxt) emailTxt.innerText = user.email;
+                        if (statusTxt) {
+                            statusTxt.innerText = '🟢 مزامنة سحابية لحظية تلقائية (0ms)';
+                            statusTxt.style.color = '#34D399';
+                        }
                     } else {
-                        if (emailTxt) emailTxt.innerText = 'سجل الدخول عبر Google';
+                        if (emailTxt) emailTxt.innerText = 'غير متصل (اضغط لتسجيل الدخول)';
+                        if (statusTxt) {
+                            statusTxt.innerText = '🔴 غير متصل - اضغط للتسجيل';
+                            statusTxt.style.color = '#ff5555';
+                        }
                     }
                 });
             }
@@ -1023,6 +1031,13 @@
                         } else {
                             window.FastToolkitFirebase.loginWithGoogle();
                         }
+                    }
+                };
+            }
+            if (emailTxt) {
+                emailTxt.onclick = () => {
+                    if (window.FastToolkitFirebase && !window.FastToolkitFirebase.user) {
+                        window.FastToolkitFirebase.loginWithGoogle();
                     }
                 };
             }

@@ -69,6 +69,7 @@ class FastToolkitFirebaseSync {
                 localStorage.setItem('fastToolkit_firebase_user', JSON.stringify(this.user));
                 this.notifyListeners();
                 this.listenToCloudData();
+                this.syncAllLocalDataToCloud();
             } else {
                 this.user = null;
                 localStorage.removeItem('fastToolkit_firebase_user');
@@ -86,17 +87,84 @@ class FastToolkitFirebaseSync {
     onUserChange(callback) {
         if (typeof callback === 'function') {
             this.listeners.push(callback);
-            if (this.user) callback(this.user);
+            callback(this.user); // Always invoke immediately
+        }
+    }
+
+    async syncAllLocalDataToCloud() {
+        if (!this.user || !this.db) return;
+        const keysToSync = [
+            'copyGridDataV6',
+            'fastToolkitCIA_v4',
+            'stickyNotesData',
+            'quick_sticky_note',
+            'simahApprovedAccounts',
+            'simahAccountsHistory',
+            'simah_ai_provider',
+            'simah_ai_key',
+            'simah_groq_key',
+            'fastToolkitSettings',
+            'fastToolkitShortcuts',
+            'cardScannerData'
+        ];
+
+        const dataPayload = {};
+        keysToSync.forEach(key => {
+            const val = localStorage.getItem(key);
+            if (val !== null) {
+                if (key === 'simah_ai_key' || key === 'simah_groq_key') {
+                    dataPayload[key] = this.encryptValue(val);
+                } else {
+                    try {
+                        dataPayload[key] = JSON.parse(val);
+                    } catch (e) {
+                        dataPayload[key] = val;
+                    }
+                }
+            }
+        });
+
+        try {
+            const userRef = this.db.collection('users').doc(this.user.uid);
+            await userRef.set({
+                email: this.user.email,
+                displayName: this.user.displayName,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                data: dataPayload
+            }, { merge: true });
+            console.log("Full local data successfully synced to Firestore!");
+        } catch (err) {
+            console.error("Firestore initial sync error:", err);
+            if (err.code === 'permission-denied') {
+                alert("⚠️ فشل الحفظ في Firestore بسبب الصلاحيات (Permission Denied).\nالرجاء الذهاب لـ Firebase Console -> Firestore Database -> Rules وتعديل القواعد إلى:\nallow read, write: if request.auth != null;");
+            }
         }
     }
 
     async loginWithGoogle() {
-        if (typeof firebase === 'undefined' || !this.auth) return;
+        if (typeof firebase === 'undefined' || !this.auth) {
+            alert("⚠️ مكتبة Firebase لم تتصل بعد.");
+            return;
+        }
         const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         try {
             await this.auth.signInWithPopup(provider);
         } catch (err) {
-            console.error("Google Login failed:", err);
+            console.error("Google Login error:", err);
+            if (err.code === 'auth/operation-not-allowed') {
+                alert("⚠️ خيار الدخول بـ Google غير مفعل بعد في لوحة التحكم (Firebase Console).\nالرجاء الذهاب لـ Authentication -> Sign-in method وتفعيل خيار Google.");
+            } else if (err.code === 'auth/unauthorized-domain') {
+                alert("⚠️ النطاق الحالي غير مصرح به في Firebase.\nالرجاء إضافة النطاق الحالي في Firebase Console -> Authentication -> Settings -> Authorized domains.");
+            } else if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+                try {
+                    await this.auth.signInWithRedirect(provider);
+                } catch (rErr) {
+                    console.error("Redirect login error:", rErr);
+                }
+            } else {
+                alert(`⚠️ تعذر تسجيل الدخول: ${err.message || 'خطأ غير معروف'}`);
+            }
         }
     }
 
@@ -105,9 +173,7 @@ class FastToolkitFirebaseSync {
         try {
             await this.auth.signOut();
             localStorage.removeItem('fastToolkit_firebase_user');
-            const provider = new firebase.auth.GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' });
-            await this.auth.signInWithPopup(provider);
+            await this.loginWithGoogle();
         } catch (err) {
             console.error("Switch account failed:", err);
         }
@@ -172,6 +238,9 @@ class FastToolkitFirebaseSync {
             }, { merge: true });
         } catch (err) {
             console.error("Firestore push error:", err);
+            if (err.code === 'permission-denied') {
+                alert("⚠️ فشل الحفظ في Firestore بسبب الصلاحيات (Permission Denied).\nالرجاء الذهاب لـ Firebase Console -> Firestore Database -> Rules وتعديل القواعد إلى:\nallow read, write: if request.auth != null;");
+            }
         }
     }
 
