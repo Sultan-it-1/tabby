@@ -332,6 +332,35 @@
             padding-right: 16px;
             list-style-type: disc;
         }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(15, 15, 15, 0.95);
+            color: #fff;
+            border: 1px solid var(--accent-color, #34D399);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { border-color: #ff4444; color: #ff4444; }
     </style>
     <link id="fast-toolkit-theme-styles" rel="stylesheet" href="theme.css?v=2.1.1">
 </head>
@@ -499,6 +528,7 @@
         <div class="footer-btns">
             <button class="action-btn btn-reset" id="resetBtn">استعادة الإعدادات الافتراضية</button>
         </div>
+        <div id="toastContainer" class="toast-container"></div>
     </main>
 
     <script>
@@ -790,15 +820,35 @@
 
             let gDriveAccessToken = sessionStorage.getItem('gDriveAccessToken') || null;
 
-            function showDriveStatus(msg) {
-                if(driveStatus) driveStatus.innerText = msg;
+            function showToast(message, isError = false, duration = 2500) {
+                const container = document.getElementById('toastContainer');
+                if (!container) return;
+
+                const toast = document.createElement('div');
+                toast.className = `toast ${isError ? 'error' : ''}`;
+                toast.innerText = message;
+                container.appendChild(toast);
+                
+                requestAnimationFrame(() => toast.classList.add('show'));
+
+                if (duration > 0) {
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                        setTimeout(() => toast.remove(), 300);
+                    }, duration);
+                }
+            }
+
+            function showDriveStatus(msg, isError = false) {
+                if (driveStatus) driveStatus.innerText = msg;
+                showToast(msg, isError);
             }
 
             function checkResponseStatus(res) {
                 if (res.status === 401) {
                     gDriveAccessToken = null;
                     sessionStorage.removeItem('gDriveAccessToken');
-                    showDriveStatus("انتهت جلسة Drive، يرجى تسجيل الدخول ⚠️");
+                    showDriveStatus("انتهت جلسة Drive، يرجى تسجيل الدخول ⚠️", true);
                     throw new Error("Unauthorized");
                 }
                 return res;
@@ -807,11 +857,11 @@
             function triggerCloudAction(action) {
                 const clientId = window.GOOGLE_CLIENT_ID;
                 if (!clientId) {
-                    showDriveStatus("إعدادات Drive غير متوفرة ⚠️");
+                    showDriveStatus("إعدادات Drive غير متوفرة ⚠️", true);
                     return;
                 }
                 if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-                    showDriveStatus("خطأ في مكتبة Google ❌");
+                    showDriveStatus("خطأ في مكتبة Google ❌", true);
                     return;
                 }
 
@@ -826,14 +876,14 @@
                                 sessionStorage.setItem('gDriveAccessToken', gDriveAccessToken);
                                 executeDriveAction(gDriveAccessToken, action);
                             } else {
-                                showDriveStatus("فشل تسجيل الدخول ❌");
+                                showDriveStatus("فشل تسجيل الدخول ❌", true);
                             }
                         },
                     });
                     tokenClient.requestAccessToken({ prompt: 'consent' });
                 } catch (err) {
                     console.error("GIS initialization failed:", err);
-                    showDriveStatus("خطأ في الاتصال ❌");
+                    showDriveStatus("خطأ في الاتصال ❌", true);
                 }
             }
 
@@ -871,13 +921,13 @@
                         if (fileId) {
                             restoreDriveFile(token, fileId);
                         } else {
-                            showDriveStatus("لا توجد نسخة محفوظة ❌");
+                            showDriveStatus("لا توجد نسخة محفوظة ❌", true);
                         }
                     }
                 })
                 .catch(err => {
                     console.error("Drive search failed:", err);
-                    if (err.message !== "Unauthorized") showDriveStatus("فشل الاتصال بـ Drive ❌");
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل الاتصال بـ Drive ❌", true);
                 });
             }
 
@@ -896,12 +946,12 @@
                     if (res.ok) {
                         showDriveStatus("تم النسخ السحابي بنجاح! ☁️✅");
                     } else {
-                        showDriveStatus("حدث خطأ أثناء الرفع ❌");
+                        showDriveStatus("حدث خطأ أثناء الرفع ❌", true);
                     }
                 })
                 .catch(err => {
                     console.error("Drive update failed:", err);
-                    if (err.message !== "Unauthorized") showDriveStatus("فشل رفع الملف ❌");
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل رفع الملف ❌", true);
                 });
             }
 
@@ -921,12 +971,12 @@
                     if (meta.id) {
                         updateDriveFile(token, meta.id, content);
                     } else {
-                        showDriveStatus("فشل إنشاء الملف ❌");
+                        showDriveStatus("فشل إنشاء الملف ❌", true);
                     }
                 })
                 .catch(err => {
                     console.error("Drive creation failed:", err);
-                    if (err.message !== "Unauthorized") showDriveStatus("فشل إنشاء الملف ❌");
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل إنشاء الملف ❌", true);
                 });
             }
 
@@ -944,12 +994,12 @@
                         showDriveStatus("تم الاستعادة بنجاح! جاري التحديث... 🔄");
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
-                        showDriveStatus("الملف تالف أو غير صالح ❌");
+                        showDriveStatus("الملف تالف أو غير صالح ❌", true);
                     }
                 })
                 .catch(err => {
                     console.error("Drive restore failed:", err);
-                    if (err.message !== "Unauthorized") showDriveStatus("فشل استعادة الملف ❌");
+                    if (err.message !== "Unauthorized") showDriveStatus("فشل استعادة الملف ❌", true);
                 });
             }
 
