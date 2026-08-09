@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FAST TOOLKIT - مجموعة أدوات ذكية وسريعة">
+    <meta name="theme-color" content="#0f0f0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>بوابة الأدوات الذكية - الرئيسية</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --accent-green: var(--accent-green);
+            --accent-blue: #00d4ff;
+            --accent-yellow: #ffcc00;
+            --accent-orange: #ff9f43;
+            --text: #eee;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 230px;
+            height: 300px;
+            box-sizing: border-box;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: var(--accent-green);
+            margin: 2px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 20%, transparent);
+        }
+
+        .header p {
+            color: #666;
+            font-size: 9px;
+            margin: 0 0 8px 0;
+        }
+
+        .menu-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 2px;
+        }
+
+        .menu-grid::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .menu-grid::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .menu-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: right;
+            position: relative;
+        }
+
+        .menu-item:hover {
+            transform: translateX(-3px) translateY(-1px);
+            border-color: var(--accent-green);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-green) 18%, transparent);
+        }
+
+        .menu-item:active {
+            transform: scale(0.97) translateX(-1px);
+            opacity: 0.9;
+        }
+
+        .menu-item.simah-tool:hover {
+            border-color: var(--accent-yellow);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-yellow) 18%, transparent);
+        }
+
+        .menu-item.card-tool:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-blue) 18%, transparent);
+        }
+
+        .menu-item.sticky-tool:hover {
+            border-color: var(--accent-orange);
+            box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-orange) 18%, transparent);
+        }
+
+        .menu-item.date-tool:hover {
+            border-color: #ff5e57;
+            box-shadow: 0 4px 14px rgba(255, 94, 87, 0.18);
+        }
+
+        .icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .text-wrapper {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .title {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .desc {
+            font-size: 8px;
+            color: #666;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* تنسيق الحقوق الجديد والتفاعل */
+        .footer {
+            margin-top: 5px;
+            font-size: 8px;
+            color: #666;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            /* تم إضافة السطرين بالأسفل لإجبار النص الإنجليزي على الترتيب السليم */
+            direction: ltr;
+            font-family: Arial, sans-serif;
+        }
+
+        .pulse-emoji {
+            display: inline-block;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+
+        .container:hover .pulse-emoji {
+            animation-duration: 0.8s;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            30% {
+                transform: scale(1.2);
+            }
+
+            60% {
+                transform: scale(1.05);
+            }
+        }
+
+        .footer b {
+            color: #888;
+        }
+
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1px;
+        }
+    </style>
+    <link id="fast-toolkit-theme-styles" rel="stylesheet" href="theme.css?v=2.1.1">
+    <!-- Centralized Cache Busting Loader -->
+    <script>
+        document.write('<script src="version.js?v=' + Date.now() + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="theme-utils.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+    <script>
+        document.write('<script src="settings.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+    </script>
+</head>
+
+<body>
+
+    <main class="container home-shell">
+        <header class="header home-header">
+            <div class="home-topbar">
+                <span class="brand-mark" aria-hidden="true">FT</span>
+                <div class="home-brand-copy">
+                    <span class="brand-kicker">مساحة العمل</span>
+                    <h1>Fast Toolkit</h1>
+                </div>
+                <nav class="header-actions" aria-label="إجراءات سريعة">
+                    <a href="download.html" class="header-icon-btn" title="تحميل الإضافة الجانبية" aria-label="تحميل الإضافة الجانبية">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>
+                    </a>
+                    <a href="settings.html" class="header-icon-btn" title="الإعدادات" aria-label="فتح الإعدادات">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.55V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9a1.7 1.7 0 0 0 1.55 1H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+                    </a>
+                </nav>
+            </div>
+            <p>أدواتك اليومية، مرتبة وجاهزة في مكان واحد.</p>
+        </header>
+
+        <div class="menu-grid">
+            <a href="note.html" class="menu-item">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">نسخ سريع</div>
+                    <div class="desc">إدارة النصوص والاختصارات ونسخها فورًا.</div>
+                </div>
+            </a>
+
+            <a href="simah.html" class="menu-item simah-tool">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">سمة</div>
+                    <div class="desc">استخراج الحسابات وتدقيقها بسرعة.</div>
+                </div>
+            </a>
+
+            <a href="card.html" class="menu-item card-tool">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M3 9h18M7 14h3"/><circle cx="17" cy="15" r="2.5"/><path d="m19 17 2 2"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">Card Scan</div>
+                    <div class="desc">قراءة بيانات العمليات من الصور تلقائيًا.</div>
+                </div>
+            </a>
+
+            <a href="sticky.html" class="menu-item sticky-tool">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v10l-6 6H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M15 21v-6h6M7 8h10M7 12h6"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">Sticky Notes</div>
+                    <div class="desc">ملاحظات سريعة تبقى معك أثناء العمل.</div>
+                </div>
+            </a>
+
+            <a href="cia.html" class="menu-item">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 9h6M9 13h6M9 17h4"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">CIA Maker</div>
+                    <div class="desc">بناء ملاحظات C وI وA بصياغة مرتبة.</div>
+                </div>
+            </a>
+
+            <a href="date.html" class="menu-item date-tool">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">Date Helper</div>
+                    <div class="desc">تحويل التواريخ وحساب أيام العمل بدقة.</div>
+                </div>
+            </a>
+
+            <a href="download.html" class="menu-item extension-tool">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18M8 13h8m-4-3v6m0 0 3-3m-3 3-3-3"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">إضافة Chrome</div>
+                    <div class="desc">تحميل وتثبيت الإضافة الجانبية للمتصفح.</div>
+                </div>
+            </a>
+
+        </div>
+
+        <div id="userProfileCard" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; margin-bottom: 6px; font-size: 9px;">
+            <div style="display: flex; align-items: center; gap: 5px; overflow: hidden; cursor: pointer;">
+                <span style="color: var(--accent-green); font-weight: bold;">☁️</span>
+                <span id="userEmailTxt" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ccc;">جاري الاتصال بـ Cloud...</span>
+            </div>
+            <button id="switchAccBtn" style="background: transparent; border: 1px solid #444; color: #aaa; border-radius: 4px; padding: 2px 5px; font-size: 8.5px; cursor: pointer;" title="تبديل حساب Google">🔄 تبديل</button>
+        </div>
+
+        <footer class="footer home-footer">
+            <span class="footer-status-dot" aria-hidden="true"></span>
+            <span>Built for focused work</span>
+            <span class="footer-separator">·</span>
+            <b>Sultan</b>
+        </footer>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js?v=2.1.7"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const emailTxt = document.getElementById('userEmailTxt');
+            const switchBtn = document.getElementById('switchAccBtn');
+
+            if (window.FastToolkitFirebase) {
+                window.FastToolkitFirebase.onUserChange((user) => {
+                    if (user && user.email) {
+                        if (emailTxt) emailTxt.innerText = user.email;
+                    } else {
+                        if (emailTxt) emailTxt.innerText = 'سجل الدخول عبر Google';
+                    }
+                });
+            }
+
+            if (switchBtn) {
+                switchBtn.onclick = () => {
+                    if (window.FastToolkitFirebase) {
+                        if (window.FastToolkitFirebase.user) {
+                            window.FastToolkitFirebase.switchAccount();
+                        } else {
+                            window.FastToolkitFirebase.loginWithGoogle();
+                        }
+                    }
+                };
+            }
+            if (emailTxt) {
+                emailTxt.onclick = () => {
+                    if (window.FastToolkitFirebase && !window.FastToolkitFirebase.user) {
+                        window.FastToolkitFirebase.loginWithGoogle();
+                    }
+                };
+            }
+        });
+    </script>
+</body>
+
+</html>
