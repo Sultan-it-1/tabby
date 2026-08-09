@@ -1173,6 +1173,24 @@ window.switchContainer = switchContainer;
 window.openSearch = openSearch;
 window.closeSearch = closeSearch;
 window.handleSearch = handleSearch;
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.FastToolkitFirebase) {
+        window.FastToolkitFirebase.onUserChange((user) => {
+            const el = document.getElementById('noteCloudStatus');
+            if (!el) return;
+            if (user && user.email) {
+                el.innerHTML = `🟢 متصل بالسحابة (${user.email})`;
+                el.style.color = '#34D399';
+                el.onclick = null;
+            } else {
+                el.innerHTML = `⚪ حفظ محلي (اضغط لتسجيل الدخول السحابي ☁️)`;
+                el.style.color = '#aaa';
+                el.onclick = () => window.FastToolkitFirebase.loginWithGoogle();
+            }
+        });
+    }
+});
 window.toggleSortMode = toggleSortMode;
 
 updateCardSyncBadge();
