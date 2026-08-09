@@ -740,8 +740,16 @@
         }
 
         if (window.activePipWindow) {
-            window.activePipWindow.focus();
-            return;
+            if (!window.activePipWindow.closed) {
+                try {
+                    window.activePipWindow.focus();
+                    return;
+                } catch (e) {
+                    window.activePipWindow = null;
+                }
+            } else {
+                window.activePipWindow = null;
+            }
         }
 
         try {
@@ -755,6 +763,8 @@
 
             window.activePipWindow = pipWindow;
             pipWindow.isPip = true;
+            pipWindow.addEventListener('pagehide', () => { window.activePipWindow = null; });
+            pipWindow.addEventListener('beforeunload', () => { window.activePipWindow = null; });
 
             // Setup PiP Document
             pipWindow.document.title = "Fast Toolkit Always-on-Top";

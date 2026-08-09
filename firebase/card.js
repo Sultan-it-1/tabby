@@ -222,6 +222,7 @@ document.addEventListener('paste', async (e) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image') !== -1) {
+            activateCardScanPopup();
             processImage(items[i].getAsFile());
             break;
         }
@@ -275,6 +276,7 @@ function saveScanToHistory(data) {
 }
 
 async function processImage(file) {
+    activateCardScanPopup();
     dropZone.classList.add('active', 'processing');
     let loadingToast;
     if (isAIActive) {
