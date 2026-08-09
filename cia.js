@@ -28,14 +28,26 @@ function showToast(message, isError = false, duration = 2200) {
 
 async function secureCopy(text) {
     try {
-        await navigator.clipboard.writeText(text);
-        return true;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+        throw new Error("Clipboard API unavailable");
     } catch (err) {
         const textArea = document.createElement("textarea");
         textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
         document.body.appendChild(textArea);
+        textArea.focus();
         textArea.select();
-        const success = document.execCommand('copy');
+        let success = false;
+        try {
+            success = document.execCommand('copy');
+        } catch (e) {
+            console.error("execCommand copy failed", e);
+        }
         document.body.removeChild(textArea);
         return success;
     }
@@ -219,6 +231,14 @@ function createCiaRow(label, badgeClass, value, isStrong = false) {
     const badge = document.createElement('span');
     badge.className = `cia-badge ${badgeClass}`;
     badge.innerText = label;
+    badge.title = `انقر لنسخ حقل (${label})`;
+    badge.style.cursor = 'pointer';
+    badge.onclick = (e) => {
+        e.stopPropagation();
+        secureCopy(value || '').then(() => {
+            showToast(`تم نسخ حقل (${label}) 📋✅`);
+        });
+    };
 
     const text = document.createElement('span');
     text.className = 'cia-text';
@@ -348,26 +368,46 @@ function closeConfirmBox() {
 
 // Backup & Cloud Operations
 function exportCIAData() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(ciaCards, null, 2));
-    const a = document.createElement('a');
-    a.href = dataStr;
-    a.download = `CIA_Full_Cards_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    showToast('تم تصدير نسخة JSON 💾');
+    try {
+        const jsonStr = JSON.stringify(ciaCards, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10);
+        a.download = `CIA_Full_Cards_Backup_${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            a.remove();
+            URL.revokeObjectURL(url);
+        }, 100);
+        showToast('تم تصدير نسخة JSON 💾');
+    } catch (e) {
+        console.error("Export error", e);
+        showToast('خطأ في تصدير البيانات ❌', true);
+    }
 }
 
 let ciaConflictQueue = [];
 let ciaConflictApplyAllAction = null;
 
 function importCIAData(event) {
-    const file = event.target.files[0];
+    const file = event.target.files && event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
-            const imported = JSON.parse(e.target.result);
+            let imported = JSON.parse(e.target.result);
+            // Support both CIA cards array and unified settings backup format
+            if (imported && typeof imported === 'object' && !Array.isArray(imported)) {
+                if (imported.fastToolkitCIA_v4) {
+                    imported = typeof imported.fastToolkitCIA_v4 === 'string' 
+                        ? JSON.parse(imported.fastToolkitCIA_v4) 
+                        : imported.fastToolkitCIA_v4;
+                }
+            }
             if (Array.isArray(imported)) {
                 await processCiaImportWithConflicts(imported);
                 saveCIAData();
@@ -472,8 +512,166 @@ function confirmDeleteAll() {
     }
 }
 
+let gDriveAccessToken = sessionStorage.getItem('gDriveAccessToken') || null;
+
+function checkResponseStatus(res) {
+    if (res.status === 401) {
+        gDriveAccessToken = null;
+        sessionStorage.removeItem('gDriveAccessToken');
+        showToast("انتهت جلسة Drive، يرجى تسجيل الدخول ⚠️", true);
+        throw new Error("Unauthorized");
+    }
+    return res;
+}
+
 function triggerCloudAction(action) {
-    showToast(action === 'backup' ? 'جاري النسخ للسحابة... ☁️' : 'جاري الاستعادة من السحابة... ☁️');
+    const clientId = window.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+        showToast("يرجى إعداد Google Client ID في settings.js أولاً! ⚠️", true);
+        alert("تنبيه: لتفعيل المزامنة السحابية، يرجى إدخال معرف Google Client ID الخاص بك أولاً في ملف settings.js");
+        return;
+    }
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        showToast("خطأ في تحميل مكتبة Google! ❌", true);
+        return;
+    }
+
+    showToast("جاري الاتصال بحساب Google... ☁️");
+    try {
+        const tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            callback: (tokenResponse) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                    gDriveAccessToken = tokenResponse.access_token;
+                    sessionStorage.setItem('gDriveAccessToken', gDriveAccessToken);
+                    executeDriveAction(gDriveAccessToken, action);
+                } else {
+                    showToast("فشل تسجيل الدخول! ❌", true);
+                }
+            },
+        });
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    } catch (err) {
+        console.error("GIS initialization failed:", err);
+        showToast("خطأ في الاتصال بـ Google! ❌", true);
+    }
+}
+
+function executeDriveAction(token, action) {
+    showToast("جاري الاتصال بـ Google Drive... ☁️");
+    const filename = "fast_toolkit_cia_backup.json";
+
+    fetch(`https://www.googleapis.com/drive/v3/files?q=name='${filename}'+and+trashed=false`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(checkResponseStatus)
+    .then(res => res.json())
+    .then(data => {
+        const files = data.files || [];
+        const fileId = files.length > 0 ? files[0].id : null;
+
+        if (action === 'backup') {
+            if (fileId) {
+                updateDriveFile(token, fileId, ciaCards);
+            } else {
+                createDriveFile(token, filename, ciaCards);
+            }
+        } else if (action === 'restore') {
+            if (fileId) {
+                restoreDriveFile(token, fileId);
+            } else {
+                showToast("لا توجد نسخة سحابية محفوظة لبطاقات CIA! ❌", true);
+            }
+        }
+    })
+    .catch(err => {
+        console.error("Drive search failed:", err);
+        if (err.message !== "Unauthorized") {
+            showToast("فشل الاتصال بـ Google Drive! ❌", true);
+        }
+    });
+}
+
+function updateDriveFile(token, fileId, content) {
+    showToast("جاري رفع بيانات CIA للسحابة... ☁️");
+    fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(content)
+    })
+    .then(checkResponseStatus)
+    .then(res => {
+        if (res.ok) {
+            showToast("تم النسخ السحابي لـ CIA بنجاح! ☁️✅");
+        } else {
+            showToast("فشل تحديث النسخة السحابية! ❌", true);
+        }
+    })
+    .catch(err => {
+        console.error("Drive update failed:", err);
+        if (err.message !== "Unauthorized") showToast("فشل رفع البيانات! ❌", true);
+    });
+}
+
+function createDriveFile(token, filename, content) {
+    showToast("جاري إنشاء ملف النسخ السحابي... ☁️");
+    fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: filename, mimeType: 'application/json' })
+    })
+    .then(checkResponseStatus)
+    .then(res => res.json())
+    .then(meta => {
+        if (meta.id) {
+            updateDriveFile(token, meta.id, content);
+        } else {
+            showToast("فشل إنشاء الملف السحابي! ❌", true);
+        }
+    })
+    .catch(err => {
+        console.error("Drive creation failed:", err);
+        if (err.message !== "Unauthorized") showToast("فشل إنشاء الملف السحابي! ❌", true);
+    });
+}
+
+function restoreDriveFile(token, fileId) {
+    showToast("جاري تنزيل النسخة السحابية... ☁️");
+    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(checkResponseStatus)
+    .then(res => res.json())
+    .then(async (data) => {
+        let imported = data;
+        if (data && typeof data === 'object' && !Array.isArray(data) && data.fastToolkitCIA_v4) {
+            try {
+                imported = typeof data.fastToolkitCIA_v4 === 'string' ? JSON.parse(data.fastToolkitCIA_v4) : data.fastToolkitCIA_v4;
+            } catch (e) {
+                imported = data.fastToolkitCIA_v4;
+            }
+        }
+        if (Array.isArray(imported)) {
+            await processCiaImportWithConflicts(imported);
+            saveCIAData();
+            showToast("تمت استعادة بطاقات CIA بنجاح! ☁️✅");
+        } else {
+            showToast("الملف السحابي تالف أو غير صالح! ❌", true);
+        }
+    })
+    .catch(err => {
+        console.error("Drive restore failed:", err);
+        if (err.message !== "Unauthorized") showToast("فشل استعادة الملف السحابي! ❌", true);
+    });
 }
 
 window.exportCIAData = exportCIAData;

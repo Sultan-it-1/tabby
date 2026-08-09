@@ -394,29 +394,7 @@
                 </div>
             </div>
 
-            <div class="setting-group">
-                <label style="display: flex; align-items: center; margin-bottom: 2px;">
-                    النسخ الاحتياطي للاعدادات (محلياً)
-                    <div class="tooltip">
-                        <span style="display: inline-flex; justify-content: center; align-items: center; width: 12px; height: 12px; border-radius: 50%; background: #444; color: #fff; font-size: 9px; margin-right: 4px; font-weight: normal;">?</span>
-                        <div class="tooltiptext">
-                            سيتم حفظ:
-                            <ul>
-                                <li>المظهر والألوان والاختصارات</li>
-                                <li>الملاحظات (Sticky Notes)</li>
-                                <li>سجلات وتاريخ Card Scanner</li>
-                                <li>حسابات وتاريخ Simah</li>
-                                <li>إعدادات الـ AI والمسودات</li>
-                            </ul>
-                        </div>
-                    </div>
-                </label>
-                <div style="display: flex; gap: 4px; margin-top: 4px;">
-                    <button class="action-btn primary" id="exportAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">تصدير النسخة</button>
-                    <button class="action-btn" id="importAllBtn" style="background: #252525; border: 1px solid #444; color: #fff;">استيراد النسخة</button>
-                </div>
-                <input type="file" id="importAllFile" style="display:none;" accept=".json">
-            </div>
+
 
             <div class="setting-group">
                 <label style="display: flex; align-items: center; margin-bottom: 2px;">
@@ -532,9 +510,7 @@
             const resetBtn = document.getElementById('resetBtn');
             
 
-            const exportAllBtn = document.getElementById('exportAllBtn');
-            const importAllBtn = document.getElementById('importAllBtn');
-            const importAllFile = document.getElementById('importAllFile');
+
 
             const BACKUP_KEYS = Object.freeze([
                 'fastToolkitSettings',
@@ -556,7 +532,8 @@
                 'simah_usage',
                 'autoSyncGDrive',
                 'cardLinkToggle',
-                'card_popup_enabled'
+                'card_popup_enabled',
+                'fastToolkitCIA_v4'
             ]);
             const BACKUP_KEY_SET = new Set(BACKUP_KEYS);
 
@@ -804,57 +781,7 @@
                 window.location.reload();
             });
 
-            // Unified Backup Export
-            exportAllBtn.addEventListener('click', () => {
-                const backupData = {};
-                BACKUP_KEYS.forEach(key => {
-                    const value = localStorage.getItem(key);
-                    if (value !== null) {
-                        backupData[key] = value;
-                    }
-                });
-                
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                const filename = `fast_toolkit_all_backup_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.json`;
 
-                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = filename;
-                a.click();
-            });
-
-            // Unified Backup Import
-            importAllBtn.addEventListener('click', () => {
-                importAllFile.click();
-            });
-
-            importAllFile.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (x) => {
-                    try {
-                        const imported = JSON.parse(x.target.result);
-                        if (!imported || typeof imported !== 'object') throw new Error();
-                        
-                        restoreBackupData(imported);
-                        
-                        alert("تم استيراد كافة البيانات وإعادة ضبط التطبيق بنجاح! 🎉");
-                        window.location.reload();
-                    } catch (err) {
-                        alert("حدث خطأ أثناء استيراد الملف! تأكد من أنه ملف نسخ احتياطي صحيح. ❌");
-                    }
-                };
-                reader.readAsText(file);
-                e.target.value = '';
-            });
 
             // ====== Drive Unified Backup Logic ======
             const driveBackupBtn = document.getElementById('driveBackupBtn');
