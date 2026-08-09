@@ -28,6 +28,9 @@ function setAiSecret(key, val) {
         localStorage.removeItem(key);
         sessionStorage.removeItem(key);
     }
+    if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
+        window.FastToolkitFirebase.saveCloudData(key, val || '');
+    }
 }
 
 function isInsidePipFrame() {
