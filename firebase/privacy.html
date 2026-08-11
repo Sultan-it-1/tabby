@@ -1,10 +1,9 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - SultanOps</title>
+    <title>Privacy Policy - Fast Toolkit</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -26,10 +25,10 @@
 <body>
 
 <h1>Privacy Policy</h1>
-<p class="date">Last Updated: June 2026</p>
+<p class="date">Last Updated: August 2026</p>
 
 <p>
-Welcome to SultanOps. This Privacy Policy explains how we collect, use, and protect information when you use our services.
+Welcome to Fast Toolkit. This Privacy Policy explains how information is handled when you use the application.
 </p>
 
 <h2>Information We Collect</h2>
@@ -38,6 +37,8 @@ Welcome to SultanOps. This Privacy Policy explains how we collect, use, and prot
     <li>Your Google account email address</li>
     <li>Basic profile information provided by Google</li>
     <li>Authentication information required to identify your account</li>
+    <li>Tool data, notes, preferences, and history that you choose to synchronize</li>
+    <li>AI provider credentials that you explicitly save for use with the scanning tools</li>
 </ul>
 
 <p>We do not collect your Google password.</p>
@@ -47,6 +48,7 @@ Welcome to SultanOps. This Privacy Policy explains how we collect, use, and prot
     <li>Authenticate users</li>
     <li>Provide access to application features</li>
     <li>Maintain account security</li>
+    <li>Synchronize your application data between your signed-in devices</li>
     <li>Improve service functionality</li>
 </ul>
 
@@ -58,17 +60,17 @@ Information may only be shared when required by law or to protect the security a
 
 <h2>Data Security</h2>
 <p>
-We take reasonable measures to protect user information from unauthorized access, disclosure, or misuse.
+Cloud data is separated by your authenticated Firebase user ID. AI provider credentials are kept out of persistent browser local storage and are only synchronized inside your private account data. You remain responsible for rotating or revoking provider credentials if a device or account is compromised.
 </p>
 
 <h2>Data Retention</h2>
 <p>
-User information is retained only as long as necessary to provide the service and comply with legal obligations.
+Application data may remain in Firebase while your account uses cloud synchronization. Signing out clears the active account data from the application's shared browser storage. You may contact us to request deletion of cloud data.
 </p>
 
 <h2>Third-Party Services</h2>
 <p>
-This application uses Google Sign-In and may interact with Google services according to Google's policies and permissions granted by users.
+This application uses Firebase Authentication, Cloud Firestore, Google Sign-In, and—when selected by you—Gemini or Groq APIs. Requests sent to those services are subject to their respective privacy policies.
 </p>
 
 <h2>Your Rights</h2>
@@ -88,4 +90,3 @@ We may update this Privacy Policy from time to time. Continued use of the servic
 
 </body>
 </html>
-```

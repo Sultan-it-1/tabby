@@ -304,7 +304,7 @@
 
         <div id="userProfileCard" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; margin-bottom: 6px; font-size: 9px;">
             <div style="display: flex; align-items: center; gap: 5px; overflow: hidden; cursor: pointer;">
-                <span style="color: var(--accent-green); font-weight: bold;">☁️</span>
+                <span id="homeCloudState" style="color: #aaa; font-weight: bold;">☁️</span>
                 <span id="userEmailTxt" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ccc;">جاري الاتصال بـ Cloud...</span>
             </div>
             <button id="switchAccBtn" style="background: transparent; border: 1px solid #444; color: #aaa; border-radius: 4px; padding: 2px 5px; font-size: 8.5px; cursor: pointer;" title="تبديل حساب Google">🔄 تبديل</button>
@@ -321,11 +321,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=2.1.7"></script>
+    <script src="firebase-config.js?v=2.1.8"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const emailTxt = document.getElementById('userEmailTxt');
             const switchBtn = document.getElementById('switchAccBtn');
+            const cloudState = document.getElementById('homeCloudState');
 
             if (window.FastToolkitFirebase) {
                 window.FastToolkitFirebase.onUserChange((user) => {
@@ -334,6 +335,13 @@
                     } else {
                         if (emailTxt) emailTxt.innerText = 'سجل الدخول عبر Google';
                     }
+                });
+                window.FastToolkitFirebase.onSyncStateChange((state) => {
+                    if (!cloudState) return;
+                    const colors = { synced: '#34D399', syncing: '#fbbf24', offline: '#fb923c', error: '#ff5555', local: '#aaa', connecting: '#aaa' };
+                    const labels = { synced: 'تمت المزامنة', syncing: 'جاري الحفظ', offline: 'دون اتصال', error: 'فشلت المزامنة', local: 'حفظ محلي', connecting: 'جاري الاتصال' };
+                    cloudState.style.color = colors[state.status] || '#aaa';
+                    cloudState.title = labels[state.status] || 'حالة السحابة';
                 });
             }
 

@@ -1,0 +1,35 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const cardUtils = require('../card-utils.js');
+const themes = require('../theme-utils.js');
+
+test('card utilities normalize Arabic digits and reject incomplete AI output', () => {
+    assert.equal(cardUtils.normalizeDigits('١٢٣٤'), '1234');
+    assert.equal(cardUtils.normalizeCard('**** ١٢٣٤'), '1234');
+    const parsed = cardUtils.parseAIResultText('المبلغ 10 فقط', new Date('2026-08-11T12:00:00'));
+    assert.equal(parsed.valid, false);
+});
+
+test('theme settings always resolve to a valid preset or custom theme', () => {
+    const normalized = themes.normalizeSettings({ mode: 'dark', themeColor: '#34d399' });
+    assert.equal(normalized.mode, 'dark');
+    assert.equal(normalized.themeColor, '#34D399');
+    assert.ok(themes.resolveTheme(normalized));
+});
+
+test('Firestore rules are scoped to the authenticated UID and reject broad access', () => {
+    const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+    assert.match(rules, /request\.auth\.uid\s*==\s*userId/);
+    assert.doesNotMatch(rules, /allow\s+read,\s*write:\s*if\s+request\.auth\s*!=\s*null\s*;/);
+    assert.match(rules, /allow\s+read,\s*write:\s*if\s+false/);
+});
+
+test('Firebase deployment config points at the checked-in security rules', () => {
+    const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'firebase.json'), 'utf8'));
+    assert.equal(config.firestore.rules, 'firestore.rules');
+});

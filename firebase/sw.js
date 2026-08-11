@@ -20,6 +20,7 @@ const ASSETS_TO_CACHE = [
   "./theme.css",
   "./theme-utils.js",
   "./settings.js",
+  "./firebase-config.js",
   "./version.js",
   "./note.js",
   "./card-utils.js",

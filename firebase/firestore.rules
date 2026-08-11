@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ownsUserDocument(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, delete: if ownsUserDocument(userId);
+      allow create, update: if ownsUserDocument(userId)
+        && request.resource.data.keys().hasOnly([
+          'email',
+          'displayName',
+          'schemaVersion',
+          'updatedAt',
+          'migratedAt',
+          'data'
+        ]);
+
+      match /data/{keyId} {
+        allow read, delete: if ownsUserDocument(userId);
+        allow create, update: if ownsUserDocument(userId)
+          && request.resource.data.keys().hasOnly([
+            'key',
+            'value',
+            'deleted',
+            'sensitive',
+            'clientUpdatedAt',
+            'updatedAt'
+          ])
+          && request.resource.data.key is string
+          && request.resource.data.key.size() > 0
+          && request.resource.data.key.size() <= 100
+          && request.resource.data.value is string
+          && request.resource.data.value.size() <= 900000
+          && request.resource.data.deleted is bool
+          && request.resource.data.sensitive is bool
+          && request.resource.data.clientUpdatedAt is int
+          && request.resource.data.updatedAt == request.time;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

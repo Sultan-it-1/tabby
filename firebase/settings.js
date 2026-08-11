@@ -18,7 +18,17 @@
     function getAiSecret(key) {
         if (!AI_SECRET_KEYS.has(key)) return '';
         try {
-            return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
+            const sessionValue = sessionStorage.getItem(key);
+            if (sessionValue !== null) return sessionValue;
+
+            // One-time migration from older builds that persisted AI keys.
+            const legacyValue = localStorage.getItem(key);
+            if (legacyValue !== null) {
+                sessionStorage.setItem(key, legacyValue);
+                localStorage.removeItem(key);
+                return legacyValue;
+            }
+            return '';
         } catch (e) {
             return '';
         }
@@ -28,13 +38,20 @@
         if (!AI_SECRET_KEYS.has(key)) return;
         try {
             if (value) {
-                localStorage.setItem(key, value);
                 sessionStorage.setItem(key, value);
             } else {
-                localStorage.removeItem(key);
                 sessionStorage.removeItem(key);
             }
+            localStorage.removeItem(key);
         } catch (e) { }
+
+        const cloud = window.FastToolkitFirebase;
+        if (!cloud) return;
+        if (value && typeof cloud.saveCloudData === 'function') {
+            cloud.saveCloudData(key, value);
+        } else if (!value && typeof cloud.removeCloudData === 'function') {
+            cloud.removeCloudData(key);
+        }
     }
 
     window.fastToolkitGetAiSecret = getAiSecret;

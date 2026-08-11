@@ -14,7 +14,7 @@ function getAiSecret(key) {
     if (typeof window.fastToolkitGetAiSecret === 'function') {
         return window.fastToolkitGetAiSecret(key);
     }
-    return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
+    return sessionStorage.getItem(key) || '';
 }
 
 function setAiSecret(key, val) {
@@ -22,14 +22,15 @@ function setAiSecret(key, val) {
         return window.fastToolkitSetAiSecret(key, val);
     }
     if (val) {
-        localStorage.setItem(key, val);
         sessionStorage.setItem(key, val);
     } else {
-        localStorage.removeItem(key);
         sessionStorage.removeItem(key);
     }
     if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
-        window.FastToolkitFirebase.saveCloudData(key, val || '');
+        if (val) window.FastToolkitFirebase.saveCloudData(key, val);
+        else if (typeof window.FastToolkitFirebase.removeCloudData === 'function') {
+            window.FastToolkitFirebase.removeCloudData(key);
+        }
     }
 }
 
@@ -154,7 +155,29 @@ window.addEventListener('storage', (e) => {
             popupToggle.checked = e.newValue !== 'false';
         }
     }
+    if (e.key === 'simah_ai_provider') {
+        currentProvider = e.newValue || 'gemini';
+        if (settingsModal && settingsModal.style.display === 'block') switchProvider(currentProvider);
+    }
+    if (e.key === 'simah_ai_pref') {
+        isAIActive = e.newValue === 'true';
+        if (aiBtn) aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
+    }
+    if (e.key === 'checkout_action_mode') {
+        checkoutActionMode = e.newValue || 'copy';
+        initCheckoutActionModeUI();
+    }
 });
+
+window.syncFromCloudStorage = function () {
+    currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
+    isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
+    checkoutActionMode = localStorage.getItem('checkout_action_mode') || 'copy';
+    if (aiBtn) aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
+    syncCardDataFromStorage();
+    loadSavedTabbyInput();
+    initCheckoutActionModeUI();
+};
 
 window.addEventListener('focus', () => {
     loadSavedTabbyInput();

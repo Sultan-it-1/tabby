@@ -687,18 +687,35 @@ window.triggerDeleteAll = triggerDeleteAll;
 
 document.addEventListener('DOMContentLoaded', () => {
     if (window.FastToolkitFirebase) {
-        window.FastToolkitFirebase.onUserChange((user) => {
+        let activeCloudUser = window.FastToolkitFirebase.user;
+        let activeSyncState = { status: 'connecting' };
+        const renderCloudStatus = () => {
             const el = document.getElementById('ciaCloudStatus');
             if (!el) return;
-            if (user && user.email) {
-                el.innerHTML = `🟢 متصل بالسحابة (${user.email})`;
-                el.style.color = '#34D399';
-                el.onclick = null;
-            } else {
-                el.innerHTML = `⚪ حفظ محلي (اضغط لتسجيل الدخول السحابي ☁️)`;
+            if (!activeCloudUser) {
+                el.innerText = '⚪ حفظ محلي (اضغط لتسجيل الدخول السحابي ☁️)';
                 el.style.color = '#aaa';
                 el.onclick = () => window.FastToolkitFirebase.loginWithGoogle();
+                return;
             }
+            const labels = {
+                synced: `🟢 تمت المزامنة (${activeCloudUser.email})`,
+                syncing: '🟡 جاري حفظ التغييرات...',
+                offline: '🟠 دون اتصال — محفوظ محليًا',
+                error: '🔴 تعذر الحفظ — ستتم إعادة المحاولة',
+                connecting: '⏳ جاري الاتصال بالسحابة...'
+            };
+            el.innerText = labels[activeSyncState.status] || labels.connecting;
+            el.style.color = activeSyncState.status === 'synced' ? '#34D399' : activeSyncState.status === 'error' ? '#ff5555' : activeSyncState.status === 'offline' ? '#fb923c' : '#fbbf24';
+            el.onclick = null;
+        };
+        window.FastToolkitFirebase.onUserChange((user) => {
+            activeCloudUser = user;
+            renderCloudStatus();
+        });
+        window.FastToolkitFirebase.onSyncStateChange(state => {
+            activeSyncState = state;
+            renderCloudStatus();
         });
     }
 });
