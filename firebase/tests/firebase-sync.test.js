@@ -256,6 +256,83 @@ test('cloud data wins during login after saving a recovery copy of a differing l
     sync.destroy();
 });
 
+test('fresh-browser defaults created during page boot do not trigger a false login conflict', async () => {
+    const defaultSettings = '{"mode":"light","themePreset":"cloud"}';
+    const cloudSettings = '{"mode":"dark","themePreset":"midnight"}';
+    const bootstrapSeeds = JSON.stringify({
+        entries: {
+            fastToolkitSettings: defaultSettings,
+            fastToolkit_full_window: 'true'
+        }
+    });
+    const harness = createHarness({
+        local: {
+            fastToolkitSettings: defaultSettings,
+            fastToolkit_full_window: 'true',
+            fastToolkit_bootstrap_seeded_values_v1: bootstrapSeeds
+        },
+        remoteByUid: {
+            alpha: {
+                fastToolkitSettings: cloudSettings,
+                fastToolkit_full_window: 'false'
+            }
+        },
+        conflictResolution: 'local'
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait();
+
+    assert.equal(harness.localStorage.getItem('fastToolkitSettings'), cloudSettings);
+    assert.equal(harness.localStorage.getItem('fastToolkit_full_window'), 'false');
+    assert.equal(harness.localStorage.getItem('fastToolkit_bootstrap_seeded_values_v1'), null);
+    assert.equal(harness.conflictPrompts.length, 0);
+    assert.equal(harness.recoveryWrites.length, 0);
+    sync.destroy();
+});
+
+test('JSON objects with different property order are not treated as changed data', async () => {
+    const harness = createHarness({
+        local: { fastToolkitSettings: '{"themePreset":"midnight","mode":"dark"}' },
+        remoteByUid: { alpha: { fastToolkitSettings: '{"mode":"dark","themePreset":"midnight"}' } },
+        conflictResolution: 'local'
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait();
+
+    assert.equal(harness.conflictPrompts.length, 0);
+    assert.equal(harness.recoveryWrites.length, 0);
+    assert.equal(harness.writes.some(write => write.key === 'fastToolkitSettings'), false);
+    sync.destroy();
+});
+
+test('a real user change remains a conflict even when the key was originally boot-seeded', async () => {
+    const seededSettings = '{"mode":"light","themePreset":"cloud"}';
+    const localSettings = '{"mode":"dark","themePreset":"aurora"}';
+    const cloudSettings = '{"mode":"dark","themePreset":"midnight"}';
+    const harness = createHarness({
+        local: {
+            fastToolkitSettings: localSettings,
+            fastToolkit_bootstrap_seeded_values_v1: JSON.stringify({
+                entries: { fastToolkitSettings: seededSettings }
+            })
+        },
+        remoteByUid: { alpha: { fastToolkitSettings: cloudSettings } },
+        conflictResolution: 'local'
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait(50);
+
+    assert.equal(harness.conflictPrompts.length, 1);
+    assert.equal(harness.localStorage.getItem('fastToolkitSettings'), localSettings);
+    assert.equal(harness.writes.some(write => (
+        write.key === 'fastToolkitSettings' && write.value === localSettings
+    )), true);
+    sync.destroy();
+});
+
 test('recommended login merge preserves unique and overlapping structured data from both sides', async () => {
     const localValue = JSON.stringify({
         cards: [{ id: 'shared', localEdit: true }, { id: 'local-only', value: 2 }],

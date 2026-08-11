@@ -25,7 +25,6 @@ const defaultData = {
 };
 
 let storageData = JSON.parse(localStorage.getItem('copyGridDataV6')) || defaultData;
-let unbackedUpCount = parseInt(localStorage.getItem('unbackedUpCountV6'), 10) || 0;
 
 function ensureContainerSafety(containerId) {
     if (!storageData) storageData = {};
@@ -374,7 +373,6 @@ function render() {
         container.appendChild(emptyNotes);
     }
 
-    checkBackupStatus();
 }
 
 function switchContainer() {
@@ -546,16 +544,6 @@ function saveSectionName() {
     closeModal();
 }
 window.saveSectionName = saveSectionName;
-
-function checkBackupStatus() {
-    const dotEl = document.getElementById('backupDot');
-    if (unbackedUpCount > 0) {
-        dotEl.style.display = 'block';
-        dotEl.setAttribute('data-tooltip', `تحتاج نسخة لـ ${unbackedUpCount} نوتات`);
-    } else {
-        dotEl.style.display = 'none';
-    }
-}
 
 function showCustomConfirm(message, callback) {
     const box = document.getElementById('confirmBox');
@@ -851,14 +839,10 @@ function saveItem() {
             if (i.l !== l || i.t !== t) {
                 i.l = l;
                 i.t = t;
-                unbackedUpCount++;
-                localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
             }
         }
     } else {
         storageData[targetCId][activeCat].push({ id: Date.now() + Math.random(), l, t });
-        unbackedUpCount++;
-        localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
     }
     saveAndRefresh(); closeModal();
 }
@@ -900,8 +884,6 @@ function confirmDeleteAll() {
             c2: {},
             c3: {}
         };
-        unbackedUpCount = 0;
-        localStorage.setItem('unbackedUpCountV6', '0');
         saveAndRefresh();
         closeModal();
         showStatus("تم مسح كافة البيانات 🗑️");
@@ -947,9 +929,6 @@ function exportData() {
     a.download = filename;
     a.click();
 
-    unbackedUpCount = 0;
-    localStorage.setItem('unbackedUpCountV6', '0');
-    render();
 }
 window.exportData = exportData;
 
@@ -1089,9 +1068,6 @@ function updateDriveFile(token, fileId, content, isBackground = false) {
     .then(checkResponseStatus)
     .then(res => {
         if (res.ok) {
-            unbackedUpCount = 0;
-            localStorage.setItem('unbackedUpCountV6', '0');
-            render();
             showStatus(isBackground ? "تمت المزامنة التلقائية! ☁️ ✅" : "تم النسخ السحابي بنجاح! ☁️ ✅");
         } else {
             showStatus("فشل تحديث النسخة! ❌");
@@ -1151,8 +1127,6 @@ function restoreDriveFile(token, fileId) {
     .then(imported => {
         if (imported && typeof imported === 'object') {
             storageData = imported;
-            unbackedUpCount = 0;
-            localStorage.setItem('unbackedUpCountV6', '0');
             localStorage.setItem('copyGridDataV6', JSON.stringify(storageData));
             render();
             showStatus("تمت الاستعادة السحابية بنجاح! ☁️ ✅");

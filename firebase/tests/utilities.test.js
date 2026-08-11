@@ -56,3 +56,12 @@ test('settings do not expose the unused trusted-device Firestore cache toggle', 
     assert.doesNotMatch(settings, /fastToolkit_trusted_device/);
     assert.doesNotMatch(settings, /حفظ نسخة Firestore للعمل دون اتصال/);
 });
+
+test('note experience no longer tracks or displays the legacy manual-backup counter', () => {
+    const noteHtml = fs.readFileSync(path.join(__dirname, '..', 'note.html'), 'utf8');
+    const noteScript = fs.readFileSync(path.join(__dirname, '..', 'note.js'), 'utf8');
+    const firebaseSync = fs.readFileSync(path.join(__dirname, '..', 'firebase-config.js'), 'utf8');
+    const settings = fs.readFileSync(path.join(__dirname, '..', 'settings.html'), 'utf8');
+    const productionSources = [noteHtml, noteScript, firebaseSync, settings].join('\n');
+    assert.doesNotMatch(productionSources, /backupDot|backup-dot|unbackedUpCountV6|unbackedUpCount/);
+});

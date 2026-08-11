@@ -1,5 +1,15 @@
 (function () {
     const PIP_SESSION_KEY = 'fastToolkit_isPipContext';
+    const FIREBASE_BOOTSTRAP_SEEDS_KEY = 'fastToolkit_bootstrap_seeded_values_v1';
+
+    function recordFirebaseBootstrapSeed(key, value) {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(FIREBASE_BOOTSTRAP_SEEDS_KEY) || '{}');
+            const entries = parsed && parsed.entries && typeof parsed.entries === 'object' ? parsed.entries : {};
+            entries[key] = String(value);
+            localStorage.setItem(FIREBASE_BOOTSTRAP_SEEDS_KEY, JSON.stringify({ entries }));
+        } catch (e) { }
+    }
     try {
         const hasPipMarker = new URLSearchParams(window.location.search).get('fastToolkitPip') === '1' || window.name === 'fast-toolkit-pip';
         if (hasPipMarker) sessionStorage.setItem(PIP_SESSION_KEY, 'true');
@@ -72,9 +82,11 @@
     document.documentElement.classList.add('expanded');
     const path = window.location.pathname;
     const isIndexPage = path.endsWith('index.html') || path.endsWith('/') || path === '' || !path.includes('.html');
-    if (isIndexPage || localStorage.getItem('fastToolkit_full_window') !== 'false') {
+    const storedFullWindow = localStorage.getItem('fastToolkit_full_window');
+    if (isIndexPage || storedFullWindow !== 'false') {
         document.documentElement.classList.add('full-window');
         localStorage.setItem('fastToolkit_full_window', 'true');
+        if (storedFullWindow === null) recordFirebaseBootstrapSeed('fastToolkit_full_window', 'true');
     }
 
     const themeApi = window.FastToolkitThemes;
@@ -93,7 +105,10 @@
     const settings = themeApi.normalizeSettings(savedSettings);
     try {
         const normalizedText = JSON.stringify(settings);
-        if (normalizedText !== storedSettingsText) localStorage.setItem('fastToolkitSettings', normalizedText);
+        if (normalizedText !== storedSettingsText) {
+            localStorage.setItem('fastToolkitSettings', normalizedText);
+            if (!storedSettingsText) recordFirebaseBootstrapSeed('fastToolkitSettings', normalizedText);
+        }
     } catch (e) { }
 
     const root = document.documentElement;
