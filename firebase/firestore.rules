@@ -33,6 +33,40 @@ service cloud.firestore {
       ]);
     }
 
+    function hasValidDataShape() {
+      return request.resource.data.keys().hasOnly([
+          'key',
+          'value',
+          'deleted',
+          'sensitive',
+          'writerVersion',
+          'deleteRequestId',
+          'clientUpdatedAt',
+          'updatedAt'
+        ])
+        && request.resource.data.key is string
+        && request.resource.data.key.size() > 0
+        && request.resource.data.key.size() <= 100
+        && request.resource.data.value is string
+        && request.resource.data.value.size() <= 900000
+        && request.resource.data.deleted is bool
+        && request.resource.data.sensitive is bool
+        && request.resource.data.clientUpdatedAt is int
+        && request.resource.data.updatedAt == request.time
+        && (!request.resource.data.keys().hasAny(['writerVersion'])
+          || request.resource.data.writerVersion is int)
+        && (!request.resource.data.keys().hasAny(['deleteRequestId'])
+          || (request.resource.data.deleteRequestId is string
+            && request.resource.data.deleteRequestId.size() <= 100));
+    }
+
+    function hasAuthenticatedDeleteRequest() {
+      return request.resource.data.keys().hasAll(['writerVersion', 'deleteRequestId'])
+        && request.resource.data.writerVersion >= 3
+        && request.resource.data.deleteRequestId is string
+        && request.resource.data.deleteRequestId.size() > 0;
+    }
+
     match /users/{userId} {
       allow read, delete: if ownsUserDocument(userId);
       // New profiles never create the deprecated `data` map. Existing legacy
@@ -46,25 +80,19 @@ service cloud.firestore {
         && legacyDataIsProtected();
 
       match /data/{keyId} {
-        allow read, delete: if ownsUserDocument(userId);
-        allow create, update: if ownsUserDocument(userId)
-          && request.resource.data.keys().hasOnly([
-            'key',
-            'value',
-            'deleted',
-            'sensitive',
-            'clientUpdatedAt',
-            'updatedAt'
-          ])
-          && request.resource.data.key is string
-          && request.resource.data.key.size() > 0
-          && request.resource.data.key.size() <= 100
-          && request.resource.data.value is string
-          && request.resource.data.value.size() <= 900000
-          && request.resource.data.deleted is bool
-          && request.resource.data.sensitive is bool
-          && request.resource.data.clientUpdatedAt is int
-          && request.resource.data.updatedAt == request.time;
+        allow read: if ownsUserDocument(userId);
+        allow delete: if false;
+        // Cached pre-v3 clients may still upload ordinary values, but they can
+        // no longer turn a browser-storage reset into cloud tombstones.
+        allow create: if ownsUserDocument(userId)
+          && hasValidDataShape()
+          && (!request.resource.data.deleted || hasAuthenticatedDeleteRequest());
+        allow update: if ownsUserDocument(userId)
+          && hasValidDataShape()
+          && (!request.resource.data.deleted
+            || (hasAuthenticatedDeleteRequest()
+              && (!resource.data.keys().hasAny(['deleteRequestId'])
+                || request.resource.data.deleteRequestId != resource.data.deleteRequestId)));
       }
 
       // Immutable recovery snapshots are written before any migration merge.

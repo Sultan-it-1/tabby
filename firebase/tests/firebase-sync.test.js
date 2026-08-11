@@ -37,6 +37,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
     const writes = [];
     const profileWrites = [];
     const recoveryWrites = [];
+    const recoveryManifests = [];
     let authCallback = null;
     let unsubscribeCount = 0;
 
@@ -63,7 +64,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
                 return {
                     set(record) {
                         recordsFor(uid).set(record.key, { ...record });
-                        writes.push({ uid, key: record.key, value: record.value, deleted: record.deleted, documentId });
+                        writes.push({ uid, documentId, ...record });
                         const listener = listeners.get(uid);
                         if (listener) {
                             listener(createSnapshot(recordsFor(uid), [{
@@ -98,6 +99,10 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
                                 return {
                                     doc(snapshotId) {
                                         return {
+                                            set(record) {
+                                                recoveryManifests.push({ uid, snapshotId, record });
+                                                return Promise.resolve();
+                                            },
                                             collection(valuesName) {
                                                 assert.equal(valuesName, 'values');
                                                 return {
@@ -207,6 +212,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
         writes,
         profileWrites,
         recoveryWrites,
+        recoveryManifests,
         remote,
         getAuthCallback: () => authCallback,
         getUnsubscribeCount: () => unsubscribeCount
@@ -233,6 +239,8 @@ test('cloud data wins during login after saving a recovery copy of a differing l
     assert.equal(harness.localStorage.getItem('cardScannerData'), 'cloud-current');
     assert.equal(harness.writes.some(write => write.key === 'cardScannerData'), false);
     assert.equal(harness.recoveryWrites.length, 1);
+    assert.equal(harness.recoveryManifests.length, 1);
+    assert.equal(harness.recoveryManifests[0].record.keyCount, 1);
     assert.equal(harness.recoveryWrites[0].record.localValue, 'local-stale');
     assert.equal(harness.recoveryWrites[0].record.cloudValue, 'cloud-current');
     sync.destroy();
@@ -294,7 +302,8 @@ test('a cloud deletion tombstone is not resurrected from the legacy archive or b
         legacyByUid: { alpha: { data: { cardScannerData: 'legacy-value' } } }
     });
     harness.remote.get('alpha').set('cardScannerData', {
-        key: 'cardScannerData', value: '', deleted: true, sensitive: false, clientUpdatedAt: 1, updatedAt: 1
+        key: 'cardScannerData', value: '', deleted: true, sensitive: false,
+        writerVersion: 3, deleteRequestId: 'trusted-delete-1', clientUpdatedAt: 1, updatedAt: 1
     });
     const sync = new harness.Engine();
     await harness.getAuthCallback()(user('alpha'));
@@ -302,6 +311,27 @@ test('a cloud deletion tombstone is not resurrected from the legacy archive or b
 
     assert.equal(harness.localStorage.getItem('cardScannerData'), null);
     assert.equal(harness.writes.some(write => write.key === 'cardScannerData' && write.value === 'legacy-value'), false);
+    sync.destroy();
+});
+
+test('an unversioned tombstone from a cached client is recovered from the immutable legacy archive', async () => {
+    const harness = createHarness({
+        remoteByUid: { alpha: { cardScannerData: 'placeholder' } },
+        legacyByUid: { alpha: { data: { cardScannerData: 'archived-card-data' } } }
+    });
+    harness.remote.get('alpha').set('cardScannerData', {
+        key: 'cardScannerData', value: '', deleted: true, sensitive: false, clientUpdatedAt: 1, updatedAt: 1
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait(50);
+
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'archived-card-data');
+    const repairWrite = harness.writes.find(write => write.key === 'cardScannerData');
+    assert.ok(repairWrite);
+    assert.equal(repairWrite.value, 'archived-card-data');
+    assert.equal(repairWrite.deleted, false);
+    assert.equal(repairWrite.writerVersion, 3);
     sync.destroy();
 });
 
@@ -388,6 +418,69 @@ test('direct localStorage changes are discovered by the automatic monitor', asyn
     await wait(450);
 
     assert.equal(harness.writes.some(write => write.key === 'card_popup_enabled' && write.value === 'false'), true);
+    sync.destroy();
+});
+
+test('a bulk browser-storage reset restores the local mirror and never uploads tombstones', async () => {
+    const harness = createHarness({
+        local: {
+            cardScannerData: 'cards',
+            copyGridDataV6: 'grid',
+            fastToolkitCIA_v4: 'cia',
+            stickyNotesData: 'notes'
+        }
+    });
+    const sync = new harness.Engine();
+    sync.db = harness.db;
+    sync.user = user('alpha');
+    sync.sessionUid = 'alpha';
+    sync.sessionReady = true;
+
+    harness.localStorage.clear();
+    sync.scanLocalChanges();
+    await wait(450);
+
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'cards');
+    assert.equal(harness.localStorage.getItem('copyGridDataV6'), 'grid');
+    assert.equal(harness.localStorage.getItem('fastToolkitCIA_v4'), 'cia');
+    assert.equal(harness.localStorage.getItem('stickyNotesData'), 'notes');
+    assert.equal(harness.writes.some(write => write.deleted), false);
+    sync.destroy();
+});
+
+test('a single raw cache eviction is restored and cannot delete cloud data', async () => {
+    const harness = createHarness({ local: { cardScannerData: 'cards' } });
+    const sync = new harness.Engine();
+    sync.db = harness.db;
+    sync.user = user('alpha');
+    sync.sessionUid = 'alpha';
+    sync.sessionReady = true;
+
+    harness.localStorage.removeItem('cardScannerData');
+    sync.scanLocalChanges();
+    await wait(450);
+
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'cards');
+    assert.equal(harness.writes.length, 0);
+    sync.destroy();
+});
+
+test('an explicit cloud deletion includes a one-time authenticated delete request', async () => {
+    const harness = createHarness({ local: { cardScannerData: 'cards' } });
+    const sync = new harness.Engine();
+    sync.db = harness.db;
+    sync.user = user('alpha');
+    sync.sessionUid = 'alpha';
+    sync.sessionReady = true;
+
+    sync.removeCloudData('cardScannerData');
+    await wait(450);
+
+    const deletion = harness.writes.find(write => write.key === 'cardScannerData');
+    assert.ok(deletion);
+    assert.equal(deletion.deleted, true);
+    assert.equal(deletion.writerVersion, 3);
+    assert.ok(deletion.deleteRequestId.length > 0);
     sync.destroy();
 });
 
