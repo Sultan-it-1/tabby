@@ -36,40 +36,6 @@
             position: relative;
         }
 
-        .backup-dot {
-            width: 6px;
-            height: 6px;
-            background: #ffaa00;
-            border-radius: 50%;
-            display: none;
-            z-index: 10;
-            box-shadow: 0 0 6px #ffaa00;
-            cursor: help;
-        }
-
-        .backup-dot::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 10px;
-            left: 0;
-            background: #333;
-            color: #ffaa00;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 9px;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: 0.2s;
-            border: 1px solid #ffaa00;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        }
-
-        .backup-dot:hover::after {
-            opacity: 1;
-            visibility: visible;
-        }
-
         .header-row {
             display: flex;
             justify-content: space-between;
@@ -590,18 +556,10 @@
 
         <div id="main-content" class="content-scroll"></div>
 
-        <div class="backup-row">
-            <button class="backup-btn" style="color: #ff5555; border-color: #3a1818; flex: 1;" onclick="triggerDeleteAll()" data-tip="مسح كل البيانات">🗑️ مسح الكل</button>
+        <div class="backup-row" style="margin-top: 4px; padding-top: 4px;">
+            <button class="backup-btn" style="color: #ff5555; border-color: #3a1818; flex: 1;" onclick="triggerDeleteAll()" data-tip="مسح كل البيانات">🗑️ مسح كافة العناصر</button>
         </div>
-        <div class="backup-row" style="margin-top: 4px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
-            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f; flex: 1;" onclick="triggerCloudAction('backup')">☁️ نسخ (Drive)</button>
-            <button class="backup-btn" style="color: #4285f4; border-color: #1a3a5f; flex: 1;" onclick="triggerCloudAction('restore')">☁️ استعادة (Drive)</button>
-
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; padding-top: 4px; margin-bottom: -4px; height: 6px;">
-            <div id="backupDot" class="backup-dot" data-tooltip=""></div>
-        </div>
+        <div id="noteCloudStatus" style="font-size: 9px; color: #888; text-align: center; margin-top: 3px; cursor: pointer;">جاري الاتصال بالسحابة...</div>
 
         <div id="toastContainer" class="toast-container"></div>
 
@@ -697,7 +655,10 @@
     </div>
 
 
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js?v=2.3.3"></script>
     <script>
         document.write('<script src="note.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>

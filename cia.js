@@ -92,9 +92,16 @@ function loadCIAData() {
 
 function saveCIAData() {
     localStorage.setItem('fastToolkitCIA_v4', JSON.stringify(ciaCards));
+    if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
+        window.FastToolkitFirebase.saveCloudData('fastToolkitCIA_v4', ciaCards);
+    }
     renderFilterBar();
     renderCardsView();
 }
+
+window.syncFromCloudStorage = function() {
+    loadCIAData();
+};
 
 function filterCards() {
     const input = document.getElementById('searchInput');
@@ -677,6 +684,41 @@ function restoreDriveFile(token, fileId) {
 window.exportCIAData = exportCIAData;
 window.importCIAData = importCIAData;
 window.triggerDeleteAll = triggerDeleteAll;
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.FastToolkitFirebase) {
+        let activeCloudUser = window.FastToolkitFirebase.user;
+        let activeSyncState = { status: 'connecting' };
+        const renderCloudStatus = () => {
+            const el = document.getElementById('ciaCloudStatus');
+            if (!el) return;
+            if (!activeCloudUser) {
+                el.innerText = '⚪ حفظ محلي (اضغط لتسجيل الدخول السحابي ☁️)';
+                el.style.color = '#aaa';
+                el.onclick = () => window.FastToolkitFirebase.loginWithGoogle();
+                return;
+            }
+            const labels = {
+                synced: `🟢 تمت المزامنة (${activeCloudUser.email})`,
+                syncing: '🟡 جاري حفظ التغييرات...',
+                offline: '🟠 دون اتصال — محفوظ محليًا',
+                error: '🔴 تعذر الحفظ — ستتم إعادة المحاولة',
+                connecting: '⏳ جاري الاتصال بالسحابة...'
+            };
+            el.innerText = labels[activeSyncState.status] || labels.connecting;
+            el.style.color = activeSyncState.status === 'synced' ? '#34D399' : activeSyncState.status === 'error' ? '#ff5555' : activeSyncState.status === 'offline' ? '#fb923c' : '#fbbf24';
+            el.onclick = null;
+        };
+        window.FastToolkitFirebase.onUserChange((user) => {
+            activeCloudUser = user;
+            renderCloudStatus();
+        });
+        window.FastToolkitFirebase.onSyncStateChange(state => {
+            activeSyncState = state;
+            renderCloudStatus();
+        });
+    }
+});
 window.confirmDeleteAll = confirmDeleteAll;
 window.triggerCloudAction = triggerCloudAction;
 window.saveCiaCardModal = saveCiaCardModal;

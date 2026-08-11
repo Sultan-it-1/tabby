@@ -14,7 +14,7 @@ function getAiSecret(key) {
     if (typeof window.fastToolkitGetAiSecret === 'function') {
         return window.fastToolkitGetAiSecret(key);
     }
-    return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
+    return sessionStorage.getItem(key) || localStorage.getItem(key) || '';
 }
 
 function setAiSecret(key, val) {
@@ -22,11 +22,17 @@ function setAiSecret(key, val) {
         return window.fastToolkitSetAiSecret(key, val);
     }
     if (val) {
-        localStorage.setItem(key, val);
         sessionStorage.setItem(key, val);
+        localStorage.setItem(key, val);
     } else {
-        localStorage.removeItem(key);
         sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
+    }
+    if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
+        if (val) window.FastToolkitFirebase.saveCloudData(key, val);
+        else if (typeof window.FastToolkitFirebase.removeCloudData === 'function') {
+            window.FastToolkitFirebase.removeCloudData(key);
+        }
     }
 }
 
@@ -151,7 +157,29 @@ window.addEventListener('storage', (e) => {
             popupToggle.checked = e.newValue !== 'false';
         }
     }
+    if (e.key === 'simah_ai_provider') {
+        currentProvider = e.newValue || 'gemini';
+        if (settingsModal && settingsModal.style.display === 'block') switchProvider(currentProvider);
+    }
+    if (e.key === 'simah_ai_pref') {
+        isAIActive = e.newValue === 'true';
+        if (aiBtn) aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
+    }
+    if (e.key === 'checkout_action_mode') {
+        checkoutActionMode = e.newValue || 'copy';
+        initCheckoutActionModeUI();
+    }
 });
+
+window.syncFromCloudStorage = function () {
+    currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
+    isAIActive = localStorage.getItem('simah_ai_pref') === 'true';
+    checkoutActionMode = localStorage.getItem('checkout_action_mode') || 'copy';
+    if (aiBtn) aiBtn.className = isAIActive ? 'ai-btn active' : 'ai-btn';
+    syncCardDataFromStorage();
+    loadSavedTabbyInput();
+    initCheckoutActionModeUI();
+};
 
 window.addEventListener('focus', () => {
     loadSavedTabbyInput();
@@ -604,7 +632,7 @@ function clearDataUI() {
 }
 
 function clearData() {
-    localStorage.removeItem('cardScannerData');
+    window.fastToolkitRemoveSyncedStorageKey('cardScannerData');
     clearDataUI();
 
     if (window.clearTabbyInput) {
@@ -1289,7 +1317,7 @@ function renderHistoryModal() {
     modal.innerHTML = `
         <div style="font-size:10px;font-weight:bold;color:${accent};margin-bottom:8px;text-align:center;padding-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
             <span style="flex-grow:1;">🕒 آخر ${history.length} عمليات مسح</span>
-            <button onclick="localStorage.removeItem('cardScannerHistory');renderHistoryModal();showToast('تم مسح السجل 🗑️');" style="background:transparent;border:none;color:#ff4444;cursor:pointer;font-size:12px;opacity:0.6;transition:0.2s;" onmouseover="this.style.opacity=1;this.style.transform='scale(1.1)'" onmouseout="this.style.opacity=0.6;this.style.transform='scale(1)'" title="مسح السجل">🗑️</button>
+            <button onclick="window.fastToolkitRemoveSyncedStorageKey('cardScannerHistory');renderHistoryModal();showToast('تم مسح السجل 🗑️');" style="background:transparent;border:none;color:#ff4444;cursor:pointer;font-size:12px;opacity:0.6;transition:0.2s;" onmouseover="this.style.opacity=1;this.style.transform='scale(1.1)'" onmouseout="this.style.opacity=0.6;this.style.transform='scale(1)'" title="مسح السجل">🗑️</button>
         </div>
         ${history.map((h, i) => {
             const t = new Date(h.scannedAt);
@@ -1361,7 +1389,7 @@ window.processTabbyInput = function() {
     if (inputEl.value) {
         localStorage.setItem('tabbyInput_saved', inputEl.value);
     } else {
-        localStorage.removeItem('tabbyInput_saved');
+        window.fastToolkitRemoveSyncedStorageKey('tabbyInput_saved');
     }
 
     if (!input) {
@@ -1442,7 +1470,7 @@ window.copyTabbyDetails = function() {
 }
 
 window.clearTabbyInput = function() {
-    localStorage.removeItem('tabbyInput_saved');
+    window.fastToolkitRemoveSyncedStorageKey('tabbyInput_saved');
     const inputEl = document.getElementById('tabbyInput');
     inputEl.value = '';
     window.processTabbyInput();

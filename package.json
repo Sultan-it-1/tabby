@@ -1,9 +1,9 @@
 {
   "name": "fast-toolkit",
-  "version": "2.1.1",
+  "version": "2.3.3",
   "private": true,
   "scripts": {
-    "test": "node --test tests/card-utils.test.js tests/card-runtime-smoke.test.js tests/card-integration.test.js tests/theme-utils.test.js tests/theme-integration.test.js",
-    "check": "node --check card-utils.js && node --check theme-utils.js && node --check card.js && node --check cia.js && node --check date.js && node --check note.js && node --check settings.js && node --check simah.js && node --check sticky.js && node --check sw.js && node --check version.js && node --check chrome-extension/background.js && node --check chrome-extension/content.js && node --check chrome-extension/launcher.js && node --check chrome-extension-dev/background.js && node --check chrome-extension-dev/content.js && npm test"
+    "test": "npm --prefix firebase test",
+    "check": "npm --prefix firebase run check"
   }
 }
