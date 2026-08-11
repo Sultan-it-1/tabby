@@ -44,7 +44,7 @@ const FAST_TOOLKIT_SECRET_KEYS = new Set(['simah_ai_key', 'simah_groq_key']);
 const FAST_TOOLKIT_LAST_UID_KEY = 'fastToolkit_firebase_last_uid';
 const FAST_TOOLKIT_DIRTY_PREFIX = 'fastToolkit_sync_dirty_v1:';
 const FAST_TOOLKIT_SAVE_DELAY = 350;
-const FAST_TOOLKIT_MONITOR_DELAY = 250;
+const FAST_TOOLKIT_MONITOR_DELAY = 500;
 
 let customConfig = null;
 try {
@@ -141,17 +141,10 @@ class FastToolkitFirebaseSync {
 
     configurePersistence() {
         if (!this.db || typeof this.db.enablePersistence !== 'function') return;
-        let trustedDevice = false;
-        try {
-            trustedDevice = localStorage.getItem('fastToolkit_trusted_device') === 'true';
-        } catch (e) { }
-        if (!trustedDevice) {
-            if (typeof this.db.clearPersistence === 'function') {
-                this.db.clearPersistence().catch(() => { });
-            }
-            return;
-        }
-
+        // Firestore's IndexedDB cache is the offline/performance layer. It is
+        // deliberately never cleared based on a UI preference: the server is
+        // still the source of truth, and the cache lets a signed-in user work
+        // while temporarily offline.
         this.db.enablePersistence({ synchronizeTabs: true }).catch(error => {
             console.warn('Firestore persistence warning:', error && error.code);
         });
@@ -161,7 +154,9 @@ class FastToolkitFirebaseSync {
         const transitionId = ++this.transitionId;
 
         if (!firebaseUser) {
-            await this.deactivateSession({ clearAccountData: true });
+            // Signing out must never erase the user's browser mirror. Their
+            // data lives in Firestore and will be restored on their next sign-in.
+            await this.deactivateSession();
             if (transitionId !== this.transitionId) return;
             this.user = null;
             this.notifyUserListeners();
@@ -190,7 +185,11 @@ class FastToolkitFirebaseSync {
         const canUseCurrentLocalData = !previousUid || previousUid === nextUser.uid;
         const localCandidate = canUseCurrentLocalData ? this.captureManagedData() : new Map();
 
-        await this.deactivateSession({ clearAccountData: Boolean(previousUid && previousUid !== nextUser.uid) });
+        // Capture anything the active page changed just before authentication
+        // switched. The dirty journal keeps it associated with its original
+        // account instead of copying it into the next account.
+        this.scanLocalChanges();
+        await this.deactivateSession();
         if (transitionId !== this.transitionId) return;
 
         this.user = nextUser;
@@ -209,25 +208,48 @@ class FastToolkitFirebaseSync {
         }
         if (transitionId !== this.transitionId || this.sessionUid !== nextUser.uid) return;
 
-        let valuesToApply = remoteResult.values;
-        if (valuesToApply.size === 0 && remoteResult.confirmedFromServer) {
-            const legacyResult = await this.loadLegacyData(nextUser.uid);
-            if (transitionId !== this.transitionId || this.sessionUid !== nextUser.uid) return;
+        const legacyResult = await this.loadLegacyData(nextUser.uid);
+        if (transitionId !== this.transitionId || this.sessionUid !== nextUser.uid) return;
 
-            if (legacyResult.values.size > 0) {
-                valuesToApply = legacyResult.values;
-                await this.migrateLegacyData(nextUser.uid, legacyResult.values);
-            } else if (canUseCurrentLocalData) {
-                valuesToApply = localCandidate;
+        // Per-key documents are canonical. The old `data` map remains a
+        // read-only recovery archive and fills only keys that have not yet
+        // migrated. A local value fills a gap only when the server confirmed
+        // that neither cloud representation has that key.
+        const mergedResult = this.mergeAccountData({
+            remoteValues: remoteResult.values,
+            legacyValues: legacyResult.values,
+            localValues: canUseCurrentLocalData ? localCandidate : new Map(),
+            serverConfirmed: remoteResult.confirmedFromServer && legacyResult.confirmedFromServer
+        });
+        const valuesToApply = mergedResult.values;
+
+        if (legacyResult.values.size > 0 && remoteResult.confirmedFromServer && legacyResult.confirmedFromServer) {
+            const migrationSucceeded = await this.migrateLegacyData(nextUser.uid, legacyResult.values, remoteResult.values);
+            if (!migrationSucceeded) {
+                this.setSyncState('error', { error: new Error('Unable to safely migrate legacy cloud data.') });
             }
-        } else if (valuesToApply.size === 0 && !remoteResult.confirmedFromServer) {
-            valuesToApply = localCandidate;
+        }
+
+        const conflicts = canUseCurrentLocalData
+            ? this.findLocalConflicts(localCandidate, valuesToApply)
+            : new Map();
+        if (conflicts.size > 0) {
+            const snapshotSaved = await this.writeRecoverySnapshot(nextUser.uid, conflicts, 'local-before-cloud-apply');
+            if (!snapshotSaved) {
+                // Never replace a differing local value unless its recovery
+                // snapshot was safely stored in the account first.
+                this.isBootstrapping = false;
+                this.setSyncState('error', { error: new Error('Recovery backup failed; local data was kept unchanged.') });
+                return;
+            }
         }
 
         // Capture edits made while the server request was in flight before
         // replacing the shared local view with the account snapshot.
         this.scanLocalChanges();
-        this.replaceManagedData(valuesToApply);
+        this.replaceManagedData(valuesToApply, {
+            clearMissing: Boolean(previousUid && previousUid !== nextUser.uid)
+        });
         this.setLastActiveUid(nextUser.uid);
         this.isBootstrapping = false;
         this.sessionReady = true;
@@ -242,8 +264,9 @@ class FastToolkitFirebaseSync {
             this.scheduleCloudWrite(key, rawValue);
         });
 
-        if (remoteResult.confirmedFromServer && remoteResult.values.size === 0 && valuesToApply.size > 0) {
-            valuesToApply.forEach((rawValue, key) => {
+        if (mergedResult.serverConfirmed) {
+            mergedResult.localOnlyKeys.forEach(key => {
+                const rawValue = valuesToApply.get(key);
                 this.markDirty(key, rawValue, nextUser.uid);
                 this.scheduleCloudWrite(key, rawValue, 0);
             });
@@ -252,24 +275,20 @@ class FastToolkitFirebaseSync {
         this.listenToCloudData(nextUser.uid);
         await this.updateUserProfile(nextUser);
 
-        if (!remoteResult.confirmedFromServer) {
-            this.setSyncState('offline', { error: remoteResult.error || null });
+        if (!mergedResult.serverConfirmed) {
+            this.setSyncState('offline', { error: remoteResult.error || legacyResult.error || null });
         } else if (this.getPendingCount() === 0) {
             this.setSyncState('synced', { error: null, lastSyncedAt: Date.now() });
         }
     }
 
-    async deactivateSession({ clearAccountData = false } = {}) {
+    async deactivateSession() {
         this.sessionReady = false;
         this.isBootstrapping = false;
         this.stopCloudListener();
         this.cancelPendingWrites();
         this.sessionUid = null;
 
-        if (clearAccountData && this.getLastActiveUid()) {
-            this.replaceManagedData(new Map());
-            this.clearLastActiveUid();
-        }
     }
 
     notifyUserListeners() {
@@ -319,7 +338,7 @@ class FastToolkitFirebaseSync {
             const parsed = JSON.parse(localStorage.getItem(this.dirtyStorageKey(uid)) || '{}');
             const entries = parsed && parsed.entries && typeof parsed.entries === 'object' ? parsed.entries : {};
             Object.entries(entries).forEach(([key, entry]) => {
-                if (!FAST_TOOLKIT_SYNC_KEYS.includes(key) || FAST_TOOLKIT_SECRET_KEYS.has(key)) return;
+                if (!FAST_TOOLKIT_SYNC_KEYS.includes(key)) return;
                 values.set(key, entry && entry.deleted ? null : String(entry && entry.value !== undefined ? entry.value : ''));
             });
         } catch (e) { }
@@ -327,7 +346,7 @@ class FastToolkitFirebaseSync {
     }
 
     markDirty(key, rawValue, uid = this.sessionUid) {
-        if (!uid || FAST_TOOLKIT_SECRET_KEYS.has(key)) return;
+        if (!uid) return;
         try {
             const storageKey = this.dirtyStorageKey(uid);
             const parsed = JSON.parse(localStorage.getItem(storageKey) || '{}');
@@ -342,7 +361,7 @@ class FastToolkitFirebaseSync {
     }
 
     clearDirty(key, rawValue, uid = this.sessionUid) {
-        if (!uid || FAST_TOOLKIT_SECRET_KEYS.has(key)) return;
+        if (!uid) return;
         try {
             const storageKey = this.dirtyStorageKey(uid);
             const parsed = JSON.parse(localStorage.getItem(storageKey) || '{}');
@@ -375,6 +394,10 @@ class FastToolkitFirebaseSync {
 
     dataCollection(uid = this.sessionUid) {
         return this.db.collection('users').doc(uid).collection('data');
+    }
+
+    recoveryCollection(uid, snapshotId) {
+        return this.db.collection('users').doc(uid).collection('recovery').doc(snapshotId).collection('values');
     }
 
     keyDocumentId(key) {
@@ -415,8 +438,7 @@ class FastToolkitFirebaseSync {
         snapshot.forEach(documentSnapshot => {
             const record = documentSnapshot.data ? documentSnapshot.data() : null;
             if (!record || !record.key || !FAST_TOOLKIT_SYNC_KEYS.includes(record.key)) return;
-            if (record.deleted) return;
-            values.set(record.key, this.normalizeCloudRaw(record.key, record.value));
+            values.set(record.key, record.deleted ? null : this.normalizeCloudRaw(record.key, record.value));
         });
         return values;
     }
@@ -425,15 +447,17 @@ class FastToolkitFirebaseSync {
         const values = new Map();
         let confirmedFromServer = false;
         let documentSnapshot = null;
+        let error = null;
 
         try {
             documentSnapshot = await this.db.collection('users').doc(uid).get({ source: 'server' });
             confirmedFromServer = true;
         } catch (serverError) {
+            error = serverError;
             try {
                 documentSnapshot = await this.db.collection('users').doc(uid).get({ source: 'cache' });
             } catch (e) {
-                return { values, confirmedFromServer: false };
+                return { values, confirmedFromServer: false, error: serverError || e };
             }
         }
 
@@ -446,23 +470,81 @@ class FastToolkitFirebaseSync {
                 });
             }
         }
-        return { values, confirmedFromServer };
+        return { values, confirmedFromServer, error };
     }
 
-    async migrateLegacyData(uid, values) {
+    mergeAccountData({ remoteValues, legacyValues, localValues, serverConfirmed }) {
+        const values = new Map();
+        const localOnlyKeys = new Set();
+
+        // A tombstone in /data is intentional and must also prevent the old
+        // archive or browser mirror from bringing that key back.
+        remoteValues.forEach((rawValue, key) => values.set(key, rawValue));
+        legacyValues.forEach((rawValue, key) => {
+            if (!values.has(key)) values.set(key, rawValue);
+        });
+        localValues.forEach((rawValue, key) => {
+            if (values.has(key)) return;
+            values.set(key, rawValue);
+            if (serverConfirmed) localOnlyKeys.add(key);
+        });
+        return { values, localOnlyKeys, serverConfirmed };
+    }
+
+    findLocalConflicts(localValues, cloudValues) {
+        const conflicts = new Map();
+        localValues.forEach((localValue, key) => {
+            if (!cloudValues.has(key)) return;
+            const cloudValue = cloudValues.get(key);
+            if (localValue !== cloudValue) {
+                conflicts.set(key, {
+                    localValue,
+                    cloudValue,
+                    capturedAt: Date.now()
+                });
+            }
+        });
+        return conflicts;
+    }
+
+    async writeRecoverySnapshot(uid, entries, reason) {
+        if (!this.db || !uid || !entries || entries.size === 0) return true;
+        const snapshotId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const writes = [];
-        values.forEach((rawValue, key) => {
-            writes.push(this.writeDocument(uid, key, rawValue));
+        entries.forEach((entry, key) => {
+            writes.push(this.recoveryCollection(uid, snapshotId).doc(this.keyDocumentId(key)).set({
+                key,
+                localValue: entry.localValue === null ? '' : entry.localValue,
+                localDeleted: entry.localValue === null,
+                cloudValue: entry.cloudValue === null ? '' : entry.cloudValue,
+                cloudDeleted: entry.cloudValue === null,
+                reason,
+                capturedAt: entry.capturedAt || Date.now(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }));
         });
         const results = await Promise.allSettled(writes);
-        if (results.some(result => result.status === 'rejected')) return;
+        return results.every(result => result.status === 'fulfilled');
+    }
+
+    async migrateLegacyData(uid, legacyValues, remoteValues = new Map()) {
+        const writes = [];
+        legacyValues.forEach((rawValue, key) => {
+            // The newer per-key document wins whenever it already exists,
+            // including an explicit deletion tombstone.
+            if (!remoteValues.has(key)) writes.push(this.writeDocument(uid, key, rawValue));
+        });
+        const results = await Promise.allSettled(writes);
+        if (results.some(result => result.status === 'rejected')) return false;
         try {
             await this.db.collection('users').doc(uid).set({
                 schemaVersion: 2,
-                migratedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                data: firebase.firestore.FieldValue.delete()
+                migratedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
-        } catch (e) { }
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     normalizeCloudRaw(key, value) {
@@ -497,11 +579,13 @@ class FastToolkitFirebaseSync {
             if (FAST_TOOLKIT_SECRET_KEYS.has(key)) {
                 const sessionValue = sessionStorage.getItem(key);
                 if (sessionValue !== null) return sessionValue;
-                const legacyValue = localStorage.getItem(key);
-                if (legacyValue !== null) {
-                    sessionStorage.setItem(key, legacyValue);
-                    localStorage.removeItem(key);
-                    return legacyValue;
+                const localValue = localStorage.getItem(key);
+                if (localValue !== null) {
+                    // Keep the compatibility mirror. The cloud copy is the
+                    // authority after sign-in; this only lets legacy modules
+                    // and a signed-out session retain the entered key.
+                    sessionStorage.setItem(key, localValue);
+                    return localValue;
                 }
                 return null;
             }
@@ -527,9 +611,13 @@ class FastToolkitFirebaseSync {
         this.isApplyingCloud = true;
         try {
             if (FAST_TOOLKIT_SECRET_KEYS.has(key)) {
-                localStorage.removeItem(key);
-                if (rawValue === null) sessionStorage.removeItem(key);
-                else sessionStorage.setItem(key, rawValue);
+                if (rawValue === null) {
+                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
+                } else {
+                    localStorage.setItem(key, rawValue);
+                    sessionStorage.setItem(key, rawValue);
+                }
             } else if (rawValue === null) {
                 localStorage.removeItem(key);
             } else {
@@ -546,9 +634,10 @@ class FastToolkitFirebaseSync {
         }
     }
 
-    replaceManagedData(values) {
+    replaceManagedData(values, { clearMissing = false } = {}) {
         const changedKeys = [];
         FAST_TOOLKIT_SYNC_KEYS.forEach(key => {
+            if (!values.has(key) && !clearMissing) return;
             const nextValue = values.has(key) ? values.get(key) : null;
             const oldValue = this.readLocalRaw(key);
             if (oldValue !== nextValue) changedKeys.push([key, oldValue, nextValue]);
@@ -862,7 +951,7 @@ class FastToolkitFirebaseSync {
         try {
             await this.flushPendingWrites();
             await this.auth.signOut();
-            await this.deactivateSession({ clearAccountData: true });
+            await this.deactivateSession();
             this.user = null;
             this.notifyUserListeners();
             return this.loginWithGoogle();
@@ -877,7 +966,7 @@ class FastToolkitFirebaseSync {
         try {
             await this.flushPendingWrites();
             await this.auth.signOut();
-            await this.deactivateSession({ clearAccountData: true });
+            await this.deactivateSession();
             this.user = null;
             this.notifyUserListeners();
             this.setSyncState('local', { pending: 0, error: null });

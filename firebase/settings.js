@@ -21,12 +21,13 @@
             const sessionValue = sessionStorage.getItem(key);
             if (sessionValue !== null) return sessionValue;
 
-            // One-time migration from older builds that persisted AI keys.
-            const legacyValue = localStorage.getItem(key);
-            if (legacyValue !== null) {
-                sessionStorage.setItem(key, legacyValue);
-                localStorage.removeItem(key);
-                return legacyValue;
+            const localValue = localStorage.getItem(key);
+            if (localValue !== null) {
+                // Keep the browser value as a compatibility mirror. Once the
+                // user is signed in, Firebase sync makes the cloud copy the
+                // authority and restores it after a browser storage reset.
+                sessionStorage.setItem(key, localValue);
+                return localValue;
             }
             return '';
         } catch (e) {
@@ -39,10 +40,11 @@
         try {
             if (value) {
                 sessionStorage.setItem(key, value);
+                localStorage.setItem(key, value);
             } else {
                 sessionStorage.removeItem(key);
+                localStorage.removeItem(key);
             }
-            localStorage.removeItem(key);
         } catch (e) { }
 
         const cloud = window.FastToolkitFirebase;
@@ -1410,8 +1412,11 @@
                 injectPipBtn();
                 // Register Service Worker
                 if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('sw.js')
-                        .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
+                    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+                        .then(registration => {
+                            registration.update().catch(() => { });
+                            console.log('Fast Toolkit: PWA Service Worker registered');
+                        })
                         .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
                 }
                 // Inject Manifest Link
@@ -1436,8 +1441,11 @@
             injectPipBtn();
             // Register Service Worker
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js')
-                    .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
+                navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+                    .then(registration => {
+                        registration.update().catch(() => { });
+                        console.log('Fast Toolkit: PWA Service Worker registered');
+                    })
                     .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
             }
             // Inject Manifest Link

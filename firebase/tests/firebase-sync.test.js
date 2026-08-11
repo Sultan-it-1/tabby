@@ -36,6 +36,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
     const listeners = new Map();
     const writes = [];
     const profileWrites = [];
+    const recoveryWrites = [];
     let authCallback = null;
     let unsubscribeCount = 0;
 
@@ -85,7 +86,6 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
     }
 
     const db = {
-        clearPersistence() { return Promise.resolve(); },
         enablePersistence() { return Promise.resolve(); },
         collection(name) {
             assert.equal(name, 'users');
@@ -93,8 +93,29 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
                 doc(uid) {
                     return {
                         collection(collectionName) {
-                            assert.equal(collectionName, 'data');
-                            return dataCollection(uid);
+                            if (collectionName === 'data') return dataCollection(uid);
+                            if (collectionName === 'recovery') {
+                                return {
+                                    doc(snapshotId) {
+                                        return {
+                                            collection(valuesName) {
+                                                assert.equal(valuesName, 'values');
+                                                return {
+                                                    doc(documentId) {
+                                                        return {
+                                                            set(record) {
+                                                                recoveryWrites.push({ uid, snapshotId, documentId, record });
+                                                                return Promise.resolve();
+                                                            }
+                                                        };
+                                                    }
+                                                };
+                                            }
+                                        };
+                                    }
+                                };
+                            }
+                            throw new Error(`Unexpected collection: ${collectionName}`);
                         },
                         get() {
                             const data = legacy.get(uid);
@@ -185,6 +206,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
         db,
         writes,
         profileWrites,
+        recoveryWrites,
         remote,
         getAuthCallback: () => authCallback,
         getUnsubscribeCount: () => unsubscribeCount
@@ -199,7 +221,7 @@ function wait(ms = 25) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-test('cloud data wins during login and local stale data is not uploaded', async () => {
+test('cloud data wins during login after saving a recovery copy of a differing local value', async () => {
     const harness = createHarness({
         local: { cardScannerData: 'local-stale' },
         remoteByUid: { alpha: { cardScannerData: 'cloud-current' } }
@@ -210,6 +232,9 @@ test('cloud data wins during login and local stale data is not uploaded', async 
 
     assert.equal(harness.localStorage.getItem('cardScannerData'), 'cloud-current');
     assert.equal(harness.writes.some(write => write.key === 'cardScannerData'), false);
+    assert.equal(harness.recoveryWrites.length, 1);
+    assert.equal(harness.recoveryWrites[0].record.localValue, 'local-stale');
+    assert.equal(harness.recoveryWrites[0].record.cloudValue, 'cloud-current');
     sync.destroy();
 });
 
@@ -226,7 +251,7 @@ test('a new empty account receives existing legacy local data once', async () =>
     sync.destroy();
 });
 
-test('legacy single-document data is migrated and the old payload is removed', async () => {
+test('legacy single-document data is migrated while the old payload remains a recovery archive', async () => {
     const harness = createHarness({
         legacyByUid: {
             alpha: { data: { fastToolkitCIA_v4: [{ id: 'legacy-card' }] } }
@@ -238,7 +263,45 @@ test('legacy single-document data is migrated and the old payload is removed', a
 
     assert.equal(harness.localStorage.getItem('fastToolkitCIA_v4'), '[{"id":"legacy-card"}]');
     assert.equal(harness.writes.some(write => write.key === 'fastToolkitCIA_v4'), true);
-    assert.equal(harness.profileWrites.some(write => write.value.data && write.value.data.deletedField), true);
+    assert.equal(harness.profileWrites.some(write => write.value.schemaVersion === 2 && !('data' in write.value)), true);
+    sync.destroy();
+});
+
+test('clearing browser storage restores the complete account from both current and legacy cloud data', async () => {
+    const harness = createHarness({
+        remoteByUid: { alpha: { cardScannerData: 'current-card-data' } },
+        legacyByUid: {
+            alpha: { data: { copyGridDataV6: '{"from":"legacy"}', simah_ai_key: 'legacy-key' } }
+        }
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait(50);
+
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'current-card-data');
+    assert.equal(harness.localStorage.getItem('copyGridDataV6'), '{"from":"legacy"}');
+    assert.equal(harness.localStorage.getItem('simah_ai_key'), 'legacy-key');
+    assert.equal(harness.sessionStorage.getItem('simah_ai_key'), 'legacy-key');
+    assert.equal(harness.writes.some(write => write.key === 'copyGridDataV6'), true);
+    assert.equal(harness.writes.some(write => write.key === 'simah_ai_key'), true);
+    sync.destroy();
+});
+
+test('a cloud deletion tombstone is not resurrected from the legacy archive or browser mirror', async () => {
+    const harness = createHarness({
+        local: { cardScannerData: 'stale-local' },
+        remoteByUid: { alpha: { cardScannerData: 'placeholder' } },
+        legacyByUid: { alpha: { data: { cardScannerData: 'legacy-value' } } }
+    });
+    harness.remote.get('alpha').set('cardScannerData', {
+        key: 'cardScannerData', value: '', deleted: true, sensitive: false, clientUpdatedAt: 1, updatedAt: 1
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait();
+
+    assert.equal(harness.localStorage.getItem('cardScannerData'), null);
+    assert.equal(harness.writes.some(write => write.key === 'cardScannerData' && write.value === 'legacy-value'), false);
     sync.destroy();
 });
 
@@ -260,7 +323,7 @@ test('debouncing is independent per key and does not drop adjacent writes', asyn
     sync.destroy();
 });
 
-test('legacy encoded AI keys are decoded into session storage and never persisted locally', async () => {
+test('legacy encoded AI keys are decoded and kept in the cloud-backed browser mirror', async () => {
     const encoded = `enc_v1:${Buffer.from('real-secret', 'utf8').toString('base64')}`;
     const harness = createHarness({ remoteByUid: { alpha: { simah_ai_key: encoded } } });
     const sync = new harness.Engine();
@@ -268,7 +331,7 @@ test('legacy encoded AI keys are decoded into session storage and never persiste
     await wait();
 
     assert.equal(harness.sessionStorage.getItem('simah_ai_key'), 'real-secret');
-    assert.equal(harness.localStorage.getItem('simah_ai_key'), null);
+    assert.equal(harness.localStorage.getItem('simah_ai_key'), 'real-secret');
 
     sync.saveCloudData('simah_ai_key', 'new-secret');
     await wait(450);
@@ -297,7 +360,7 @@ test('switching accounts unsubscribes the old listener and does not copy old dat
     sync.destroy();
 });
 
-test('signing out clears account data and session-only secrets', async () => {
+test("signing out never clears the user's cloud-backed browser mirror", async () => {
     const harness = createHarness({
         remoteByUid: { alpha: { cardScannerData: 'alpha-data', simah_ai_key: 'secret' } }
     });
@@ -306,9 +369,9 @@ test('signing out clears account data and session-only secrets', async () => {
     await wait();
     await harness.getAuthCallback()(null);
 
-    assert.equal(harness.localStorage.getItem('cardScannerData'), null);
-    assert.equal(harness.sessionStorage.getItem('simah_ai_key'), null);
-    assert.equal(harness.localStorage.getItem('fastToolkit_firebase_last_uid'), null);
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'alpha-data');
+    assert.equal(harness.sessionStorage.getItem('simah_ai_key'), 'secret');
+    assert.equal(harness.localStorage.getItem('fastToolkit_firebase_last_uid'), 'alpha');
     sync.destroy();
 });
 

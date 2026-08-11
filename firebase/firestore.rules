@@ -6,17 +6,44 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // The first Firebase build stored every tool state inside users/{uid}.data.
+    // A stale cached client can still run that build after a deploy.  It must
+    // never be allowed to replace the legacy map with an empty local snapshot.
+    // New clients read this map once and copy it to /data documents. The map
+    // remains an immutable safety archive; clients must never remove it.
+    function hasLegacyData(documentData) {
+      return documentData.keys().hasAny(['data']);
+    }
+
+    function legacyDataIsProtected() {
+      return (!hasLegacyData(resource.data) && !hasLegacyData(request.resource.data))
+        || (hasLegacyData(resource.data)
+          && hasLegacyData(request.resource.data)
+          && request.resource.data.data == resource.data.data);
+    }
+
+    function hasValidProfileShape() {
+      return request.resource.data.keys().hasOnly([
+        'email',
+        'displayName',
+        'schemaVersion',
+        'updatedAt',
+        'migratedAt',
+        'data'
+      ]);
+    }
+
     match /users/{userId} {
       allow read, delete: if ownsUserDocument(userId);
-      allow create, update: if ownsUserDocument(userId)
-        && request.resource.data.keys().hasOnly([
-          'email',
-          'displayName',
-          'schemaVersion',
-          'updatedAt',
-          'migratedAt',
-          'data'
-        ]);
+      // New profiles never create the deprecated `data` map. Existing legacy
+      // maps are immutable safety archives, which blocks the old empty-
+      // snapshot uploader from adding, replacing, or deleting them.
+      allow create: if ownsUserDocument(userId)
+        && hasValidProfileShape()
+        && !hasLegacyData(request.resource.data);
+      allow update: if ownsUserDocument(userId)
+        && hasValidProfileShape()
+        && legacyDataIsProtected();
 
       match /data/{keyId} {
         allow read, delete: if ownsUserDocument(userId);
@@ -38,6 +65,12 @@ service cloud.firestore {
           && request.resource.data.sensitive is bool
           && request.resource.data.clientUpdatedAt is int
           && request.resource.data.updatedAt == request.time;
+      }
+
+      // Immutable recovery snapshots are written before any migration merge.
+      // Each user can only read and write their own recovery data.
+      match /recovery/{recoveryId}/{document=**} {
+        allow read, write: if ownsUserDocument(userId);
       }
     }
 
