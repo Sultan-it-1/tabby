@@ -806,8 +806,8 @@
                     mode: themeApi.PRESETS[themeApi.DEFAULT_PRESET_ID].mode,
                     themeColor: themeApi.PRESETS[themeApi.DEFAULT_PRESET_ID].accent
                 });
-                localStorage.removeItem('fastToolkitExpanded');
-                localStorage.removeItem('fastToolkitShortcuts');
+                window.fastToolkitRemoveSyncedStorageKey('fastToolkitExpanded');
+                window.fastToolkitRemoveSyncedStorageKey('fastToolkitShortcuts');
                 window.location.reload();
             });
 

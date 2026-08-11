@@ -45,6 +45,7 @@ const FAST_TOOLKIT_LAST_UID_KEY = 'fastToolkit_firebase_last_uid';
 const FAST_TOOLKIT_DIRTY_PREFIX = 'fastToolkit_sync_dirty_v1:';
 const FAST_TOOLKIT_SAVE_DELAY = 350;
 const FAST_TOOLKIT_MONITOR_DELAY = 500;
+const FAST_TOOLKIT_WRITER_VERSION = 3;
 
 let customConfig = null;
 try {
@@ -204,7 +205,12 @@ class FastToolkitFirebaseSync {
         try {
             remoteResult = await this.loadRemoteData(nextUser.uid);
         } catch (error) {
-            remoteResult = { values: new Map(), confirmedFromServer: false, error };
+            remoteResult = {
+                values: new Map(),
+                untrustedDeletedKeys: new Set(),
+                confirmedFromServer: false,
+                error
+            };
         }
         if (transitionId !== this.transitionId || this.sessionUid !== nextUser.uid) return;
 
@@ -219,6 +225,7 @@ class FastToolkitFirebaseSync {
             remoteValues: remoteResult.values,
             legacyValues: legacyResult.values,
             localValues: canUseCurrentLocalData ? localCandidate : new Map(),
+            untrustedDeletedKeys: remoteResult.untrustedDeletedKeys,
             serverConfirmed: remoteResult.confirmedFromServer && legacyResult.confirmedFromServer
         });
         const valuesToApply = mergedResult.values;
@@ -396,8 +403,12 @@ class FastToolkitFirebaseSync {
         return this.db.collection('users').doc(uid).collection('data');
     }
 
+    recoveryDocument(uid, snapshotId) {
+        return this.db.collection('users').doc(uid).collection('recovery').doc(snapshotId);
+    }
+
     recoveryCollection(uid, snapshotId) {
-        return this.db.collection('users').doc(uid).collection('recovery').doc(snapshotId).collection('values');
+        return this.recoveryDocument(uid, snapshotId).collection('values');
     }
 
     keyDocumentId(key) {
@@ -408,22 +419,25 @@ class FastToolkitFirebaseSync {
         const collection = this.dataCollection(uid);
         try {
             const snapshot = await collection.get({ source: 'server' });
+            const remoteState = this.remoteStateFromSnapshot(snapshot);
             return {
-                values: this.valuesFromSnapshot(snapshot),
+                ...remoteState,
                 confirmedFromServer: true,
                 error: null
             };
         } catch (serverError) {
             try {
                 const snapshot = await collection.get({ source: 'cache' });
+                const remoteState = this.remoteStateFromSnapshot(snapshot);
                 return {
-                    values: this.valuesFromSnapshot(snapshot),
+                    ...remoteState,
                     confirmedFromServer: false,
                     error: serverError
                 };
             } catch (cacheError) {
                 return {
                     values: new Map(),
+                    untrustedDeletedKeys: new Set(),
                     confirmedFromServer: false,
                     error: serverError || cacheError
                 };
@@ -431,16 +445,33 @@ class FastToolkitFirebaseSync {
         }
     }
 
-    valuesFromSnapshot(snapshot) {
+    remoteStateFromSnapshot(snapshot) {
         const values = new Map();
-        if (!snapshot || typeof snapshot.forEach !== 'function') return values;
+        const untrustedDeletedKeys = new Set();
+        if (!snapshot || typeof snapshot.forEach !== 'function') {
+            return { values, untrustedDeletedKeys };
+        }
 
         snapshot.forEach(documentSnapshot => {
             const record = documentSnapshot.data ? documentSnapshot.data() : null;
             if (!record || !record.key || !FAST_TOOLKIT_SYNC_KEYS.includes(record.key)) return;
+            if (record.deleted && !this.isTrustedDeletion(record)) {
+                untrustedDeletedKeys.add(record.key);
+                return;
+            }
             values.set(record.key, record.deleted ? null : this.normalizeCloudRaw(record.key, record.value));
         });
-        return values;
+        return { values, untrustedDeletedKeys };
+    }
+
+    isTrustedDeletion(record) {
+        return Boolean(
+            record &&
+            record.deleted === true &&
+            Number(record.writerVersion) >= FAST_TOOLKIT_WRITER_VERSION &&
+            typeof record.deleteRequestId === 'string' &&
+            record.deleteRequestId.length > 0
+        );
     }
 
     async loadLegacyData(uid) {
@@ -473,15 +504,18 @@ class FastToolkitFirebaseSync {
         return { values, confirmedFromServer, error };
     }
 
-    mergeAccountData({ remoteValues, legacyValues, localValues, serverConfirmed }) {
+    mergeAccountData({ remoteValues, legacyValues, localValues, untrustedDeletedKeys = new Set(), serverConfirmed }) {
         const values = new Map();
         const localOnlyKeys = new Set();
 
-        // A tombstone in /data is intentional and must also prevent the old
-        // archive or browser mirror from bringing that key back.
+        // Only deletions created by the guarded writer protocol are canonical.
+        // Older clients converted a browser-storage reset into unversioned
+        // tombstones, so the immutable legacy map is allowed to recover them.
         remoteValues.forEach((rawValue, key) => values.set(key, rawValue));
         legacyValues.forEach((rawValue, key) => {
-            if (!values.has(key)) values.set(key, rawValue);
+            if (!values.has(key)) {
+                values.set(key, rawValue);
+            }
         });
         localValues.forEach((rawValue, key) => {
             if (values.has(key)) return;
@@ -510,6 +544,19 @@ class FastToolkitFirebaseSync {
     async writeRecoverySnapshot(uid, entries, reason) {
         if (!this.db || !uid || !entries || entries.size === 0) return true;
         const snapshotId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        try {
+            // Create a real parent document so recovery snapshots can be
+            // listed and restored later. Subcollections beneath a missing
+            // parent are visible in the console but cannot be queried.
+            await this.recoveryDocument(uid, snapshotId).set({
+                reason,
+                keyCount: entries.size,
+                schemaVersion: 1,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (e) {
+            return false;
+        }
         const writes = [];
         entries.forEach((entry, key) => {
             writes.push(this.recoveryCollection(uid, snapshotId).doc(this.keyDocumentId(key)).set({
@@ -684,10 +731,28 @@ class FastToolkitFirebaseSync {
 
     scanLocalChanges() {
         if (this.isApplyingCloud) return;
+        let changes = [];
         FAST_TOOLKIT_SYNC_KEYS.forEach(key => {
             const currentValue = this.readLocalRaw(key);
             const shadowValue = this.localShadow.has(key) ? this.localShadow.get(key) : null;
             if (currentValue === shadowValue) return;
+
+            changes.push({ key, currentValue, shadowValue });
+        });
+
+        const removedKeys = changes.filter(change => change.currentValue === null && change.shadowValue !== null);
+
+        if ((this.sessionReady || this.isBootstrapping) && removedKeys.length > 0) {
+            // localStorage is only a compatibility cache, so its disappearance
+            // is never an account-level delete. Explicit removeCloudData()
+            // calls update the shadow first and still sync normally.
+            removedKeys.forEach(({ key, shadowValue }) => {
+                this.writeLocalRaw(key, shadowValue, { notify: true });
+            });
+            changes = changes.filter(change => change.currentValue !== null);
+        }
+
+        changes.forEach(({ key, currentValue }) => {
 
             if (currentValue === null) this.localShadow.delete(key);
             else this.localShadow.set(key, currentValue);
@@ -795,11 +860,16 @@ class FastToolkitFirebaseSync {
     }
 
     writeDocument(uid, key, rawValue) {
+        const isDeletion = rawValue === null;
         return this.dataCollection(uid).doc(this.keyDocumentId(key)).set({
             key,
-            value: rawValue === null ? '' : rawValue,
-            deleted: rawValue === null,
+            value: isDeletion ? '' : rawValue,
+            deleted: isDeletion,
             sensitive: FAST_TOOLKIT_SECRET_KEYS.has(key),
+            writerVersion: FAST_TOOLKIT_WRITER_VERSION,
+            deleteRequestId: isDeletion
+                ? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+                : '',
             clientUpdatedAt: Date.now(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
@@ -857,6 +927,7 @@ class FastToolkitFirebaseSync {
                 changes.forEach(change => {
                     const record = change.doc && change.doc.data ? change.doc.data() : null;
                     if (!record || !record.key || !FAST_TOOLKIT_SYNC_KEYS.includes(record.key)) return;
+                    if (record.deleted && !this.isTrustedDeletion(record)) return;
                     const key = record.key;
                     if (this.pendingPayloads.has(key) || this.retryQueue.has(key) || this.loadDirtyChanges(uid).has(key)) return;
                     const nextValue = record.deleted ? null : this.normalizeCloudRaw(key, record.value);

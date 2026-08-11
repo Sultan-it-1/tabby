@@ -59,6 +59,15 @@
     window.fastToolkitGetAiSecret = getAiSecret;
     window.fastToolkitSetAiSecret = setAiSecret;
 
+    window.fastToolkitRemoveSyncedStorageKey = function (key) {
+        const cloud = window.FastToolkitFirebase;
+        if (cloud && typeof cloud.removeCloudData === 'function') {
+            return cloud.removeCloudData(key);
+        }
+        try { localStorage.removeItem(key); } catch (e) { }
+        return true;
+    };
+
     // Apply expanded and full-window states to document element instantly to prevent page transition flickering
     document.documentElement.classList.add('expanded');
     const path = window.location.pathname;

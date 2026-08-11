@@ -37,6 +37,14 @@ test('Firestore rules protect the legacy data map from cached clients', () => {
     assert.match(rules, /match \/recovery\/\{recoveryId\}/);
 });
 
+test('Firestore rules reject unversioned and replayed cloud tombstones', () => {
+    const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+    assert.match(rules, /function hasAuthenticatedDeleteRequest\(\)/);
+    assert.match(rules, /writerVersion\s*>=\s*3/);
+    assert.match(rules, /deleteRequestId\s*!=\s*resource\.data\.deleteRequestId/);
+    assert.match(rules, /allow delete:\s*if false/);
+});
+
 test('Firebase deployment config points at the checked-in security rules', () => {
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'firebase.json'), 'utf8'));
     assert.equal(config.firestore.rules, 'firestore.rules');
