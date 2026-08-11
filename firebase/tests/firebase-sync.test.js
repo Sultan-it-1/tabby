@@ -28,7 +28,7 @@ function createSnapshot(records, changes = []) {
     };
 }
 
-function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) {
+function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {}, conflictResolution = null } = {}) {
     const localStorage = createStorage(local);
     const sessionStorage = createStorage();
     const remote = new Map();
@@ -38,6 +38,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
     const profileWrites = [];
     const recoveryWrites = [];
     const recoveryManifests = [];
+    const conflictPrompts = [];
     let authCallback = null;
     let unsubscribeCount = 0;
 
@@ -168,6 +169,12 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
             return true;
         }
     };
+    if (conflictResolution) {
+        windowObject.fastToolkitResolveLoginConflict = details => {
+            conflictPrompts.push(details);
+            return Promise.resolve(conflictResolution);
+        };
+    }
 
     function StorageEvent(type, init = {}) { this.type = type; Object.assign(this, init); }
     function CustomEvent(type, init = {}) { this.type = type; Object.assign(this, init); }
@@ -213,6 +220,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {} } = {}) 
         profileWrites,
         recoveryWrites,
         recoveryManifests,
+        conflictPrompts,
         remote,
         getAuthCallback: () => authCallback,
         getUnsubscribeCount: () => unsubscribeCount
@@ -230,7 +238,8 @@ function wait(ms = 25) {
 test('cloud data wins during login after saving a recovery copy of a differing local value', async () => {
     const harness = createHarness({
         local: { cardScannerData: 'local-stale' },
-        remoteByUid: { alpha: { cardScannerData: 'cloud-current' } }
+        remoteByUid: { alpha: { cardScannerData: 'cloud-current' } },
+        conflictResolution: 'cloud'
     });
     const sync = new harness.Engine();
     await harness.getAuthCallback()(user('alpha'));
@@ -243,6 +252,99 @@ test('cloud data wins during login after saving a recovery copy of a differing l
     assert.equal(harness.recoveryManifests[0].record.keyCount, 1);
     assert.equal(harness.recoveryWrites[0].record.localValue, 'local-stale');
     assert.equal(harness.recoveryWrites[0].record.cloudValue, 'cloud-current');
+    assert.equal(harness.conflictPrompts.length, 1);
+    sync.destroy();
+});
+
+test('recommended login merge preserves unique and overlapping structured data from both sides', async () => {
+    const localValue = JSON.stringify({
+        cards: [{ id: 'shared', localEdit: true }, { id: 'local-only', value: 2 }],
+        preferences: { localSetting: true }
+    });
+    const cloudValue = JSON.stringify({
+        cards: [{ id: 'shared', cloudEdit: true }, { id: 'cloud-only', value: 1 }],
+        preferences: { cloudSetting: true }
+    });
+    const harness = createHarness({
+        local: { copyGridDataV6: localValue },
+        remoteByUid: { alpha: { copyGridDataV6: cloudValue } },
+        conflictResolution: 'merge'
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait(50);
+
+    const merged = JSON.parse(harness.localStorage.getItem('copyGridDataV6'));
+    assert.deepEqual(JSON.parse(JSON.stringify(merged.preferences)), { cloudSetting: true, localSetting: true });
+    assert.deepEqual(
+        merged.cards.map(card => card.id),
+        ['shared', 'cloud-only', 'local-only']
+    );
+    assert.deepEqual(JSON.parse(JSON.stringify(merged.cards[0])), {
+        id: 'shared', cloudEdit: true, localEdit: true
+    });
+    const mergedWrite = harness.writes.find(write => write.key === 'copyGridDataV6');
+    assert.ok(mergedWrite);
+    assert.deepEqual(JSON.parse(mergedWrite.value), merged);
+    assert.equal(harness.recoveryWrites.length, 1);
+    assert.equal(harness.recoveryWrites[0].record.localValue, localValue);
+    assert.equal(harness.recoveryWrites[0].record.cloudValue, cloudValue);
+    sync.destroy();
+});
+
+test('interactive return to the same account can keep and upload signed-out device work', async () => {
+    const harness = createHarness({
+        local: {
+            fastToolkit_firebase_last_uid: 'alpha',
+            cardScannerData: 'new-device-work'
+        },
+        remoteByUid: { alpha: { cardScannerData: 'older-cloud-work' } },
+        conflictResolution: 'local'
+    });
+    harness.sessionStorage.setItem('fastToolkit_interactive_login_pending', 'true');
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait(50);
+
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'new-device-work');
+    assert.equal(harness.writes.some(write => (
+        write.key === 'cardScannerData' && write.value === 'new-device-work'
+    )), true);
+    assert.equal(harness.conflictPrompts.length, 1);
+    assert.equal(harness.sessionStorage.getItem('fastToolkit_interactive_login_pending'), null);
+    sync.destroy();
+});
+
+test('persisted account startup uses cloud without prompting on an unchanged device cache', async () => {
+    const harness = createHarness({
+        local: {
+            fastToolkit_firebase_last_uid: 'alpha',
+            cardScannerData: 'stale-cache'
+        },
+        remoteByUid: { alpha: { cardScannerData: 'current-cloud' } },
+        conflictResolution: 'local'
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait();
+
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'current-cloud');
+    assert.equal(harness.conflictPrompts.length, 0);
+    assert.equal(harness.writes.some(write => write.value === 'stale-cache'), false);
+    sync.destroy();
+});
+
+test('an empty device restores cloud data without showing a conflict choice', async () => {
+    const harness = createHarness({
+        remoteByUid: { alpha: { stickyNotesData: '[{"id":"cloud-note"}]' } },
+        conflictResolution: 'local'
+    });
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    await wait();
+
+    assert.equal(harness.localStorage.getItem('stickyNotesData'), '[{"id":"cloud-note"}]');
+    assert.equal(harness.conflictPrompts.length, 0);
     sync.destroy();
 });
 
