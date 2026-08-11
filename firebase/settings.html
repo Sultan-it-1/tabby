@@ -438,10 +438,6 @@
                         <span>الحالة:</span>
                         <span id="settingsSyncStatus" style="color: #aaa; font-weight: bold;">⏳ جاري فحص المزامنة...</span>
                     </div>
-                    <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;color:#aaa;cursor:pointer;">
-                        <span>حفظ نسخة Firestore للعمل دون اتصال على هذا الجهاز</span>
-                        <input type="checkbox" id="settingsTrustedDevice" aria-label="اعتبار هذا الجهاز موثوقًا">
-                    </label>
                     <div style="display:grid;grid-template-columns:1fr auto;gap:5px;margin-top:2px;">
                         <button class="action-btn" id="settingsSwitchAccBtn" style="background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9.5px; padding: 5px;">🔄 تبديل حساب Google</button>
                         <button class="action-btn" id="settingsSignOutBtn" style="background:rgba(255,85,85,.08);border:1px solid rgba(255,85,85,.35);color:#ff7777;font-size:9.5px;padding:5px 8px;">خروج</button>
@@ -1010,14 +1006,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=2.2.0"></script>
+    <script src="firebase-config.js?v=2.3.0"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const emailTxt = document.getElementById('settingsUserEmail');
             const statusTxt = document.getElementById('settingsSyncStatus');
             const switchBtn = document.getElementById('settingsSwitchAccBtn');
             const signOutBtn = document.getElementById('settingsSignOutBtn');
-            const trustedToggle = document.getElementById('settingsTrustedDevice');
 
             const syncLabels = {
                 connecting: ['⏳ جاري الاتصال...', '#aaa'],
@@ -1035,14 +1030,6 @@
                 statusTxt.innerText = entry[0] + pending;
                 statusTxt.style.color = entry[1];
                 statusTxt.title = state && state.error ? String(state.error.message || state.error) : '';
-            }
-
-            if (trustedToggle) {
-                trustedToggle.checked = localStorage.getItem('fastToolkit_trusted_device') === 'true';
-                trustedToggle.addEventListener('change', () => {
-                    localStorage.setItem('fastToolkit_trusted_device', trustedToggle.checked ? 'true' : 'false');
-                    if (typeof showToast === 'function') showToast('يُطبق إعداد الجهاز الموثوق في التشغيل القادم ✅');
-                });
             }
 
             if (window.FastToolkitFirebase) {

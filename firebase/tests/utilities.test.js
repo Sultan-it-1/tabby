@@ -49,3 +49,10 @@ test('Firebase deployment config points at the checked-in security rules', () =>
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'firebase.json'), 'utf8'));
     assert.equal(config.firestore.rules, 'firestore.rules');
 });
+
+test('settings do not expose the unused trusted-device Firestore cache toggle', () => {
+    const settings = fs.readFileSync(path.join(__dirname, '..', 'settings.html'), 'utf8');
+    assert.doesNotMatch(settings, /settingsTrustedDevice/);
+    assert.doesNotMatch(settings, /fastToolkit_trusted_device/);
+    assert.doesNotMatch(settings, /حفظ نسخة Firestore للعمل دون اتصال/);
+});

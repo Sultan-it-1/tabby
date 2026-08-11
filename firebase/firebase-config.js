@@ -43,6 +43,7 @@ const FAST_TOOLKIT_SYNC_KEYS = Object.freeze([
 const FAST_TOOLKIT_SECRET_KEYS = new Set(['simah_ai_key', 'simah_groq_key']);
 const FAST_TOOLKIT_LAST_UID_KEY = 'fastToolkit_firebase_last_uid';
 const FAST_TOOLKIT_DIRTY_PREFIX = 'fastToolkit_sync_dirty_v1:';
+const FAST_TOOLKIT_INTERACTIVE_LOGIN_KEY = 'fastToolkit_interactive_login_pending';
 const FAST_TOOLKIT_SAVE_DELAY = 350;
 const FAST_TOOLKIT_MONITOR_DELAY = 500;
 const FAST_TOOLKIT_WRITER_VERSION = 3;
@@ -78,6 +79,8 @@ class FastToolkitFirebaseSync {
         this.pendingPayloads = new Map();
         this.retryQueue = new Map();
         this.pendingLocalChanges = new Map();
+        this.loginConflictResolver = null;
+        this.dismissLoginConflictDialog = null;
         this.inFlightWrites = new Set();
         this.activeWrites = 0;
         this.userListeners = new Set();
@@ -153,6 +156,7 @@ class FastToolkitFirebaseSync {
 
     async handleAuthStateChanged(firebaseUser) {
         const transitionId = ++this.transitionId;
+        if (this.dismissLoginConflictDialog) this.dismissLoginConflictDialog('cloud');
 
         if (!firebaseUser) {
             // Signing out must never erase the user's browser mirror. Their
@@ -173,6 +177,7 @@ class FastToolkitFirebaseSync {
         };
 
         if (this.sessionUid === nextUser.uid && this.sessionReady) {
+            this.setInteractiveLoginPending(false);
             this.user = nextUser;
             this.notifyUserListeners();
             return;
@@ -184,6 +189,9 @@ class FastToolkitFirebaseSync {
     async activateSession(nextUser, transitionId) {
         const previousUid = this.getLastActiveUid();
         const canUseCurrentLocalData = !previousUid || previousUid === nextUser.uid;
+        const shouldResolveLoginConflicts = canUseCurrentLocalData && (
+            !previousUid || this.hasInteractiveLoginPending()
+        );
         const localCandidate = canUseCurrentLocalData ? this.captureManagedData() : new Map();
 
         // Capture anything the active page changed just before authentication
@@ -229,6 +237,7 @@ class FastToolkitFirebaseSync {
             serverConfirmed: remoteResult.confirmedFromServer && legacyResult.confirmedFromServer
         });
         const valuesToApply = mergedResult.values;
+        const resolutionUploadKeys = new Set();
 
         if (legacyResult.values.size > 0 && remoteResult.confirmedFromServer && legacyResult.confirmedFromServer) {
             const migrationSucceeded = await this.migrateLegacyData(nextUser.uid, legacyResult.values, remoteResult.values);
@@ -241,13 +250,20 @@ class FastToolkitFirebaseSync {
             ? this.findLocalConflicts(localCandidate, valuesToApply)
             : new Map();
         if (conflicts.size > 0) {
-            const snapshotSaved = await this.writeRecoverySnapshot(nextUser.uid, conflicts, 'local-before-cloud-apply');
+            const snapshotSaved = await this.writeRecoverySnapshot(nextUser.uid, conflicts, 'login-conflict-before-resolution');
             if (!snapshotSaved) {
                 // Never replace a differing local value unless its recovery
                 // snapshot was safely stored in the account first.
                 this.isBootstrapping = false;
                 this.setSyncState('error', { error: new Error('Recovery backup failed; local data was kept unchanged.') });
                 return;
+            }
+
+            if (shouldResolveLoginConflicts) {
+                const resolution = await this.requestLoginConflictResolution(nextUser, conflicts);
+                if (transitionId !== this.transitionId || this.sessionUid !== nextUser.uid) return;
+                this.applyLoginConflictResolution(valuesToApply, conflicts, resolution)
+                    .forEach(key => resolutionUploadKeys.add(key));
             }
         }
 
@@ -258,6 +274,7 @@ class FastToolkitFirebaseSync {
             clearMissing: Boolean(previousUid && previousUid !== nextUser.uid)
         });
         this.setLastActiveUid(nextUser.uid);
+        this.setInteractiveLoginPending(false);
         this.isBootstrapping = false;
         this.sessionReady = true;
 
@@ -272,7 +289,7 @@ class FastToolkitFirebaseSync {
         });
 
         if (mergedResult.serverConfirmed) {
-            mergedResult.localOnlyKeys.forEach(key => {
+            new Set([...mergedResult.localOnlyKeys, ...resolutionUploadKeys]).forEach(key => {
                 const rawValue = valuesToApply.get(key);
                 this.markDirty(key, rawValue, nextUser.uid);
                 this.scheduleCloudWrite(key, rawValue, 0);
@@ -390,6 +407,18 @@ class FastToolkitFirebaseSync {
 
     setLastActiveUid(uid) {
         try { localStorage.setItem(FAST_TOOLKIT_LAST_UID_KEY, uid); } catch (e) { }
+    }
+
+    hasInteractiveLoginPending() {
+        try { return sessionStorage.getItem(FAST_TOOLKIT_INTERACTIVE_LOGIN_KEY) === 'true'; }
+        catch (e) { return false; }
+    }
+
+    setInteractiveLoginPending(pending) {
+        try {
+            if (pending) sessionStorage.setItem(FAST_TOOLKIT_INTERACTIVE_LOGIN_KEY, 'true');
+            else sessionStorage.removeItem(FAST_TOOLKIT_INTERACTIVE_LOGIN_KEY);
+        } catch (e) { }
     }
 
     clearLastActiveUid() {
@@ -539,6 +568,172 @@ class FastToolkitFirebaseSync {
             }
         });
         return conflicts;
+    }
+
+    normalizeLoginConflictResolution(value) {
+        return ['merge', 'local', 'cloud'].includes(value) ? value : 'merge';
+    }
+
+    async requestLoginConflictResolution(user, conflicts) {
+        const details = {
+            email: user && user.email ? user.email : '',
+            conflictCount: conflicts.size,
+            keys: [...conflicts.keys()],
+            hasCloudDeletions: [...conflicts.values()].some(entry => entry.cloudValue === null)
+        };
+        const resolver = this.loginConflictResolver || (
+            typeof window !== 'undefined' && typeof window.fastToolkitResolveLoginConflict === 'function'
+                ? window.fastToolkitResolveLoginConflict
+                : null
+        );
+
+        if (resolver) {
+            try {
+                return this.normalizeLoginConflictResolution(await resolver(details));
+            } catch (e) {
+                console.warn('Login conflict resolver failed:', e);
+            }
+        }
+        return this.showLoginConflictDialog(details);
+    }
+
+    showLoginConflictDialog(details) {
+        if (typeof document === 'undefined' || !document.body || typeof document.createElement !== 'function') {
+            return Promise.resolve(details.hasCloudDeletions ? 'cloud' : 'merge');
+        }
+
+        return new Promise(resolve => {
+            if (this.dismissLoginConflictDialog) this.dismissLoginConflictDialog('cloud');
+            const overlay = document.createElement('div');
+            overlay.setAttribute('role', 'presentation');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,6,12,.78);backdrop-filter:blur(10px);direction:rtl;font-family:inherit;';
+
+            const dialog = document.createElement('section');
+            dialog.setAttribute('role', 'dialog');
+            dialog.setAttribute('aria-modal', 'true');
+            dialog.setAttribute('aria-labelledby', 'fastToolkitLoginConflictTitle');
+            dialog.style.cssText = 'width:min(470px,100%);color:#f8fafc;background:linear-gradient(145deg,#151b25,#0b0f16);border:1px solid rgba(148,163,184,.22);border-radius:20px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.55);';
+            dialog.innerHTML = `
+                <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">
+                    <span style="display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(52,211,153,.13);font-size:20px;">☁️</span>
+                    <div>
+                        <h2 id="fastToolkitLoginConflictTitle" style="margin:0;font-size:17px;line-height:1.5;">وجدنا بيانات مختلفة</h2>
+                        <div data-account-email style="color:#94a3b8;font-size:11px;overflow-wrap:anywhere;"></div>
+                    </div>
+                </div>
+                <p style="margin:0 0 14px;color:#cbd5e1;font-size:12px;line-height:1.8;">يوجد عمل محفوظ على هذا الجهاز وبيانات أخرى في حسابك. حُفظت نسخة استرجاع للطرفين، ولن نحذف أي بيانات بدون اختيارك.</p>
+                <div style="display:grid;gap:8px;">
+                    <button type="button" data-resolution="merge" style="cursor:pointer;text-align:right;border:1px solid rgba(52,211,153,.55);border-radius:12px;padding:11px 12px;color:#ecfdf5;background:rgba(16,185,129,.16);font:inherit;">
+                        <strong style="display:block;font-size:13px;">دمج البيانات — موصى به</strong>
+                        <span style="display:block;margin-top:3px;color:#a7f3d0;font-size:10px;line-height:1.6;">يجمع القوائم والعناصر ويحافظ على إعدادات هذا الجهاز عند التعارض.</span>
+                    </button>
+                    <button type="button" data-resolution="local" style="cursor:pointer;text-align:right;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:10px 12px;color:#e2e8f0;background:rgba(255,255,255,.035);font:inherit;">
+                        <strong style="display:block;font-size:12px;">استخدام بيانات هذا الجهاز</strong>
+                        <span style="display:block;margin-top:2px;color:#94a3b8;font-size:10px;">يرفع القيم الحالية إلى الحساب، مع بقاء نسخة السحابة قابلة للاسترجاع.</span>
+                    </button>
+                    <button type="button" data-resolution="cloud" style="cursor:pointer;text-align:right;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:10px 12px;color:#e2e8f0;background:rgba(255,255,255,.035);font:inherit;">
+                        <strong style="display:block;font-size:12px;">استخدام بيانات الحساب</strong>
+                        <span style="display:block;margin-top:2px;color:#94a3b8;font-size:10px;">ينزّل نسخة الحساب، مع بقاء بيانات الجهاز في نسخة الاسترجاع.</span>
+                    </button>
+                </div>
+                <div style="margin-top:10px;color:#64748b;font-size:9px;text-align:center;">${details.conflictCount} عناصر متعارضة • العناصر غير المتعارضة تُحفظ تلقائيًا</div>
+            `;
+            const emailNode = dialog.querySelector('[data-account-email]');
+            if (emailNode) emailNode.textContent = details.email;
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+
+            let completed = false;
+            const finish = value => {
+                if (completed) return;
+                completed = true;
+                overlay.remove();
+                if (this.dismissLoginConflictDialog === finish) this.dismissLoginConflictDialog = null;
+                resolve(this.normalizeLoginConflictResolution(value));
+            };
+            this.dismissLoginConflictDialog = finish;
+            dialog.querySelectorAll('[data-resolution]').forEach(button => {
+                button.addEventListener('click', () => finish(button.getAttribute('data-resolution')), { once: true });
+            });
+            const recommended = dialog.querySelector('[data-resolution="merge"]');
+            if (recommended && typeof recommended.focus === 'function') recommended.focus();
+        });
+    }
+
+    applyLoginConflictResolution(values, conflicts, resolution) {
+        const uploadKeys = new Set();
+        const mode = this.normalizeLoginConflictResolution(resolution);
+        if (mode === 'cloud') return uploadKeys;
+
+        conflicts.forEach((entry, key) => {
+            const nextValue = mode === 'local'
+                ? entry.localValue
+                : this.mergeConflictRawValues(entry.cloudValue, entry.localValue);
+            values.set(key, nextValue);
+            if (nextValue !== entry.cloudValue) uploadKeys.add(key);
+        });
+        return uploadKeys;
+    }
+
+    mergeConflictRawValues(cloudRaw, localRaw) {
+        if (cloudRaw === null || cloudRaw === undefined) return localRaw;
+        if (localRaw === null || localRaw === undefined) return cloudRaw;
+
+        try {
+            const cloudValue = JSON.parse(cloudRaw);
+            const localValue = JSON.parse(localRaw);
+            const mergedValue = this.mergeStructuredValues(cloudValue, localValue);
+            return JSON.stringify(mergedValue);
+        } catch (e) {
+            // Plain strings and non-JSON preferences use the value the user was
+            // actively working with on this device. The cloud copy remains in
+            // the immutable recovery snapshot created before this method runs.
+            return localRaw;
+        }
+    }
+
+    mergeStructuredValues(cloudValue, localValue) {
+        if (Array.isArray(cloudValue) && Array.isArray(localValue)) {
+            const merged = [...cloudValue];
+            const indexes = new Map();
+            merged.forEach((item, index) => indexes.set(this.arrayItemIdentity(item), index));
+            localValue.forEach(item => {
+                const identity = this.arrayItemIdentity(item);
+                if (indexes.has(identity)) {
+                    const index = indexes.get(identity);
+                    merged[index] = this.mergeStructuredValues(merged[index], item);
+                } else {
+                    indexes.set(identity, merged.length);
+                    merged.push(item);
+                }
+            });
+            return merged;
+        }
+
+        if (this.isPlainObject(cloudValue) && this.isPlainObject(localValue)) {
+            const merged = { ...cloudValue };
+            Object.entries(localValue).forEach(([key, value]) => {
+                merged[key] = Object.prototype.hasOwnProperty.call(merged, key)
+                    ? this.mergeStructuredValues(merged[key], value)
+                    : value;
+            });
+            return merged;
+        }
+        return localValue;
+    }
+
+    isPlainObject(value) {
+        return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+    }
+
+    arrayItemIdentity(item) {
+        if (this.isPlainObject(item)) {
+            const identityKey = ['id', '_id', 'uuid', 'uid', 'key', 'accountNumber', 'c']
+                .find(key => item[key] !== undefined && item[key] !== null && item[key] !== '');
+            if (identityKey) return `${identityKey}:${String(item[identityKey])}`;
+        }
+        try { return `value:${JSON.stringify(item)}`; }
+        catch (e) { return `value:${String(item)}`; }
     }
 
     async writeRecoverySnapshot(uid, entries, reason) {
@@ -984,6 +1179,7 @@ class FastToolkitFirebaseSync {
 
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
+        this.setInteractiveLoginPending(true);
 
         try {
             await this.auth.signInWithPopup(provider);
@@ -991,17 +1187,21 @@ class FastToolkitFirebaseSync {
         } catch (error) {
             console.error('Google sign-in popup error:', error);
             if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                this.setInteractiveLoginPending(false);
                 return false;
             }
             if (error.code === 'auth/operation-not-allowed') {
+                this.setInteractiveLoginPending(false);
                 alert('⚠️ تسجيل الدخول بواسطة Google غير مفعّل في Firebase.');
                 return false;
             }
             if (error.code === 'auth/unauthorized-domain') {
+                this.setInteractiveLoginPending(false);
                 alert('⚠️ النطاق الحالي غير مضاف إلى Authorized domains في Firebase.');
                 return false;
             }
             if (error.code !== 'auth/popup-blocked' && error.code !== 'auth/operation-not-supported-in-this-environment') {
+                this.setInteractiveLoginPending(false);
                 alert(`⚠️ تعذر تسجيل الدخول: ${error.message || 'خطأ غير معروف'}`);
                 return false;
             }
@@ -1011,6 +1211,7 @@ class FastToolkitFirebaseSync {
                 return true;
             } catch (redirectError) {
                 console.error('Redirect sign-in error:', redirectError);
+                this.setInteractiveLoginPending(false);
                 alert(`⚠️ تعذر تسجيل الدخول: ${redirectError.message || 'خطأ غير معروف'}`);
                 return false;
             }
@@ -1049,6 +1250,7 @@ class FastToolkitFirebaseSync {
     }
 
     destroy() {
+        if (this.dismissLoginConflictDialog) this.dismissLoginConflictDialog('cloud');
         this.stopCloudListener();
         this.cancelPendingWrites();
         if (this.monitorTimer !== null) clearInterval(this.monitorTimer);
