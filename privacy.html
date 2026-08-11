@@ -60,12 +60,12 @@ Information may only be shared when required by law or to protect the security a
 
 <h2>Data Security</h2>
 <p>
-Cloud data is separated by your authenticated Firebase user ID. AI provider credentials are kept out of persistent browser local storage and are only synchronized inside your private account data. You remain responsible for rotating or revoking provider credentials if a device or account is compromised.
+Cloud data is separated by your authenticated Firebase user ID. Sensitive synchronized data—including notes, card-scan records, SIMAH records, CIA cards, and AI provider credentials—is encrypted in your browser with AES-256-GCM before it is sent to Cloud Firestore. The application decrypts it after you sign in on an authorized device. Non-sensitive preferences may be synchronized without this additional application-level encryption. You remain responsible for rotating or revoking provider credentials if a device or account is compromised.
 </p>
 
 <h2>Data Retention</h2>
 <p>
-Application data may remain in Firebase while your account uses cloud synchronization. Signing out clears the active account data from the application's shared browser storage. You may contact us to request deletion of cloud data.
+Application data may remain in Firebase while your account uses cloud synchronization. Signing out stops the account session but may retain a local browser mirror so your work is not lost. You may clear the browser's site data to remove that local mirror, or contact us to request deletion of cloud data.
 </p>
 
 <h2>Third-Party Services</h2>

@@ -40,13 +40,31 @@ const FAST_TOOLKIT_SYNC_KEYS = Object.freeze([
 ]);
 
 const FAST_TOOLKIT_SECRET_KEYS = new Set(['simah_ai_key', 'simah_groq_key']);
+const FAST_TOOLKIT_ENCRYPTED_KEYS = new Set([
+    'copyGridDataV6',
+    'noteTabLabels',
+    'quick_sticky_note',
+    'stickyNotesData',
+    'cardScannerData',
+    'cardScannerHistory',
+    'tabbyInput_saved',
+    'simahApprovedAccounts',
+    'simahAccountsHistory',
+    'simah_ai_key',
+    'simah_groq_key',
+    'fastToolkitCIA_v4'
+]);
 const FAST_TOOLKIT_LAST_UID_KEY = 'fastToolkit_firebase_last_uid';
 const FAST_TOOLKIT_DIRTY_PREFIX = 'fastToolkit_sync_dirty_v1:';
 const FAST_TOOLKIT_INTERACTIVE_LOGIN_KEY = 'fastToolkit_interactive_login_pending';
 const FAST_TOOLKIT_BOOTSTRAP_SEEDS_KEY = 'fastToolkit_bootstrap_seeded_values_v1';
 const FAST_TOOLKIT_SAVE_DELAY = 350;
 const FAST_TOOLKIT_MONITOR_DELAY = 500;
-const FAST_TOOLKIT_WRITER_VERSION = 3;
+const FAST_TOOLKIT_WRITER_VERSION = 4;
+const FAST_TOOLKIT_MIN_TRUSTED_DELETE_VERSION = 3;
+const FAST_TOOLKIT_ENCRYPTION_PREFIX = 'ft_enc_v1:';
+const FAST_TOOLKIT_ENCRYPTION_VERSION = 1;
+const FAST_TOOLKIT_ENCRYPTION_SALT = 'fast-toolkit|tabby-6f8e3|cloud-sensitive-data|v1';
 
 let customConfig = null;
 try {
@@ -71,10 +89,14 @@ class FastToolkitFirebaseSync {
         this.auth = null;
         this.sessionUid = null;
         this.sessionReady = false;
+        this.encryptionKey = null;
+        this.encryptionIdentity = '';
+        this.encryptionRequestId = 0;
         this.isBootstrapping = false;
         this.isApplyingCloud = false;
         this.transitionId = 0;
         this.unsubscribeCloud = null;
+        this.cloudSnapshotQueue = Promise.resolve();
         this.saveTimers = new Map();
         this.pendingPayloads = new Map();
         this.retryQueue = new Map();
@@ -177,6 +199,13 @@ class FastToolkitFirebaseSync {
         };
 
         if (this.sessionUid === nextUser.uid && this.sessionReady) {
+            try {
+                await this.prepareEncryption(firebaseUser);
+            } catch (error) {
+                console.error('Client-side encryption is unavailable:', error);
+                this.setSyncState('error', { error });
+                return;
+            }
             this.setInteractiveLoginPending(false);
             this.clearBootstrapSeededValues();
             this.user = nextUser;
@@ -184,10 +213,10 @@ class FastToolkitFirebaseSync {
             return;
         }
 
-        await this.activateSession(nextUser, transitionId);
+        await this.activateSession(nextUser, transitionId, firebaseUser);
     }
 
-    async activateSession(nextUser, transitionId) {
+    async activateSession(nextUser, transitionId, firebaseUser) {
         const previousUid = this.getLastActiveUid();
         const canUseCurrentLocalData = !previousUid || previousUid === nextUser.uid;
         const shouldResolveLoginConflicts = canUseCurrentLocalData && (
@@ -202,6 +231,18 @@ class FastToolkitFirebaseSync {
         // account instead of copying it into the next account.
         this.scanLocalChanges();
         await this.deactivateSession();
+        if (transitionId !== this.transitionId) return;
+
+        try {
+            await this.prepareEncryption(firebaseUser);
+        } catch (error) {
+            if (transitionId !== this.transitionId) return;
+            console.error('Client-side encryption is unavailable:', error);
+            this.user = null;
+            this.notifyUserListeners();
+            this.setSyncState('error', { error });
+            return;
+        }
         if (transitionId !== this.transitionId) return;
 
         this.user = nextUser;
@@ -219,6 +260,7 @@ class FastToolkitFirebaseSync {
             remoteResult = {
                 values: new Map(),
                 untrustedDeletedKeys: new Set(),
+                encryptionMigrationKeys: new Set(),
                 confirmedFromServer: false,
                 error
             };
@@ -293,8 +335,13 @@ class FastToolkitFirebaseSync {
         });
 
         if (mergedResult.serverConfirmed) {
-            new Set([...mergedResult.localOnlyKeys, ...resolutionUploadKeys]).forEach(key => {
+            new Set([
+                ...mergedResult.localOnlyKeys,
+                ...resolutionUploadKeys,
+                ...(remoteResult.encryptionMigrationKeys || [])
+            ]).forEach(key => {
                 const rawValue = valuesToApply.get(key);
+                if (rawValue === null || rawValue === undefined) return;
                 this.markDirty(key, rawValue, nextUser.uid);
                 this.scheduleCloudWrite(key, rawValue, 0);
             });
@@ -316,6 +363,9 @@ class FastToolkitFirebaseSync {
         this.stopCloudListener();
         this.cancelPendingWrites();
         this.sessionUid = null;
+        this.encryptionRequestId += 1;
+        this.encryptionKey = null;
+        this.encryptionIdentity = '';
 
     }
 
@@ -457,6 +507,120 @@ class FastToolkitFirebaseSync {
         } catch (e) { }
     }
 
+    isSensitiveKey(key) {
+        const normalized = String(key || '');
+        return FAST_TOOLKIT_ENCRYPTED_KEYS.has(normalized) ||
+            /(?:^|[_-])(?:ai|gemini|groq|openai|anthropic|claude)(?:[_-][a-z0-9]+)*[_-](?:api[_-]?)?key$/i.test(normalized);
+    }
+
+    getCryptoProvider() {
+        const provider = typeof globalThis !== 'undefined' ? globalThis.crypto : null;
+        if (!provider || !provider.subtle || typeof provider.getRandomValues !== 'function') {
+            throw new Error('Web Crypto API is required for secure cloud sync.');
+        }
+        return provider;
+    }
+
+    buildEncryptionIdentity(firebaseUser) {
+        const providers = Array.isArray(firebaseUser && firebaseUser.providerData)
+            ? firebaseUser.providerData
+                .filter(entry => entry && entry.providerId && entry.uid)
+                .map(entry => `${entry.providerId}:${entry.uid}`)
+                .sort()
+            : [];
+        // Keep derivation stable if another login provider is linked later.
+        // Google is the app's primary login; otherwise use the first stable
+        // provider identity exposed by Firebase Auth.
+        const providerIdentity = providers.find(value => value.startsWith('google.com:')) ||
+            providers[0] ||
+            `firebase:${firebaseUser.uid}`;
+        return `${firebaseConfig.projectId}|${firebaseUser.uid}|${providerIdentity}`;
+    }
+
+    async prepareEncryption(firebaseUser) {
+        if (!firebaseUser || !firebaseUser.uid) throw new Error('A signed-in account is required for encryption.');
+        const identity = this.buildEncryptionIdentity(firebaseUser);
+        if (this.encryptionKey && this.encryptionIdentity === identity) return this.encryptionKey;
+        const requestId = ++this.encryptionRequestId;
+
+        const cryptoProvider = this.getCryptoProvider();
+        const encoder = new TextEncoder();
+        const baseKey = await cryptoProvider.subtle.importKey(
+            'raw',
+            encoder.encode(identity),
+            'HKDF',
+            false,
+            ['deriveKey']
+        );
+        const derivedKey = await cryptoProvider.subtle.deriveKey({
+            name: 'HKDF',
+            salt: encoder.encode(FAST_TOOLKIT_ENCRYPTION_SALT),
+            info: encoder.encode('AES-256-GCM cloud field encryption'),
+            hash: 'SHA-256'
+        }, baseKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        if (requestId !== this.encryptionRequestId) {
+            throw new Error('Encryption setup was superseded by another account session.');
+        }
+        this.encryptionKey = derivedKey;
+        this.encryptionIdentity = identity;
+        return this.encryptionKey;
+    }
+
+    bytesToBase64(bytes) {
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+        }
+        return btoa(binary);
+    }
+
+    base64ToBytes(value) {
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+        return bytes;
+    }
+
+    isEncryptedCloudValue(value) {
+        return typeof value === 'string' && value.startsWith(FAST_TOOLKIT_ENCRYPTION_PREFIX);
+    }
+
+    async encodeCloudRaw(key, rawValue) {
+        if (!this.isSensitiveKey(key)) return rawValue;
+        if (!this.encryptionKey) throw new Error(`Encryption key is unavailable for ${key}.`);
+
+        const cryptoProvider = this.getCryptoProvider();
+        const iv = cryptoProvider.getRandomValues(new Uint8Array(12));
+        const encoder = new TextEncoder();
+        const cipherBuffer = await cryptoProvider.subtle.encrypt({
+            name: 'AES-GCM',
+            iv,
+            additionalData: encoder.encode(`fast-toolkit:${key}:v1`),
+            tagLength: 128
+        }, this.encryptionKey, encoder.encode(rawValue));
+        return `${FAST_TOOLKIT_ENCRYPTION_PREFIX}${this.bytesToBase64(iv)}:${this.bytesToBase64(new Uint8Array(cipherBuffer))}`;
+    }
+
+    async decodeCloudRaw(key, value) {
+        if (!this.isEncryptedCloudValue(value)) return value;
+        if (!this.encryptionKey) throw new Error(`Encryption key is unavailable for ${key}.`);
+
+        const payload = value.slice(FAST_TOOLKIT_ENCRYPTION_PREFIX.length);
+        const separator = payload.indexOf(':');
+        if (separator <= 0) throw new Error(`Invalid encrypted payload for ${key}.`);
+        const iv = this.base64ToBytes(payload.slice(0, separator));
+        const ciphertext = this.base64ToBytes(payload.slice(separator + 1));
+        const encoder = new TextEncoder();
+        const plainBuffer = await this.getCryptoProvider().subtle.decrypt({
+            name: 'AES-GCM',
+            iv,
+            additionalData: encoder.encode(`fast-toolkit:${key}:v1`),
+            tagLength: 128
+        }, this.encryptionKey, ciphertext);
+        return new TextDecoder().decode(plainBuffer);
+    }
+
     dataCollection(uid = this.sessionUid) {
         return this.db.collection('users').doc(uid).collection('data');
     }
@@ -477,7 +641,7 @@ class FastToolkitFirebaseSync {
         const collection = this.dataCollection(uid);
         try {
             const snapshot = await collection.get({ source: 'server' });
-            const remoteState = this.remoteStateFromSnapshot(snapshot);
+            const remoteState = await this.remoteStateFromSnapshot(snapshot);
             return {
                 ...remoteState,
                 confirmedFromServer: true,
@@ -486,7 +650,7 @@ class FastToolkitFirebaseSync {
         } catch (serverError) {
             try {
                 const snapshot = await collection.get({ source: 'cache' });
-                const remoteState = this.remoteStateFromSnapshot(snapshot);
+                const remoteState = await this.remoteStateFromSnapshot(snapshot);
                 return {
                     ...remoteState,
                     confirmedFromServer: false,
@@ -496,6 +660,7 @@ class FastToolkitFirebaseSync {
                 return {
                     values: new Map(),
                     untrustedDeletedKeys: new Set(),
+                    encryptionMigrationKeys: new Set(),
                     confirmedFromServer: false,
                     error: serverError || cacheError
                 };
@@ -503,30 +668,38 @@ class FastToolkitFirebaseSync {
         }
     }
 
-    remoteStateFromSnapshot(snapshot) {
+    async remoteStateFromSnapshot(snapshot) {
         const values = new Map();
         const untrustedDeletedKeys = new Set();
+        const encryptionMigrationKeys = new Set();
         if (!snapshot || typeof snapshot.forEach !== 'function') {
-            return { values, untrustedDeletedKeys };
+            return { values, untrustedDeletedKeys, encryptionMigrationKeys };
         }
 
+        const records = [];
         snapshot.forEach(documentSnapshot => {
             const record = documentSnapshot.data ? documentSnapshot.data() : null;
-            if (!record || !record.key || !FAST_TOOLKIT_SYNC_KEYS.includes(record.key)) return;
+            if (record) records.push(record);
+        });
+        for (const record of records) {
+            if (!record || !record.key || !FAST_TOOLKIT_SYNC_KEYS.includes(record.key)) continue;
             if (record.deleted && !this.isTrustedDeletion(record)) {
                 untrustedDeletedKeys.add(record.key);
-                return;
+                continue;
             }
-            values.set(record.key, record.deleted ? null : this.normalizeCloudRaw(record.key, record.value));
-        });
-        return { values, untrustedDeletedKeys };
+            if (!record.deleted && this.isSensitiveKey(record.key) && !this.isEncryptedCloudValue(record.value)) {
+                encryptionMigrationKeys.add(record.key);
+            }
+            values.set(record.key, record.deleted ? null : await this.normalizeCloudRaw(record.key, record.value));
+        }
+        return { values, untrustedDeletedKeys, encryptionMigrationKeys };
     }
 
     isTrustedDeletion(record) {
         return Boolean(
             record &&
             record.deleted === true &&
-            Number(record.writerVersion) >= FAST_TOOLKIT_WRITER_VERSION &&
+            Number(record.writerVersion) >= FAST_TOOLKIT_MIN_TRUSTED_DELETE_VERSION &&
             typeof record.deleteRequestId === 'string' &&
             record.deleteRequestId.length > 0
         );
@@ -553,10 +726,10 @@ class FastToolkitFirebaseSync {
         if (documentSnapshot && documentSnapshot.exists) {
             const legacyPayload = documentSnapshot.data() && documentSnapshot.data().data;
             if (legacyPayload && typeof legacyPayload === 'object') {
-                Object.entries(legacyPayload).forEach(([key, value]) => {
-                    if (!FAST_TOOLKIT_SYNC_KEYS.includes(key)) return;
-                    values.set(key, this.normalizeCloudRaw(key, value));
-                });
+                for (const [key, value] of Object.entries(legacyPayload)) {
+                    if (!FAST_TOOLKIT_SYNC_KEYS.includes(key)) continue;
+                    values.set(key, await this.normalizeCloudRaw(key, value));
+                }
             }
         }
         return { values, confirmedFromServer, error };
@@ -811,18 +984,23 @@ class FastToolkitFirebaseSync {
             return false;
         }
         const writes = [];
-        entries.forEach((entry, key) => {
+        for (const [key, entry] of entries.entries()) {
+            const localDeleted = entry.localValue === null;
+            const cloudDeleted = entry.cloudValue === null;
+            const localValue = localDeleted ? '' : await this.encodeCloudRaw(key, entry.localValue);
+            const cloudValue = cloudDeleted ? '' : await this.encodeCloudRaw(key, entry.cloudValue);
             writes.push(this.recoveryCollection(uid, snapshotId).doc(this.keyDocumentId(key)).set({
                 key,
-                localValue: entry.localValue === null ? '' : entry.localValue,
-                localDeleted: entry.localValue === null,
-                cloudValue: entry.cloudValue === null ? '' : entry.cloudValue,
-                cloudDeleted: entry.cloudValue === null,
+                localValue,
+                localDeleted,
+                cloudValue,
+                cloudDeleted,
+                encryptionVersion: this.isSensitiveKey(key) ? FAST_TOOLKIT_ENCRYPTION_VERSION : 0,
                 reason,
                 capturedAt: entry.capturedAt || Date.now(),
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }));
-        });
+        }
         const results = await Promise.allSettled(writes);
         return results.every(result => result.status === 'fulfilled');
     }
@@ -836,23 +1014,44 @@ class FastToolkitFirebaseSync {
         });
         const results = await Promise.allSettled(writes);
         if (results.some(result => result.status === 'rejected')) return false;
+
+        const archiveEntries = new Map();
+        legacyValues.forEach((rawValue, key) => {
+            archiveEntries.set(key, {
+                localValue: rawValue,
+                cloudValue: rawValue,
+                capturedAt: Date.now()
+            });
+        });
+        const archiveSaved = await this.writeRecoverySnapshot(uid, archiveEntries, 'legacy-encryption-migration');
+        if (!archiveSaved) return false;
+
         try {
             await this.db.collection('users').doc(uid).set({
-                schemaVersion: 2,
-                migratedAt: firebase.firestore.FieldValue.serverTimestamp()
+                schemaVersion: 3,
+                migratedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                legacyDataRemovedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                data: firebase.firestore.FieldValue.delete()
             }, { merge: true });
             return true;
         } catch (e) {
-            return false;
+            // The encrypted per-key documents and recovery archive are already
+            // durable. Older deployed rules may temporarily keep the legacy
+            // map immutable; the cleanup is retried on the next sign-in.
+            console.warn('Legacy plaintext archive cleanup is pending:', e);
+            return true;
         }
     }
 
-    normalizeCloudRaw(key, value) {
+    async normalizeCloudRaw(key, value) {
         let rawValue;
         if (typeof value === 'string') rawValue = value;
         else if (value === undefined || value === null) rawValue = '';
         else rawValue = JSON.stringify(value);
 
+        if (this.isEncryptedCloudValue(rawValue)) {
+            return this.decodeCloudRaw(key, rawValue);
+        }
         if (FAST_TOOLKIT_SECRET_KEYS.has(key) && rawValue.startsWith('enc_v1:')) {
             return this.decodeLegacySecret(rawValue);
         }
@@ -1112,13 +1311,15 @@ class FastToolkitFirebaseSync {
         }
     }
 
-    writeDocument(uid, key, rawValue) {
+    async writeDocument(uid, key, rawValue) {
         const isDeletion = rawValue === null;
+        const sensitive = this.isSensitiveKey(key);
+        const cloudValue = isDeletion ? '' : await this.encodeCloudRaw(key, rawValue);
         return this.dataCollection(uid).doc(this.keyDocumentId(key)).set({
             key,
-            value: isDeletion ? '' : rawValue,
+            value: cloudValue,
             deleted: isDeletion,
-            sensitive: FAST_TOOLKIT_SECRET_KEYS.has(key),
+            sensitive,
             writerVersion: FAST_TOOLKIT_WRITER_VERSION,
             deleteRequestId: isDeletion
                 ? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -1171,41 +1372,60 @@ class FastToolkitFirebaseSync {
         this.unsubscribeCloud = this.dataCollection(uid).onSnapshot(
             { includeMetadataChanges: true },
             snapshot => {
-                if (uid !== this.sessionUid) return;
-                let changed = false;
-                const changes = typeof snapshot.docChanges === 'function'
-                    ? snapshot.docChanges()
-                    : [];
-
-                changes.forEach(change => {
-                    const record = change.doc && change.doc.data ? change.doc.data() : null;
-                    if (!record || !record.key || !FAST_TOOLKIT_SYNC_KEYS.includes(record.key)) return;
-                    if (record.deleted && !this.isTrustedDeletion(record)) return;
-                    const key = record.key;
-                    if (this.pendingPayloads.has(key) || this.retryQueue.has(key) || this.loadDirtyChanges(uid).has(key)) return;
-                    const nextValue = record.deleted ? null : this.normalizeCloudRaw(key, record.value);
-                    const currentValue = this.readLocalRaw(key);
-                    if (currentValue === nextValue) return;
-                    this.writeLocalRaw(key, nextValue, { notify: true });
-                    changed = true;
-                });
-
-                if (changed && typeof window.syncFromCloudStorage === 'function') {
-                    try { window.syncFromCloudStorage(); } catch (e) { }
-                }
-
-                const fromCache = Boolean(snapshot.metadata && snapshot.metadata.fromCache);
-                if (fromCache && typeof navigator !== 'undefined' && navigator.onLine === false) {
-                    this.setSyncState('offline');
-                } else if (this.getPendingCount() === 0) {
-                    this.setSyncState('synced', { error: null, lastSyncedAt: Date.now() });
-                }
+                this.cloudSnapshotQueue = this.cloudSnapshotQueue
+                    .then(() => this.applyCloudSnapshot(uid, snapshot))
+                    .catch(error => {
+                        console.warn('Unable to apply cloud snapshot:', error);
+                        this.setSyncState('error', { error });
+                    });
             },
             error => {
                 console.warn('Firestore snapshot listener warning:', error);
                 this.setSyncState('error', { error });
             }
         );
+    }
+
+    async applyCloudSnapshot(uid, snapshot) {
+        if (uid !== this.sessionUid) return;
+        let changed = false;
+        const changes = typeof snapshot.docChanges === 'function'
+            ? snapshot.docChanges()
+            : [];
+
+        for (const change of changes) {
+            if (uid !== this.sessionUid) return;
+            const record = change.doc && change.doc.data ? change.doc.data() : null;
+            if (!record || !record.key || !FAST_TOOLKIT_SYNC_KEYS.includes(record.key)) continue;
+            if (record.deleted && !this.isTrustedDeletion(record)) continue;
+            const key = record.key;
+            if (this.pendingPayloads.has(key) || this.retryQueue.has(key) || this.loadDirtyChanges(uid).has(key)) continue;
+            let nextValue;
+            try {
+                nextValue = record.deleted ? null : await this.normalizeCloudRaw(key, record.value);
+            } catch (error) {
+                if (uid !== this.sessionUid) return;
+                console.warn('Unable to decrypt cloud value:', key, error);
+                this.setSyncState('error', { error });
+                continue;
+            }
+            if (uid !== this.sessionUid) return;
+            const currentValue = this.readLocalRaw(key);
+            if (currentValue === nextValue) continue;
+            this.writeLocalRaw(key, nextValue, { notify: true });
+            changed = true;
+        }
+
+        if (changed && typeof window.syncFromCloudStorage === 'function') {
+            try { window.syncFromCloudStorage(); } catch (e) { }
+        }
+
+        const fromCache = Boolean(snapshot.metadata && snapshot.metadata.fromCache);
+        if (fromCache && typeof navigator !== 'undefined' && navigator.onLine === false) {
+            this.setSyncState('offline');
+        } else if (this.getPendingCount() === 0) {
+            this.setSyncState('synced', { error: null, lastSyncedAt: Date.now() });
+        }
     }
 
     stopCloudListener() {
@@ -1221,7 +1441,7 @@ class FastToolkitFirebaseSync {
             await this.db.collection('users').doc(user.uid).set({
                 email: user.email,
                 displayName: user.displayName,
-                schemaVersion: 2,
+                schemaVersion: 3,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
         } catch (error) {

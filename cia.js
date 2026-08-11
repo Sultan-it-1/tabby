@@ -84,7 +84,10 @@ function loadCIAData() {
         }
     } else {
         ciaCards = [];
-        saveCIAData();
+        // A fresh browser must stay genuinely empty until the user creates a
+        // card or cloud sync restores the account. Persisting [] here made a
+        // reset browser look like it had a local edit and triggered a false
+        // merge prompt during Google sign-in.
     }
     renderFilterBar();
     renderCardsView();

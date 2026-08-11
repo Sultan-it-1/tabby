@@ -19,7 +19,11 @@ service cloud.firestore {
       return (!hasLegacyData(resource.data) && !hasLegacyData(request.resource.data))
         || (hasLegacyData(resource.data)
           && hasLegacyData(request.resource.data)
-          && request.resource.data.data == resource.data.data);
+          && request.resource.data.data == resource.data.data)
+        || (hasLegacyData(resource.data)
+          && !hasLegacyData(request.resource.data)
+          && request.resource.data.schemaVersion >= 3
+          && request.resource.data.legacyDataRemovedAt == request.time);
     }
 
     function hasValidProfileShape() {
@@ -29,6 +33,7 @@ service cloud.firestore {
         'schemaVersion',
         'updatedAt',
         'migratedAt',
+        'legacyDataRemovedAt',
         'data'
       ]);
     }

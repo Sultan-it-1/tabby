@@ -34,6 +34,8 @@ test('Firestore rules protect the legacy data map from cached clients', () => {
     assert.match(rules, /function legacyDataIsProtected\(\)/);
     assert.match(rules, /request\.resource\.data\.data\s*==\s*resource\.data\.data/);
     assert.match(rules, /!hasLegacyData\(request\.resource\.data\)/);
+    assert.match(rules, /request\.resource\.data\.schemaVersion\s*>=\s*3/);
+    assert.match(rules, /request\.resource\.data\.legacyDataRemovedAt\s*==\s*request\.time/);
     assert.match(rules, /match \/recovery\/\{recoveryId\}/);
 });
 
@@ -48,6 +50,28 @@ test('Firestore rules reject unversioned and replayed cloud tombstones', () => {
 test('Firebase deployment config points at the checked-in security rules', () => {
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'firebase.json'), 'utf8'));
     assert.equal(config.firestore.rules, 'firestore.rules');
+});
+
+test('every Firebase page uses the current cache-busting app version', () => {
+    const projectRoot = path.join(__dirname, '..');
+    const appVersion = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8')).version;
+    fs.readdirSync(projectRoot)
+        .filter(file => file.endsWith('.html'))
+        .forEach(file => {
+            const html = fs.readFileSync(path.join(projectRoot, file), 'utf8');
+            if (!html.includes('firebase-config.js')) return;
+            const escapedVersion = appVersion.replace(/\./g, '\\.');
+            assert.match(html, new RegExp(`firebase-config\\.js\\?v=${escapedVersion}["']`), file);
+        });
+});
+
+test('a fresh CIA page does not persist an empty edit before cloud bootstrap', () => {
+    const ciaScript = fs.readFileSync(path.join(__dirname, '..', 'cia.js'), 'utf8');
+    const loadFunction = ciaScript.match(/function loadCIAData\(\)\s*\{[\s\S]*?\n\}/);
+    assert.ok(loadFunction, 'loadCIAData should exist');
+    const freshBrowserBranch = loadFunction[0].match(/else\s*\{[\s\S]*?\}/);
+    assert.ok(freshBrowserBranch, 'loadCIAData should handle missing browser data');
+    assert.doesNotMatch(freshBrowserBranch[0], /saveCIAData\s*\(/);
 });
 
 test('settings do not expose the unused trusted-device Firestore cache toggle', () => {

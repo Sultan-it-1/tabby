@@ -1,6 +1,6 @@
 {
   "name": "fast-toolkit",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": true,
   "scripts": {
     "test": "node --test tests/firebase-sync.test.js tests/crm-ticket-tracker.test.js tests/drive-backup-utils.test.js tests/utilities.test.js",

@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { webcrypto } = require('node:crypto');
 
 const ENGINE_SOURCE = fs.readFileSync(path.join(__dirname, '..', 'firebase-config.js'), 'utf8');
 
@@ -190,6 +191,9 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {}, conflic
             auth: authFactory
         },
         navigator: { onLine: true },
+        crypto: webcrypto,
+        TextEncoder,
+        TextDecoder,
         StorageEvent,
         CustomEvent,
         setTimeout,
@@ -200,6 +204,7 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {}, conflic
         decodeURIComponent,
         escape,
         atob: value => Buffer.from(value, 'base64').toString('binary'),
+        btoa: value => Buffer.from(value, 'binary').toString('base64'),
         alert: () => { },
         console: { log() { }, warn() { }, error() { } }
     });
@@ -222,17 +227,36 @@ function createHarness({ local = {}, remoteByUid = {}, legacyByUid = {}, conflic
         recoveryManifests,
         conflictPrompts,
         remote,
+        emitSnapshot(uid, snapshot) {
+            const listener = listeners.get(uid);
+            if (listener) listener(snapshot);
+        },
         getAuthCallback: () => authCallback,
         getUnsubscribeCount: () => unsubscribeCount
     };
 }
 
 function user(uid) {
-    return { uid, email: `${uid}@example.test`, displayName: uid, photoURL: '' };
+    return {
+        uid,
+        email: `${uid}@example.test`,
+        displayName: uid,
+        photoURL: '',
+        providerData: [{ providerId: 'google.com', uid: `google-${uid}` }]
+    };
 }
 
 function wait(ms = 25) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function decryptStoredValue(sync, record) {
+    return sync.decodeCloudRaw(record.key, record.value);
+}
+
+function assertEncrypted(record) {
+    assert.equal(record.sensitive, true);
+    assert.match(record.value, /^ft_enc_v1:/);
 }
 
 test('cloud data wins during login after saving a recovery copy of a differing local value', async () => {
@@ -246,12 +270,16 @@ test('cloud data wins during login after saving a recovery copy of a differing l
     await wait();
 
     assert.equal(harness.localStorage.getItem('cardScannerData'), 'cloud-current');
-    assert.equal(harness.writes.some(write => write.key === 'cardScannerData'), false);
+    const migrationWrite = harness.writes.find(write => write.key === 'cardScannerData');
+    assertEncrypted(migrationWrite);
+    assert.equal(await decryptStoredValue(sync, migrationWrite), 'cloud-current');
     assert.equal(harness.recoveryWrites.length, 1);
     assert.equal(harness.recoveryManifests.length, 1);
     assert.equal(harness.recoveryManifests[0].record.keyCount, 1);
-    assert.equal(harness.recoveryWrites[0].record.localValue, 'local-stale');
-    assert.equal(harness.recoveryWrites[0].record.cloudValue, 'cloud-current');
+    assert.match(harness.recoveryWrites[0].record.localValue, /^ft_enc_v1:/);
+    assert.match(harness.recoveryWrites[0].record.cloudValue, /^ft_enc_v1:/);
+    assert.equal(await sync.decodeCloudRaw('cardScannerData', harness.recoveryWrites[0].record.localValue), 'local-stale');
+    assert.equal(await sync.decodeCloudRaw('cardScannerData', harness.recoveryWrites[0].record.cloudValue), 'cloud-current');
     assert.equal(harness.conflictPrompts.length, 1);
     sync.destroy();
 });
@@ -362,10 +390,11 @@ test('recommended login merge preserves unique and overlapping structured data f
     });
     const mergedWrite = harness.writes.find(write => write.key === 'copyGridDataV6');
     assert.ok(mergedWrite);
-    assert.deepEqual(JSON.parse(mergedWrite.value), merged);
+    assertEncrypted(mergedWrite);
+    assert.deepEqual(JSON.parse(await decryptStoredValue(sync, mergedWrite)), merged);
     assert.equal(harness.recoveryWrites.length, 1);
-    assert.equal(harness.recoveryWrites[0].record.localValue, localValue);
-    assert.equal(harness.recoveryWrites[0].record.cloudValue, cloudValue);
+    assert.equal(await sync.decodeCloudRaw('copyGridDataV6', harness.recoveryWrites[0].record.localValue), localValue);
+    assert.equal(await sync.decodeCloudRaw('copyGridDataV6', harness.recoveryWrites[0].record.cloudValue), cloudValue);
     sync.destroy();
 });
 
@@ -384,9 +413,9 @@ test('interactive return to the same account can keep and upload signed-out devi
     await wait(50);
 
     assert.equal(harness.localStorage.getItem('cardScannerData'), 'new-device-work');
-    assert.equal(harness.writes.some(write => (
-        write.key === 'cardScannerData' && write.value === 'new-device-work'
-    )), true);
+    const upload = harness.writes.find(write => write.key === 'cardScannerData');
+    assertEncrypted(upload);
+    assert.equal(await decryptStoredValue(sync, upload), 'new-device-work');
     assert.equal(harness.conflictPrompts.length, 1);
     assert.equal(harness.sessionStorage.getItem('fastToolkit_interactive_login_pending'), null);
     sync.destroy();
@@ -434,11 +463,12 @@ test('a new empty account receives existing legacy local data once', async () =>
     const write = harness.writes.find(item => item.key === 'copyGridDataV6');
     assert.ok(write);
     assert.equal(write.uid, 'new-user');
-    assert.equal(write.value, '{"c1":{"a":1}}');
+    assertEncrypted(write);
+    assert.equal(await decryptStoredValue(sync, write), '{"c1":{"a":1}}');
     sync.destroy();
 });
 
-test('legacy single-document data is migrated while the old payload remains a recovery archive', async () => {
+test('legacy single-document data is migrated to encrypted documents before plaintext cleanup', async () => {
     const harness = createHarness({
         legacyByUid: {
             alpha: { data: { fastToolkitCIA_v4: [{ id: 'legacy-card' }] } }
@@ -449,8 +479,15 @@ test('legacy single-document data is migrated while the old payload remains a re
     await wait(50);
 
     assert.equal(harness.localStorage.getItem('fastToolkitCIA_v4'), '[{"id":"legacy-card"}]');
-    assert.equal(harness.writes.some(write => write.key === 'fastToolkitCIA_v4'), true);
-    assert.equal(harness.profileWrites.some(write => write.value.schemaVersion === 2 && !('data' in write.value)), true);
+    const migrationWrite = harness.writes.find(write => write.key === 'fastToolkitCIA_v4');
+    assertEncrypted(migrationWrite);
+    assert.equal(await decryptStoredValue(sync, migrationWrite), '[{"id":"legacy-card"}]');
+    const cleanupWrite = harness.profileWrites.find(write => write.value.schemaVersion === 3);
+    assert.ok(cleanupWrite);
+    assert.deepEqual(cleanupWrite.value.data, { deletedField: true });
+    const encryptedArchive = harness.recoveryWrites.find(write => write.record.key === 'fastToolkitCIA_v4');
+    assert.match(encryptedArchive.record.localValue, /^ft_enc_v1:/);
+    assert.equal(await sync.decodeCloudRaw('fastToolkitCIA_v4', encryptedArchive.record.localValue), '[{"id":"legacy-card"}]');
     sync.destroy();
 });
 
@@ -508,9 +545,10 @@ test('an unversioned tombstone from a cached client is recovered from the immuta
     assert.equal(harness.localStorage.getItem('cardScannerData'), 'archived-card-data');
     const repairWrite = harness.writes.find(write => write.key === 'cardScannerData');
     assert.ok(repairWrite);
-    assert.equal(repairWrite.value, 'archived-card-data');
+    assertEncrypted(repairWrite);
+    assert.equal(await decryptStoredValue(sync, repairWrite), 'archived-card-data');
     assert.equal(repairWrite.deleted, false);
-    assert.equal(repairWrite.writerVersion, 3);
+    assert.equal(repairWrite.writerVersion, 4);
     sync.destroy();
 });
 
@@ -521,6 +559,7 @@ test('debouncing is independent per key and does not drop adjacent writes', asyn
     sync.user = user('alpha');
     sync.sessionUid = 'alpha';
     sync.sessionReady = true;
+    await sync.prepareEncryption(user('alpha'));
 
     sync.saveCloudData('cardScannerData', 'one');
     sync.saveCloudData('copyGridDataV6', 'two');
@@ -544,8 +583,108 @@ test('legacy encoded AI keys are decoded and kept in the cloud-backed browser mi
 
     sync.saveCloudData('simah_ai_key', 'new-secret');
     await wait(450);
-    const secretWrite = harness.writes.find(item => item.key === 'simah_ai_key');
-    assert.equal(secretWrite.value, 'new-secret');
+    const secretWrites = harness.writes.filter(item => item.key === 'simah_ai_key');
+    const secretWrite = secretWrites[secretWrites.length - 1];
+    assertEncrypted(secretWrite);
+    assert.equal(await decryptStoredValue(sync, secretWrite), 'new-secret');
+    sync.destroy();
+});
+
+test('sensitive ciphertext decrypts on another device signed into the same account', async () => {
+    const firstDevice = createHarness();
+    const firstSync = new firstDevice.Engine();
+    await firstDevice.getAuthCallback()(user('alpha'));
+    firstSync.saveCloudData('stickyNotesData', '[{"id":"private-note"}]');
+    await wait(450);
+
+    const encryptedWrite = firstDevice.writes.find(item => item.key === 'stickyNotesData');
+    assertEncrypted(encryptedWrite);
+    assert.equal(encryptedWrite.value.includes('private-note'), false);
+
+    const secondDevice = createHarness({
+        remoteByUid: { alpha: { stickyNotesData: encryptedWrite.value } }
+    });
+    const secondSync = new secondDevice.Engine();
+    await secondDevice.getAuthCallback()(user('alpha'));
+    await wait();
+
+    assert.equal(secondDevice.localStorage.getItem('stickyNotesData'), '[{"id":"private-note"}]');
+    assert.equal(secondDevice.writes.some(item => item.key === 'stickyNotesData'), false);
+    firstSync.destroy();
+    secondSync.destroy();
+});
+
+test('ciphertext is bound to its account and storage key', async () => {
+    const alphaHarness = createHarness();
+    const alphaSync = new alphaHarness.Engine();
+    await alphaHarness.getAuthCallback()(user('alpha'));
+    const ciphertext = await alphaSync.encodeCloudRaw('cardScannerData', '4111 // private');
+
+    const betaHarness = createHarness();
+    const betaSync = new betaHarness.Engine();
+    await betaHarness.getAuthCallback()(user('beta'));
+
+    await assert.rejects(() => betaSync.decodeCloudRaw('cardScannerData', ciphertext));
+    await assert.rejects(() => alphaSync.decodeCloudRaw('stickyNotesData', ciphertext));
+    alphaSync.destroy();
+    betaSync.destroy();
+});
+
+test('overlapping sign-in transitions keep the encryption key for the newest account', async () => {
+    const harness = createHarness({
+        remoteByUid: {
+            alpha: { cardScannerData: 'alpha-data' },
+            beta: { cardScannerData: 'beta-data' }
+        }
+    });
+    const sync = new harness.Engine();
+    const authCallback = harness.getAuthCallback();
+
+    const firstTransition = authCallback(user('alpha'));
+    const secondTransition = authCallback(user('beta'));
+    await Promise.allSettled([firstTransition, secondTransition]);
+    await wait(50);
+
+    assert.equal(sync.sessionUid, 'beta');
+    assert.equal(sync.encryptionIdentity, sync.buildEncryptionIdentity(user('beta')));
+    assert.equal(harness.localStorage.getItem('cardScannerData'), 'beta-data');
+    sync.destroy();
+});
+
+test('cloud snapshots are applied sequentially even when decryption is asynchronous', async () => {
+    const harness = createHarness();
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+    const applied = [];
+    sync.applyCloudSnapshot = async (uid, snapshot) => {
+        if (snapshot.marker === 'first') await wait(35);
+        applied.push(`${uid}:${snapshot.marker}`);
+    };
+
+    harness.emitSnapshot('alpha', { marker: 'first' });
+    harness.emitSnapshot('alpha', { marker: 'second' });
+    await wait(70);
+
+    assert.deepEqual(applied, ['alpha:first', 'alpha:second']);
+    sync.destroy();
+});
+
+test('non-sensitive preferences remain readable while sensitive values never do', async () => {
+    const harness = createHarness();
+    const sync = new harness.Engine();
+    await harness.getAuthCallback()(user('alpha'));
+
+    sync.saveCloudData('fastToolkitSettings', '{"mode":"dark"}');
+    sync.saveCloudData('simahApprovedAccounts', '["sensitive-account"]');
+    await wait(450);
+
+    const preferenceWrite = harness.writes.find(item => item.key === 'fastToolkitSettings');
+    const sensitiveWrite = harness.writes.find(item => item.key === 'simahApprovedAccounts');
+    assert.equal(preferenceWrite.value, '{"mode":"dark"}');
+    assert.equal(preferenceWrite.sensitive, false);
+    assertEncrypted(sensitiveWrite);
+    assert.equal(sensitiveWrite.value.includes('sensitive-account'), false);
+    assert.equal(await decryptStoredValue(sync, sensitiveWrite), '["sensitive-account"]');
     sync.destroy();
 });
 
@@ -658,7 +797,7 @@ test('an explicit cloud deletion includes a one-time authenticated delete reques
     const deletion = harness.writes.find(write => write.key === 'cardScannerData');
     assert.ok(deletion);
     assert.equal(deletion.deleted, true);
-    assert.equal(deletion.writerVersion, 3);
+    assert.equal(deletion.writerVersion, 4);
     assert.ok(deletion.deleteRequestId.length > 0);
     sync.destroy();
 });

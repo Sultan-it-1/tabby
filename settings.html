@@ -586,6 +586,9 @@
                         <span>الحالة:</span>
                         <span id="settingsSyncStatus" style="color: #aaa; font-weight: bold;">⏳ جاري فحص المزامنة...</span>
                     </div>
+                    <div style="font-size:8.5px;color:#74d9ad;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.16);border-radius:6px;padding:5px 7px;line-height:1.6;">
+                        🔐 الملاحظات والكارد وSIMAH وCIA ومفاتيح AI تُشفّر تلقائيًا قبل إرسالها إلى Firebase.
+                    </div>
                     <div style="display:grid;grid-template-columns:1fr auto;gap:5px;margin-top:2px;">
                         <button class="action-btn" id="settingsSwitchAccBtn" style="background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9.5px; padding: 5px;">🔄 تبديل حساب Google</button>
                         <button class="action-btn" id="settingsSignOutBtn" style="background:rgba(255,85,85,.08);border:1px solid rgba(255,85,85,.35);color:#ff7777;font-size:9.5px;padding:5px 8px;">خروج</button>
@@ -1196,7 +1199,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=2.3.3"></script>
+    <script src="firebase-config.js?v=2.5.0"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const emailTxt = document.getElementById('settingsUserEmail');
