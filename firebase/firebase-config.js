@@ -18,7 +18,6 @@ const FAST_TOOLKIT_SYNC_KEYS = Object.freeze([
     'fastToolkit_full_window',
     'copyGridDataV6',
     'noteTabLabels',
-    'unbackedUpCountV6',
     'quick_sticky_note',
     'stickyNotesData',
     'currentStickyNoteId',
@@ -44,6 +43,7 @@ const FAST_TOOLKIT_SECRET_KEYS = new Set(['simah_ai_key', 'simah_groq_key']);
 const FAST_TOOLKIT_LAST_UID_KEY = 'fastToolkit_firebase_last_uid';
 const FAST_TOOLKIT_DIRTY_PREFIX = 'fastToolkit_sync_dirty_v1:';
 const FAST_TOOLKIT_INTERACTIVE_LOGIN_KEY = 'fastToolkit_interactive_login_pending';
+const FAST_TOOLKIT_BOOTSTRAP_SEEDS_KEY = 'fastToolkit_bootstrap_seeded_values_v1';
 const FAST_TOOLKIT_SAVE_DELAY = 350;
 const FAST_TOOLKIT_MONITOR_DELAY = 500;
 const FAST_TOOLKIT_WRITER_VERSION = 3;
@@ -178,6 +178,7 @@ class FastToolkitFirebaseSync {
 
         if (this.sessionUid === nextUser.uid && this.sessionReady) {
             this.setInteractiveLoginPending(false);
+            this.clearBootstrapSeededValues();
             this.user = nextUser;
             this.notifyUserListeners();
             return;
@@ -192,7 +193,9 @@ class FastToolkitFirebaseSync {
         const shouldResolveLoginConflicts = canUseCurrentLocalData && (
             !previousUid || this.hasInteractiveLoginPending()
         );
-        const localCandidate = canUseCurrentLocalData ? this.captureManagedData() : new Map();
+        const localCandidate = canUseCurrentLocalData
+            ? this.excludeBootstrapSeededValues(this.captureManagedData())
+            : new Map();
 
         // Capture anything the active page changed just before authentication
         // switched. The dirty journal keeps it associated with its original
@@ -275,6 +278,7 @@ class FastToolkitFirebaseSync {
         });
         this.setLastActiveUid(nextUser.uid);
         this.setInteractiveLoginPending(false);
+        this.clearBootstrapSeededValues();
         this.isBootstrapping = false;
         this.sessionReady = true;
 
@@ -421,6 +425,31 @@ class FastToolkitFirebaseSync {
         } catch (e) { }
     }
 
+    loadBootstrapSeededValues() {
+        const values = new Map();
+        try {
+            const parsed = JSON.parse(localStorage.getItem(FAST_TOOLKIT_BOOTSTRAP_SEEDS_KEY) || '{}');
+            const entries = parsed && parsed.entries && typeof parsed.entries === 'object' ? parsed.entries : {};
+            Object.entries(entries).forEach(([key, rawValue]) => {
+                if (FAST_TOOLKIT_SYNC_KEYS.includes(key)) values.set(key, String(rawValue));
+            });
+        } catch (e) { }
+        return values;
+    }
+
+    excludeBootstrapSeededValues(localValues) {
+        const meaningfulValues = new Map(localValues);
+        this.loadBootstrapSeededValues().forEach((seededValue, key) => {
+            if (!meaningfulValues.has(key)) return;
+            if (this.rawValuesEquivalent(meaningfulValues.get(key), seededValue)) meaningfulValues.delete(key);
+        });
+        return meaningfulValues;
+    }
+
+    clearBootstrapSeededValues() {
+        try { localStorage.removeItem(FAST_TOOLKIT_BOOTSTRAP_SEEDS_KEY); } catch (e) { }
+    }
+
     clearLastActiveUid() {
         try {
             localStorage.removeItem(FAST_TOOLKIT_LAST_UID_KEY);
@@ -554,12 +583,41 @@ class FastToolkitFirebaseSync {
         return { values, localOnlyKeys, serverConfirmed };
     }
 
+    rawValuesEquivalent(firstRaw, secondRaw) {
+        if (firstRaw === secondRaw) return true;
+        if (firstRaw === null || firstRaw === undefined || secondRaw === null || secondRaw === undefined) return false;
+        try {
+            return this.structuredValuesEquivalent(JSON.parse(firstRaw), JSON.parse(secondRaw));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    structuredValuesEquivalent(first, second) {
+        if (Object.is(first, second)) return true;
+        if (Array.isArray(first) || Array.isArray(second)) {
+            return Array.isArray(first) && Array.isArray(second) &&
+                first.length === second.length &&
+                first.every((item, index) => this.structuredValuesEquivalent(item, second[index]));
+        }
+        if (this.isPlainObject(first) || this.isPlainObject(second)) {
+            if (!this.isPlainObject(first) || !this.isPlainObject(second)) return false;
+            const firstKeys = Object.keys(first).sort();
+            const secondKeys = Object.keys(second).sort();
+            return firstKeys.length === secondKeys.length &&
+                firstKeys.every((key, index) => (
+                    key === secondKeys[index] && this.structuredValuesEquivalent(first[key], second[key])
+                ));
+        }
+        return false;
+    }
+
     findLocalConflicts(localValues, cloudValues) {
         const conflicts = new Map();
         localValues.forEach((localValue, key) => {
             if (!cloudValues.has(key)) return;
             const cloudValue = cloudValues.get(key);
-            if (localValue !== cloudValue) {
+            if (!this.rawValuesEquivalent(localValue, cloudValue)) {
                 conflicts.set(key, {
                     localValue,
                     cloudValue,
@@ -670,7 +728,7 @@ class FastToolkitFirebaseSync {
                 ? entry.localValue
                 : this.mergeConflictRawValues(entry.cloudValue, entry.localValue);
             values.set(key, nextValue);
-            if (nextValue !== entry.cloudValue) uploadKeys.add(key);
+            if (!this.rawValuesEquivalent(nextValue, entry.cloudValue)) uploadKeys.add(key);
         });
         return uploadKeys;
     }
