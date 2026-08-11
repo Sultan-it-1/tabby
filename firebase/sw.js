@@ -70,6 +70,27 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
   const canonicalRequest = new Request(`${url.origin}${url.pathname}`);
+  const isCriticalAppCode = event.request.mode === "navigate" || /\.(?:html|js)$/i.test(url.pathname);
+
+  // Authentication and sync code must never be served stale first. The old
+  // cache-first behaviour could run an obsolete Firebase uploader after a
+  // deployment and overwrite data with an empty browser snapshot.
+  if (isCriticalAppCode) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(canonicalRequest, responseToCache));
+        }
+        return networkResponse;
+      }).catch(() => caches.match(canonicalRequest).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        if (event.request.mode === "navigate") return caches.match("./index.html");
+        return new Response("", { status: 504, statusText: "Offline" });
+      }))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {

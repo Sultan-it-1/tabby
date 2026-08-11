@@ -14,7 +14,7 @@ function getAiSecret(key) {
     if (typeof window.fastToolkitGetAiSecret === 'function') {
         return window.fastToolkitGetAiSecret(key);
     }
-    return sessionStorage.getItem(key) || '';
+    return sessionStorage.getItem(key) || localStorage.getItem(key) || '';
 }
 
 function setAiSecret(key, val) {
@@ -23,8 +23,10 @@ function setAiSecret(key, val) {
     }
     if (val) {
         sessionStorage.setItem(key, val);
+        localStorage.setItem(key, val);
     } else {
         sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
     }
     if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
         if (val) window.FastToolkitFirebase.saveCloudData(key, val);

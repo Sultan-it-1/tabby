@@ -12,7 +12,7 @@ function getAiSecret(key) {
         return window.fastToolkitGetAiSecret(key);
     }
     try {
-        return sessionStorage.getItem(key) || '';
+        return sessionStorage.getItem(key) || localStorage.getItem(key) || '';
     } catch (e) {
         return '';
     }
@@ -26,8 +26,10 @@ function setAiSecret(key, value) {
     try {
         if (value) {
             sessionStorage.setItem(key, value);
+            localStorage.setItem(key, value);
         } else {
             sessionStorage.removeItem(key);
+            localStorage.removeItem(key);
         }
     } catch (e) { }
     const cloud = window.FastToolkitFirebase;

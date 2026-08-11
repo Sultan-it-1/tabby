@@ -29,6 +29,14 @@ test('Firestore rules are scoped to the authenticated UID and reject broad acces
     assert.match(rules, /allow\s+read,\s*write:\s*if\s+false/);
 });
 
+test('Firestore rules protect the legacy data map from cached clients', () => {
+    const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+    assert.match(rules, /function legacyDataIsProtected\(\)/);
+    assert.match(rules, /request\.resource\.data\.data\s*==\s*resource\.data\.data/);
+    assert.match(rules, /!hasLegacyData\(request\.resource\.data\)/);
+    assert.match(rules, /match \/recovery\/\{recoveryId\}/);
+});
+
 test('Firebase deployment config points at the checked-in security rules', () => {
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'firebase.json'), 'utf8'));
     assert.equal(config.firestore.rules, 'firestore.rules');
