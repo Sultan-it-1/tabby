@@ -207,6 +207,168 @@
             align-items: center;
             gap: 1px;
         }
+
+        .advanced-tools-trigger {
+            width: 100%;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .advanced-tools-trigger:hover {
+            border-color: #a78bfa;
+            box-shadow: 0 4px 14px rgba(167, 139, 250, 0.2);
+        }
+
+        .advanced-tools-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: rgba(3, 6, 12, 0.78);
+            backdrop-filter: blur(10px);
+        }
+
+        .advanced-tools-modal.open {
+            display: flex;
+        }
+
+        .advanced-tools-dialog {
+            width: min(460px, 100%);
+            max-height: min(620px, 92vh);
+            overflow: auto;
+            text-align: right;
+            color: #f8fafc;
+            background: linear-gradient(145deg, #151b27, #090d14);
+            border: 1px solid rgba(167, 139, 250, 0.35);
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+        }
+
+        .advanced-tools-dialog header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .advanced-tools-dialog h2,
+        .advanced-tools-dialog p {
+            margin: 0;
+        }
+
+        .advanced-tools-dialog h2 {
+            font-size: 17px;
+            color: #f8fafc;
+        }
+
+        .advanced-tools-dialog p {
+            color: #94a3b8;
+            font-size: 11px;
+            line-height: 1.8;
+        }
+
+        .advanced-tools-close {
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 9px;
+            color: #cbd5e1;
+            background: rgba(255,255,255,.05);
+            cursor: pointer;
+        }
+
+        .advanced-tool-panel {
+            margin-top: 12px;
+            padding: 13px;
+            border: 1px solid rgba(52, 211, 153, 0.18);
+            border-radius: 14px;
+            background: rgba(255,255,255,.03);
+        }
+
+        .advanced-tool-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 7px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #f8fafc;
+        }
+
+        .advanced-bookmarklet-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .advanced-bookmarklet-link,
+        .advanced-copy-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            border-radius: 11px;
+            font: inherit;
+            cursor: grab;
+        }
+
+        .advanced-bookmarklet-link {
+            color: #d1fae5;
+            text-decoration: none;
+            background: rgba(16, 185, 129, 0.16);
+            border: 1px solid rgba(52, 211, 153, 0.45);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .advanced-copy-btn {
+            padding: 0 12px;
+            color: #ddd6fe;
+            background: rgba(139, 92, 246, 0.12);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .advanced-steps {
+            margin: 11px 0 0;
+            padding-right: 18px;
+            color: #94a3b8;
+            font-size: 10px;
+            line-height: 1.9;
+        }
+
+        .advanced-safety {
+            margin-top: 10px;
+            color: #6ee7b7;
+            font-size: 9px;
+        }
+
+        .advanced-copy-status {
+            min-height: 15px;
+            margin-top: 7px;
+            color: #a7f3d0;
+            font-size: 9px;
+            text-align: center;
+        }
+
+        html.modern-ui .advanced-tools-modal .advanced-tools-close {
+            color: #cbd5e1 !important;
+            background: rgba(255,255,255,.05) !important;
+            border-color: rgba(255,255,255,.12) !important;
+        }
+
+        html.modern-ui .advanced-tools-modal .advanced-copy-btn {
+            color: #ddd6fe !important;
+            background: rgba(139, 92, 246, 0.12) !important;
+            border-color: rgba(167, 139, 250, 0.3) !important;
+        }
     </style>
     <link id="fast-toolkit-theme-styles" rel="stylesheet" href="theme.css?v=2.1.1">
     <!-- Centralized Cache Busting Loader -->
@@ -300,6 +462,14 @@
                 </div>
             </a>
 
+            <button type="button" class="menu-item advanced-tools-trigger" id="advancedToolsBtn">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">Advanced Tools</div>
+                    <div class="desc">أدوات متقدمة للعمل، متاحة من الصفحة الرئيسية فقط.</div>
+                </div>
+            </button>
+
         </div>
 
         <div id="userProfileCard" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; margin-bottom: 6px; font-size: 9px;">
@@ -318,15 +488,95 @@
         </footer>
     </main>
 
+    <div class="advanced-tools-modal" id="advancedToolsModal" aria-hidden="true">
+        <section class="advanced-tools-dialog" role="dialog" aria-modal="true" aria-labelledby="advancedToolsTitle">
+            <header>
+                <div>
+                    <h2 id="advancedToolsTitle">Advanced Tools</h2>
+                    <p>أدوات مساعدة مستقلة لا تعدّل بيانات المواقع.</p>
+                </div>
+                <button type="button" class="advanced-tools-close" id="advancedToolsClose" aria-label="إغلاق">×</button>
+            </header>
+
+            <div class="advanced-tool-panel">
+                <div class="advanced-tool-title"><span aria-hidden="true">⏱️</span><span>عداد وقت تكتات CRM</span></div>
+                <p>يتعرف على التكت من الرابط، ويعرض وقت الجلسة الحالية ومجموع جميع مرات الرجوع لنفس التكت.</p>
+                <div class="advanced-bookmarklet-row">
+                    <a href="#" draggable="true" class="advanced-bookmarklet-link" id="crmTrackerBookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyCrmTrackerBookmarklet">نسخ الرابط</button>
+                </div>
+                <ol class="advanced-steps">
+                    <li>اسحب الزر الأخضر إلى شريط المفضلة.</li>
+                    <li>افتح <b>crm.tabby.sa</b> واضغط المفضلة مرة واحدة.</li>
+                    <li>اتركه يعمل؛ سيتابع تغيّر التكتات تلقائيًا حتى تحديث الصفحة.</li>
+                </ol>
+                <div class="advanced-safety">قراءة فقط: لا يكتب ملاحظات، لا يضغط أزرارًا، ولا يرسل أي بيانات.</div>
+                <div class="advanced-copy-status" id="crmTrackerCopyStatus" aria-live="polite"></div>
+            </div>
+        </section>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=2.3.2"></script>
+    <script src="firebase-config.js?v=2.3.3"></script>
+    <script src="crm-ticket-tracker.js?v=2.3.3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const emailTxt = document.getElementById('userEmailTxt');
             const switchBtn = document.getElementById('switchAccBtn');
             const cloudState = document.getElementById('homeCloudState');
+            const advancedToolsBtn = document.getElementById('advancedToolsBtn');
+            const advancedToolsModal = document.getElementById('advancedToolsModal');
+            const advancedToolsClose = document.getElementById('advancedToolsClose');
+            const bookmarkletLink = document.getElementById('crmTrackerBookmarklet');
+            const bookmarkletCopyBtn = document.getElementById('copyCrmTrackerBookmarklet');
+            const bookmarkletCopyStatus = document.getElementById('crmTrackerCopyStatus');
+
+            const openAdvancedTools = () => {
+                if (!advancedToolsModal) return;
+                advancedToolsModal.classList.add('open');
+                advancedToolsModal.setAttribute('aria-hidden', 'false');
+                if (advancedToolsClose) advancedToolsClose.focus();
+            };
+            const closeAdvancedTools = () => {
+                if (!advancedToolsModal) return;
+                advancedToolsModal.classList.remove('open');
+                advancedToolsModal.setAttribute('aria-hidden', 'true');
+            };
+
+            if (window.FastToolkitCrmTicketTracker && bookmarkletLink) {
+                const bookmarklet = window.FastToolkitCrmTicketTracker.buildBookmarklet();
+                bookmarkletLink.setAttribute('href', bookmarklet);
+                bookmarkletLink.addEventListener('click', event => {
+                    event.preventDefault();
+                    if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر إلى شريط المفضلة، أو استخدم زر النسخ.';
+                });
+                if (bookmarkletCopyBtn) {
+                    bookmarkletCopyBtn.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(bookmarklet);
+                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'تم نسخ رابط الـBookmarklet ✅';
+                        } catch (e) {
+                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر الأخضر مباشرة إلى شريط المفضلة.';
+                        }
+                    });
+                }
+            }
+
+            if (advancedToolsBtn) advancedToolsBtn.addEventListener('click', openAdvancedTools);
+            if (advancedToolsClose) advancedToolsClose.addEventListener('click', closeAdvancedTools);
+            if (advancedToolsModal) {
+                advancedToolsModal.addEventListener('click', event => {
+                    if (event.target === advancedToolsModal) closeAdvancedTools();
+                });
+            }
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape' && advancedToolsModal && advancedToolsModal.classList.contains('open')) {
+                    closeAdvancedTools();
+                }
+            });
+            if (window.location.hash === '#advanced-tools') openAdvancedTools();
 
             if (window.FastToolkitFirebase) {
                 window.FastToolkitFirebase.onUserChange((user) => {
