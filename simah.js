@@ -12,7 +12,7 @@ function getAiSecret(key) {
         return window.fastToolkitGetAiSecret(key);
     }
     try {
-        return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
+        return sessionStorage.getItem(key) || localStorage.getItem(key) || '';
     } catch (e) {
         return '';
     }
@@ -25,13 +25,17 @@ function setAiSecret(key, value) {
     }
     try {
         if (value) {
-            localStorage.setItem(key, value);
             sessionStorage.setItem(key, value);
+            localStorage.setItem(key, value);
         } else {
-            localStorage.removeItem(key);
             sessionStorage.removeItem(key);
+            localStorage.removeItem(key);
         }
     } catch (e) { }
+    const cloud = window.FastToolkitFirebase;
+    if (!cloud) return;
+    if (value && typeof cloud.saveCloudData === 'function') cloud.saveCloudData(key, value);
+    else if (!value && typeof cloud.removeCloudData === 'function') cloud.removeCloudData(key);
 }
 
 function getTesseractOptions() {
@@ -105,11 +109,31 @@ window.addEventListener('storage', (e) => {
             renderList();
         } catch (err) {}
     }
+    if (e.key === 'simah_ai_provider') {
+        currentProvider = e.newValue || 'gemini';
+        if (settingsModal && settingsModal.style.display === 'block') switchProvider(currentProvider);
+    }
+    if (e.key === 'simah_voice_speed') {
+        globalVoiceSpeed = allowedVoiceSpeeds.includes(e.newValue) ? e.newValue : '1';
+    }
 });
+
+window.syncFromCloudStorage = function () {
+    try {
+        const parsed = JSON.parse(localStorage.getItem('simahApprovedAccounts') || '[]');
+        savedAccountsList = parsed.map(item => typeof item === 'string' ? { val: item, copied: false } : item);
+    } catch (e) {
+        savedAccountsList = [];
+    }
+    currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
+    const savedSpeed = localStorage.getItem('simah_voice_speed');
+    globalVoiceSpeed = allowedVoiceSpeeds.includes(savedSpeed) ? savedSpeed : '1';
+    renderList();
+    if (settingsModal && settingsModal.style.display === 'block') switchProvider(currentProvider);
+};
 
 let currentProvider = localStorage.getItem('simah_ai_provider') || 'gemini';
 let isAIActive = true;
-localStorage.setItem('simah_ai_pref', 'true');
 const allowedVoiceSpeeds = ['1', '1.5', '2', '0.25', '0.5'];
 const storedVoiceSpeed = localStorage.getItem('simah_voice_speed');
 let globalVoiceSpeed = allowedVoiceSpeeds.includes(storedVoiceSpeed) ? storedVoiceSpeed : '1';
@@ -178,6 +202,9 @@ function saveApiKey() {
     setAiSecret('simah_ai_key', geminiKey);
     setAiSecret('simah_groq_key', groqKey);
     localStorage.setItem('simah_ai_provider', currentProvider);
+    if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
+        window.FastToolkitFirebase.saveCloudData('simah_ai_provider', currentProvider);
+    }
     closeSettings();
 
     const providerName = currentProvider === 'groq' ? 'Groq' : 'Gemini';

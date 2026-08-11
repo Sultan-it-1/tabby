@@ -25,7 +25,6 @@ const defaultData = {
 };
 
 let storageData = JSON.parse(localStorage.getItem('copyGridDataV6')) || defaultData;
-let unbackedUpCount = parseInt(localStorage.getItem('unbackedUpCountV6'), 10) || 0;
 
 function ensureContainerSafety(containerId) {
     if (!storageData) storageData = {};
@@ -374,7 +373,6 @@ function render() {
         container.appendChild(emptyNotes);
     }
 
-    checkBackupStatus();
 }
 
 function switchContainer() {
@@ -546,16 +544,6 @@ function saveSectionName() {
     closeModal();
 }
 window.saveSectionName = saveSectionName;
-
-function checkBackupStatus() {
-    const dotEl = document.getElementById('backupDot');
-    if (unbackedUpCount > 0) {
-        dotEl.style.display = 'block';
-        dotEl.setAttribute('data-tooltip', `تحتاج نسخة لـ ${unbackedUpCount} نوتات`);
-    } else {
-        dotEl.style.display = 'none';
-    }
-}
 
 function showCustomConfirm(message, callback) {
     const box = document.getElementById('confirmBox');
@@ -851,14 +839,10 @@ function saveItem() {
             if (i.l !== l || i.t !== t) {
                 i.l = l;
                 i.t = t;
-                unbackedUpCount++;
-                localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
             }
         }
     } else {
         storageData[targetCId][activeCat].push({ id: Date.now() + Math.random(), l, t });
-        unbackedUpCount++;
-        localStorage.setItem('unbackedUpCountV6', unbackedUpCount);
     }
     saveAndRefresh(); closeModal();
 }
@@ -900,8 +884,6 @@ function confirmDeleteAll() {
             c2: {},
             c3: {}
         };
-        unbackedUpCount = 0;
-        localStorage.setItem('unbackedUpCountV6', '0');
         saveAndRefresh();
         closeModal();
         showStatus("تم مسح كافة البيانات 🗑️");
@@ -916,8 +898,19 @@ window.confirmDeleteAll = confirmDeleteAll;
 
 function saveAndRefresh() {
     localStorage.setItem('copyGridDataV6', JSON.stringify(storageData));
+    if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
+        window.FastToolkitFirebase.saveCloudData('copyGridDataV6', storageData);
+    }
     render();
 }
+
+window.syncFromCloudStorage = function() {
+    try {
+        const raw = localStorage.getItem('copyGridDataV6');
+        if (raw) storageData = JSON.parse(raw);
+        render();
+    } catch (e) {}
+};
 
 function exportData() {
     const now = new Date();
@@ -936,9 +929,6 @@ function exportData() {
     a.download = filename;
     a.click();
 
-    unbackedUpCount = 0;
-    localStorage.setItem('unbackedUpCountV6', '0');
-    render();
 }
 window.exportData = exportData;
 
@@ -1078,9 +1068,6 @@ function updateDriveFile(token, fileId, content, isBackground = false) {
     .then(checkResponseStatus)
     .then(res => {
         if (res.ok) {
-            unbackedUpCount = 0;
-            localStorage.setItem('unbackedUpCountV6', '0');
-            render();
             showStatus(isBackground ? "تمت المزامنة التلقائية! ☁️ ✅" : "تم النسخ السحابي بنجاح! ☁️ ✅");
         } else {
             showStatus("فشل تحديث النسخة! ❌");
@@ -1140,8 +1127,6 @@ function restoreDriveFile(token, fileId) {
     .then(imported => {
         if (imported && typeof imported === 'object') {
             storageData = imported;
-            unbackedUpCount = 0;
-            localStorage.setItem('unbackedUpCountV6', '0');
             localStorage.setItem('copyGridDataV6', JSON.stringify(storageData));
             render();
             showStatus("تمت الاستعادة السحابية بنجاح! ☁️ ✅");
@@ -1162,6 +1147,41 @@ window.switchContainer = switchContainer;
 window.openSearch = openSearch;
 window.closeSearch = closeSearch;
 window.handleSearch = handleSearch;
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.FastToolkitFirebase) {
+        let activeCloudUser = window.FastToolkitFirebase.user;
+        let activeSyncState = { status: 'connecting' };
+        const renderCloudStatus = () => {
+            const el = document.getElementById('noteCloudStatus');
+            if (!el) return;
+            if (!activeCloudUser) {
+                el.innerText = '⚪ حفظ محلي (اضغط لتسجيل الدخول السحابي ☁️)';
+                el.style.color = '#aaa';
+                el.onclick = () => window.FastToolkitFirebase.loginWithGoogle();
+                return;
+            }
+            const labels = {
+                synced: `🟢 تمت المزامنة (${activeCloudUser.email})`,
+                syncing: '🟡 جاري حفظ التغييرات...',
+                offline: '🟠 دون اتصال — محفوظ محليًا',
+                error: '🔴 تعذر الحفظ — ستتم إعادة المحاولة',
+                connecting: '⏳ جاري الاتصال بالسحابة...'
+            };
+            el.innerText = labels[activeSyncState.status] || labels.connecting;
+            el.style.color = activeSyncState.status === 'synced' ? '#34D399' : activeSyncState.status === 'error' ? '#ff5555' : activeSyncState.status === 'offline' ? '#fb923c' : '#fbbf24';
+            el.onclick = null;
+        };
+        window.FastToolkitFirebase.onUserChange((user) => {
+            activeCloudUser = user;
+            renderCloudStatus();
+        });
+        window.FastToolkitFirebase.onSyncStateChange(state => {
+            activeSyncState = state;
+            renderCloudStatus();
+        });
+    }
+});
 window.toggleSortMode = toggleSortMode;
 
 updateCardSyncBadge();

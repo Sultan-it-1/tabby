@@ -1,5 +1,15 @@
 (function () {
     const PIP_SESSION_KEY = 'fastToolkit_isPipContext';
+    const FIREBASE_BOOTSTRAP_SEEDS_KEY = 'fastToolkit_bootstrap_seeded_values_v1';
+
+    function recordFirebaseBootstrapSeed(key, value) {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(FIREBASE_BOOTSTRAP_SEEDS_KEY) || '{}');
+            const entries = parsed && parsed.entries && typeof parsed.entries === 'object' ? parsed.entries : {};
+            entries[key] = String(value);
+            localStorage.setItem(FIREBASE_BOOTSTRAP_SEEDS_KEY, JSON.stringify({ entries }));
+        } catch (e) { }
+    }
     try {
         const hasPipMarker = new URLSearchParams(window.location.search).get('fastToolkitPip') === '1' || window.name === 'fast-toolkit-pip';
         if (hasPipMarker) sessionStorage.setItem(PIP_SESSION_KEY, 'true');
@@ -18,7 +28,18 @@
     function getAiSecret(key) {
         if (!AI_SECRET_KEYS.has(key)) return '';
         try {
-            return localStorage.getItem(key) || sessionStorage.getItem(key) || '';
+            const sessionValue = sessionStorage.getItem(key);
+            if (sessionValue !== null) return sessionValue;
+
+            const localValue = localStorage.getItem(key);
+            if (localValue !== null) {
+                // Keep the browser value as a compatibility mirror. Once the
+                // user is signed in, Firebase sync makes the cloud copy the
+                // authority and restores it after a browser storage reset.
+                sessionStorage.setItem(key, localValue);
+                return localValue;
+            }
+            return '';
         } catch (e) {
             return '';
         }
@@ -28,25 +49,44 @@
         if (!AI_SECRET_KEYS.has(key)) return;
         try {
             if (value) {
-                localStorage.setItem(key, value);
                 sessionStorage.setItem(key, value);
+                localStorage.setItem(key, value);
             } else {
-                localStorage.removeItem(key);
                 sessionStorage.removeItem(key);
+                localStorage.removeItem(key);
             }
         } catch (e) { }
+
+        const cloud = window.FastToolkitFirebase;
+        if (!cloud) return;
+        if (value && typeof cloud.saveCloudData === 'function') {
+            cloud.saveCloudData(key, value);
+        } else if (!value && typeof cloud.removeCloudData === 'function') {
+            cloud.removeCloudData(key);
+        }
     }
 
     window.fastToolkitGetAiSecret = getAiSecret;
     window.fastToolkitSetAiSecret = setAiSecret;
 
+    window.fastToolkitRemoveSyncedStorageKey = function (key) {
+        const cloud = window.FastToolkitFirebase;
+        if (cloud && typeof cloud.removeCloudData === 'function') {
+            return cloud.removeCloudData(key);
+        }
+        try { localStorage.removeItem(key); } catch (e) { }
+        return true;
+    };
+
     // Apply expanded and full-window states to document element instantly to prevent page transition flickering
     document.documentElement.classList.add('expanded');
     const path = window.location.pathname;
     const isIndexPage = path.endsWith('index.html') || path.endsWith('/') || path === '' || !path.includes('.html');
-    if (isIndexPage || localStorage.getItem('fastToolkit_full_window') !== 'false') {
+    const storedFullWindow = localStorage.getItem('fastToolkit_full_window');
+    if (isIndexPage || storedFullWindow !== 'false') {
         document.documentElement.classList.add('full-window');
         localStorage.setItem('fastToolkit_full_window', 'true');
+        if (storedFullWindow === null) recordFirebaseBootstrapSeed('fastToolkit_full_window', 'true');
     }
 
     const themeApi = window.FastToolkitThemes;
@@ -65,7 +105,10 @@
     const settings = themeApi.normalizeSettings(savedSettings);
     try {
         const normalizedText = JSON.stringify(settings);
-        if (normalizedText !== storedSettingsText) localStorage.setItem('fastToolkitSettings', normalizedText);
+        if (normalizedText !== storedSettingsText) {
+            localStorage.setItem('fastToolkitSettings', normalizedText);
+            if (!storedSettingsText) recordFirebaseBootstrapSeed('fastToolkitSettings', normalizedText);
+        }
     } catch (e) { }
 
     const root = document.documentElement;
@@ -1393,8 +1436,11 @@
                 injectPipBtn();
                 // Register Service Worker
                 if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('sw.js')
-                        .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
+                    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+                        .then(registration => {
+                            registration.update().catch(() => { });
+                            console.log('Fast Toolkit: PWA Service Worker registered');
+                        })
                         .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
                 }
                 // Inject Manifest Link
@@ -1419,8 +1465,11 @@
             injectPipBtn();
             // Register Service Worker
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js')
-                    .then(() => console.log('Fast Toolkit: PWA Service Worker registered'))
+                navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+                    .then(registration => {
+                        registration.update().catch(() => { });
+                        console.log('Fast Toolkit: PWA Service Worker registered');
+                    })
                     .catch(err => console.warn('Fast Toolkit: Service Worker registration failed:', err));
             }
             // Inject Manifest Link

@@ -426,27 +426,23 @@
 
 
             <div class="setting-group">
-                <label style="display: flex; align-items: center; margin-bottom: 2px;">
-                    النسخ الاحتياطي للاعدادات (Drive)
-                    <div class="tooltip">
-                        <span style="display: inline-flex; justify-content: center; align-items: center; width: 12px; height: 12px; border-radius: 50%; background: #444; color: #fff; font-size: 9px; margin-right: 4px; font-weight: normal;">?</span>
-                        <div class="tooltiptext">
-                            سيتم حفظ:
-                            <ul>
-                                <li>المظهر والألوان والاختصارات</li>
-                                <li>الملاحظات (Sticky Notes)</li>
-                                <li>سجلات وتاريخ Card Scanner</li>
-                                <li>حسابات وتاريخ Simah</li>
-                                <li>إعدادات الـ AI والمسودات</li>
-                            </ul>
-                        </div>
-                    </div>
+                <label style="display: flex; align-items: center; margin-bottom: 4px; font-weight: bold;">
+                    ☁️ الحساب السحابي والمزامنة اللحظية (Firebase)
                 </label>
-                <div style="display: flex; gap: 4px; margin-top: 4px;">
-                    <button class="action-btn primary" id="driveBackupBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">رفع إلى Drive</button>
-                    <button class="action-btn" id="driveRestoreBtn" style="background: #1a3a5f; border: 1px solid #4285f4; color: #4285f4; font-size: 9px;">استعادة من Drive</button>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px;">
+                        <span style="color: #aaa;">الحساب النشط:</span>
+                        <strong id="settingsUserEmail" style="color: var(--accent-color, #34D399); cursor: pointer;">جاري الاتصال...</strong>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 9px; color: #888;">
+                        <span>الحالة:</span>
+                        <span id="settingsSyncStatus" style="color: #aaa; font-weight: bold;">⏳ جاري فحص المزامنة...</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr auto;gap:5px;margin-top:2px;">
+                        <button class="action-btn" id="settingsSwitchAccBtn" style="background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9.5px; padding: 5px;">🔄 تبديل حساب Google</button>
+                        <button class="action-btn" id="settingsSignOutBtn" style="background:rgba(255,85,85,.08);border:1px solid rgba(255,85,85,.35);color:#ff7777;font-size:9.5px;padding:5px 8px;">خروج</button>
+                    </div>
                 </div>
-                <div id="driveStatus" style="font-size: 9px; color: #aaa; margin-top: 4px;"></div>
             </div>
 
             <div class="setting-group">
@@ -547,7 +543,6 @@
                 'fastToolkitShortcuts',
                 'fastToolkitExpanded',
                 'copyGridDataV6',
-                'unbackedUpCountV6',
                 'quick_sticky_note',
                 'stickyNotesData',
                 'currentStickyNoteId',
@@ -806,8 +801,8 @@
                     mode: themeApi.PRESETS[themeApi.DEFAULT_PRESET_ID].mode,
                     themeColor: themeApi.PRESETS[themeApi.DEFAULT_PRESET_ID].accent
                 });
-                localStorage.removeItem('fastToolkitExpanded');
-                localStorage.removeItem('fastToolkitShortcuts');
+                window.fastToolkitRemoveSyncedStorageKey('fastToolkitExpanded');
+                window.fastToolkitRemoveSyncedStorageKey('fastToolkitShortcuts');
                 window.location.reload();
             });
 
@@ -1007,7 +1002,71 @@
             if(driveRestoreBtn) driveRestoreBtn.addEventListener('click', () => triggerCloudAction('restore'));
         });
     </script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js?v=2.3.3"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const emailTxt = document.getElementById('settingsUserEmail');
+            const statusTxt = document.getElementById('settingsSyncStatus');
+            const switchBtn = document.getElementById('settingsSwitchAccBtn');
+            const signOutBtn = document.getElementById('settingsSignOutBtn');
+
+            const syncLabels = {
+                connecting: ['⏳ جاري الاتصال...', '#aaa'],
+                syncing: ['🟡 جاري حفظ التغييرات...', '#fbbf24'],
+                synced: ['🟢 تمت مزامنة جميع التغييرات', '#34D399'],
+                offline: ['🟠 دون اتصال — التغييرات محفوظة محليًا', '#fb923c'],
+                error: ['🔴 فشلت المزامنة — ستتم إعادة المحاولة', '#ff5555'],
+                local: ['⚪ حفظ محلي — سجل الدخول للمزامنة', '#aaa']
+            };
+
+            function renderSyncState(state) {
+                if (!statusTxt) return;
+                const entry = syncLabels[state && state.status] || syncLabels.connecting;
+                const pending = state && state.pending > 0 ? ` (${state.pending})` : '';
+                statusTxt.innerText = entry[0] + pending;
+                statusTxt.style.color = entry[1];
+                statusTxt.title = state && state.error ? String(state.error.message || state.error) : '';
+            }
+
+            if (window.FastToolkitFirebase) {
+                window.FastToolkitFirebase.onUserChange((user) => {
+                    if (user && user.email) {
+                        if (emailTxt) emailTxt.innerText = user.email;
+                    } else {
+                        if (emailTxt) emailTxt.innerText = 'غير متصل (اضغط لتسجيل الدخول)';
+                    }
+                });
+                window.FastToolkitFirebase.onSyncStateChange(renderSyncState);
+            }
+
+            if (switchBtn) {
+                switchBtn.onclick = () => {
+                    if (window.FastToolkitFirebase) {
+                        if (window.FastToolkitFirebase.user) {
+                            window.FastToolkitFirebase.switchAccount();
+                        } else {
+                            window.FastToolkitFirebase.loginWithGoogle();
+                        }
+                    }
+                };
+            }
+            if (signOutBtn) {
+                signOutBtn.onclick = async () => {
+                    if (window.FastToolkitFirebase) await window.FastToolkitFirebase.signOut();
+                };
+            }
+            if (emailTxt) {
+                emailTxt.onclick = () => {
+                    if (window.FastToolkitFirebase && !window.FastToolkitFirebase.user) {
+                        window.FastToolkitFirebase.loginWithGoogle();
+                    }
+                };
+            }
+        });
+    </script>
 </body>
 
 </html>

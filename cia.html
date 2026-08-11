@@ -576,15 +576,11 @@
             <!-- Rendered Dynamically -->
         </div>
 
-        <!-- Bottom Backup Row -->
-        <div class="backup-row">
-            <button class="backup-btn danger" style="flex: 1;" onclick="triggerDeleteAll()" title="مسح الكل">🗑️ مسح البيانات</button>
+        <!-- Bottom Action Row -->
+        <div class="backup-row" style="margin-top: 4px; padding-top: 4px;">
+            <button class="backup-btn danger" style="flex: 1;" onclick="triggerDeleteAll()" title="مسح الكل">🗑️ مسح كافة البطاقات</button>
         </div>
-        
-        <div class="backup-row" style="margin-top: 3px; border-top: none; padding-top: 0; align-items: center; justify-content: space-between; gap: 4px;">
-            <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('backup')" title="نسخ سحابي إلى Google Drive">☁️ نسخ (Drive)</button>
-            <button class="backup-btn primary" style="flex: 1;" onclick="triggerCloudAction('restore')" title="استعادة سحابية من Google Drive">☁️ استعادة (Drive)</button>
-        </div>
+        <div id="ciaCloudStatus" style="font-size: 9px; color: #888; text-align: center; margin-top: 3px; cursor: pointer;">جاري الاتصال بالسحابة...</div>
 
         <div class="toast-container" id="toastContainer"></div>
 
@@ -655,7 +651,10 @@
 
     </div>
 
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js?v=2.3.3"></script>
     <script>
         document.write('<script src="cia.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>

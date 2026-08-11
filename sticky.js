@@ -43,7 +43,17 @@ function loadAllNotes() {
 
 function saveAllNotes(notes) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+    if (window.FastToolkitFirebase && typeof window.FastToolkitFirebase.saveCloudData === 'function') {
+        window.FastToolkitFirebase.saveCloudData(STORAGE_KEY, notes);
+    }
 }
+
+window.syncFromCloudStorage = function() {
+    notes = loadAllNotes();
+    renderTabs();
+    const note = getActiveNote();
+    if (noteArea) noteArea.value = note ? note.text : '';
+};
 
 // ====== الحالة الداخلية ======
 let notes = loadAllNotes();
