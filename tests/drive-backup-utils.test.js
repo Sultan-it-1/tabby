@@ -104,7 +104,7 @@ test('settings expose an explicit local-first Drive option and require upload co
     const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 
     assert.match(settings, /النسخ والاسترداد من Google Drive/);
-    assert.match(settings, /اختياري · لمحبي الوكال/);
+    assert.match(settings, /اختياري · حفظ محلي/);
     assert.match(settings, /id="driveBackupConsent"/);
     assert.match(settings, /id="driveBackupBtn" disabled/);
     assert.match(settings, /مفاتيح Gemini أو Groq أو أي مفتاح AI/);

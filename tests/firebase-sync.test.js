@@ -762,6 +762,7 @@ test('a bulk browser-storage reset restores the local mirror and never uploads t
     assert.equal(harness.localStorage.getItem('copyGridDataV6'), 'grid');
     assert.equal(harness.localStorage.getItem('fastToolkitCIA_v4'), 'cia');
     assert.equal(harness.localStorage.getItem('stickyNotesData'), 'notes');
+    assert.equal(harness.localStorage.getItem('fastToolkit_firebase_last_uid'), 'alpha');
     assert.equal(harness.writes.some(write => write.deleted), false);
     sync.destroy();
 });

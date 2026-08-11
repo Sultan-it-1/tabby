@@ -575,7 +575,7 @@
 
             <div class="setting-group">
                 <label style="display: flex; align-items: center; margin-bottom: 4px; font-weight: bold;">
-                    ☁️ الحساب السحابي والمزامنة اللحظية (Firebase)
+                    ☁️ الحساب السحابي والمزامنة اللحظية
                 </label>
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px;">
@@ -587,7 +587,7 @@
                         <span id="settingsSyncStatus" style="color: #aaa; font-weight: bold;">⏳ جاري فحص المزامنة...</span>
                     </div>
                     <div style="font-size:8.5px;color:#74d9ad;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.16);border-radius:6px;padding:5px 7px;line-height:1.6;">
-                        🔐 الملاحظات والكارد وSIMAH وCIA ومفاتيح AI تُشفّر تلقائيًا قبل إرسالها إلى Firebase.
+                        🛡️ بياناتك وملاحظاتك مُشفّرة بالكامل وآمنة في حسابك السحابي.
                     </div>
                     <div style="display:grid;grid-template-columns:1fr auto;gap:5px;margin-top:2px;">
                         <button class="action-btn" id="settingsSwitchAccBtn" style="background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9.5px; padding: 5px;">🔄 تبديل حساب Google</button>
@@ -681,22 +681,21 @@
                             <small>نسخة يدوية مستقلة لمحبي الاحتفاظ ببياناتهم خارج المزامنة التلقائية.</small>
                         </div>
                     </div>
-                    <span class="drive-local-pill">اختياري · لمحبي الوكال</span>
+                    <span class="drive-local-pill">اختياري · حفظ محلي</span>
                 </div>
 
                 <p class="drive-backup-copy">
-                    يجمع كل بيانات FAST TOOLKIT المتاحة في هذا المتصفح داخل ملف خاص في Google Drive. الاسترداد يدمج النسخة بأمان مع بياناتك الحالية ثم يرسل القيم المدعومة إلى Firebase.
+                    يجمع كل بيانات FAST TOOLKIT المتاحة في هذا المتصفح داخل ملف خاص في Google Drive. الاسترداد يدمج النسخة بأمان مع بياناتك الحالية ثم يرسل القيم المدعومة إلى السحابة.
                 </p>
 
                 <div class="drive-backup-safety" aria-label="تفاصيل ما يتم نسخه">
                     <span>✅ يشمل الملاحظات والبطاقات والسجلات والثيمات والاختصارات والإعدادات وباقي بيانات الأدوات.</span>
                     <span>🔒 لا يشمل مفاتيح Gemini أو Groq أو أي مفتاح AI، ولا رموز تسجيل الدخول والمزامنة التقنية.</span>
-                    <span>ℹ️ بيانات CRM المحفوظة داخل نطاق crm.tabby.sa تبقى في ذلك الموقع ولا يستطيع هذا الموقع قراءتها.</span>
                 </div>
 
                 <label class="drive-backup-consent" for="driveBackupConsent">
                     <input type="checkbox" id="driveBackupConsent">
-                    <span>أؤكد أنني أريد رفع نسخة يدوية إلى Google Drive وأفهم أنها لا تحتوي على مفاتيح AI.</span>
+                    <span>🔒 أوافق على رفع النسخة الاحتياطية. (لحمايتك، يتم تشفير وحفظ مفاتيح الذكاء الاصطناعي على جهازك فقط ولا تُنقل للخارج).</span>
                 </label>
 
                 <div class="drive-backup-actions">

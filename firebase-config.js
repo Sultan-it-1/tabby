@@ -323,6 +323,7 @@ class FastToolkitFirebaseSync {
         this.clearBootstrapSeededValues();
         this.isBootstrapping = false;
         this.sessionReady = true;
+        this.notifyUserListeners();
 
         const editsDuringBootstrap = new Map(this.pendingLocalChanges);
         this.loadDirtyChanges(nextUser.uid).forEach((rawValue, key) => {
@@ -382,6 +383,10 @@ class FastToolkitFirebaseSync {
         return () => this.userListeners.delete(callback);
     }
 
+    isSessionReady() {
+        return Boolean(this.user && this.sessionReady);
+    }
+
     setSyncState(status, patch = {}) {
         this.syncState = {
             ...this.syncState,
@@ -402,7 +407,7 @@ class FastToolkitFirebaseSync {
     }
 
     getPendingCount() {
-        return this.pendingPayloads.size + this.retryQueue.size + this.inFlightWrites.size;
+        return this.pendingPayloads.size + this.retryQueue.size + this.inFlightWrites.size + (this.activeWrites || 0);
     }
 
     dirtyStorageKey(uid) {
@@ -637,10 +642,20 @@ class FastToolkitFirebaseSync {
         return encodeURIComponent(key).replace(/\./g, '%2E');
     }
 
+    withTimeout(promise, ms = 3500) {
+        let timer = null;
+        const timeoutPromise = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error('Server request timed out')), ms);
+        });
+        return Promise.race([promise, timeoutPromise]).finally(() => {
+            if (timer) clearTimeout(timer);
+        });
+    }
+
     async loadRemoteData(uid) {
         const collection = this.dataCollection(uid);
         try {
-            const snapshot = await collection.get({ source: 'server' });
+            const snapshot = await this.withTimeout(collection.get({ source: 'server' }), 3500);
             const remoteState = await this.remoteStateFromSnapshot(snapshot);
             return {
                 ...remoteState,
@@ -712,7 +727,7 @@ class FastToolkitFirebaseSync {
         let error = null;
 
         try {
-            documentSnapshot = await this.db.collection('users').doc(uid).get({ source: 'server' });
+            documentSnapshot = await this.withTimeout(this.db.collection('users').doc(uid).get({ source: 'server' }), 3500);
             confirmedFromServer = true;
         } catch (serverError) {
             error = serverError;
@@ -846,28 +861,31 @@ class FastToolkitFirebaseSync {
             dialog.style.cssText = 'width:min(470px,100%);color:#f8fafc;background:linear-gradient(145deg,#151b25,#0b0f16);border:1px solid rgba(148,163,184,.22);border-radius:20px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.55);';
             dialog.innerHTML = `
                 <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">
-                    <span style="display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(52,211,153,.13);font-size:20px;">☁️</span>
+                    <span style="display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:rgba(52,211,153,.16);font-size:22px;">☁️</span>
                     <div>
-                        <h2 id="fastToolkitLoginConflictTitle" style="margin:0;font-size:17px;line-height:1.5;">وجدنا بيانات مختلفة</h2>
+                        <h2 id="fastToolkitLoginConflictTitle" style="margin:0;font-size:17px;line-height:1.4;font-weight:700;">اختر طريقة مزامنة بياناتك</h2>
                         <div data-account-email style="color:#94a3b8;font-size:11px;overflow-wrap:anywhere;"></div>
                     </div>
                 </div>
-                <p style="margin:0 0 14px;color:#cbd5e1;font-size:12px;line-height:1.8;">يوجد عمل محفوظ على هذا الجهاز وبيانات أخرى في حسابك. حُفظت نسخة استرجاع للطرفين، ولن نحذف أي بيانات بدون اختيارك.</p>
-                <div style="display:grid;gap:8px;">
-                    <button type="button" data-resolution="merge" style="cursor:pointer;text-align:right;border:1px solid rgba(52,211,153,.55);border-radius:12px;padding:11px 12px;color:#ecfdf5;background:rgba(16,185,129,.16);font:inherit;">
-                        <strong style="display:block;font-size:13px;">دمج البيانات — موصى به</strong>
-                        <span style="display:block;margin-top:3px;color:#a7f3d0;font-size:10px;line-height:1.6;">يجمع القوائم والعناصر ويحافظ على إعدادات هذا الجهاز عند التعارض.</span>
+                <p style="margin:0 0 16px;color:#cbd5e1;font-size:12px;line-height:1.8;">🛡️ لديك بيانات على هذا الجهاز وبيانات سابقة في حسابك السحابي. تم حفظ نسخة احتياطية للطرفين ولن تضيع أي بيانات.</p>
+                <div style="display:grid;gap:10px;">
+                    <button type="button" data-resolution="merge" style="cursor:pointer;text-align:right;border:2px solid #34d399;border-radius:14px;padding:14px;color:#ecfdf5;background:linear-gradient(135deg,rgba(16,185,129,.25),rgba(5,150,105,.12));box-shadow:0 0 20px rgba(52,211,153,.2);font:inherit;transition:all 0.2s ease;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <strong style="font-size:14px;color:#34d399;display:flex;align-items:center;gap:6px;">✨ دمج الكل (الموصى به والآمن)</strong>
+                            <span style="background:#34d399;color:#064e3b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">الأفضل والآمن</span>
+                        </div>
+                        <span style="display:block;color:#a7f3d0;font-size:11px;line-height:1.6;">يجمع بين كافة العناصر في الجهاز والسحابة معاً دون حذف أو فقدان أي عنصر.</span>
                     </button>
-                    <button type="button" data-resolution="local" style="cursor:pointer;text-align:right;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:10px 12px;color:#e2e8f0;background:rgba(255,255,255,.035);font:inherit;">
-                        <strong style="display:block;font-size:12px;">استخدام بيانات هذا الجهاز</strong>
-                        <span style="display:block;margin-top:2px;color:#94a3b8;font-size:10px;">يرفع القيم الحالية إلى الحساب، مع بقاء نسخة السحابة قابلة للاسترجاع.</span>
+                    <button type="button" data-resolution="local" style="cursor:pointer;text-align:right;border:1px solid rgba(148,163,184,.15);border-radius:12px;padding:10px 12px;color:#94a3b8;background:rgba(255,255,255,.02);font:inherit;opacity:0.85;transition:all 0.2s ease;" onmouseover="this.style.opacity='1';this.style.borderColor='rgba(148,163,184,.3)'" onmouseout="this.style.opacity='0.85';this.style.borderColor='rgba(148,163,184,.15)'">
+                        <strong style="display:block;font-size:12px;color:#cbd5e1;">📱 الاعتماد على بيانات هذا الجهاز فقط</strong>
+                        <span style="display:block;margin-top:2px;color:#64748b;font-size:10px;">يرفع العمل الحالي بالكامل للحساب، وتُحفظ النسخة السحابية السابقة كنسخة احتياطية.</span>
                     </button>
-                    <button type="button" data-resolution="cloud" style="cursor:pointer;text-align:right;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:10px 12px;color:#e2e8f0;background:rgba(255,255,255,.035);font:inherit;">
-                        <strong style="display:block;font-size:12px;">استخدام بيانات الحساب</strong>
-                        <span style="display:block;margin-top:2px;color:#94a3b8;font-size:10px;">ينزّل نسخة الحساب، مع بقاء بيانات الجهاز في نسخة الاسترجاع.</span>
+                    <button type="button" data-resolution="cloud" style="cursor:pointer;text-align:right;border:1px solid rgba(148,163,184,.15);border-radius:12px;padding:10px 12px;color:#94a3b8;background:rgba(255,255,255,.02);font:inherit;opacity:0.85;transition:all 0.2s ease;" onmouseover="this.style.opacity='1';this.style.borderColor='rgba(148,163,184,.3)'" onmouseout="this.style.opacity='0.85';this.style.borderColor='rgba(148,163,184,.15)'">
+                        <strong style="display:block;font-size:12px;color:#cbd5e1;">☁️ استعادة بيانات الحساب السحابي فقط</strong>
+                        <span style="display:block;margin-top:2px;color:#64748b;font-size:10px;">ينزّل نسخة الحساب السحابي، وتُحفظ بيانات هذا الجهاز كنسخة استرجاع احتياطية.</span>
                     </button>
                 </div>
-                <div style="margin-top:10px;color:#64748b;font-size:9px;text-align:center;">${details.conflictCount} عناصر متعارضة • العناصر غير المتعارضة تُحفظ تلقائيًا</div>
+                <div style="margin-top:12px;color:#64748b;font-size:10px;text-align:center;">${details.conflictCount} عناصر تتطلب الاختيار • جميع العناصر الأخرى محفوظة وآمنة تلقائياً</div>
             `;
             const emailNode = dialog.querySelector('[data-account-email]');
             if (emailNode) emailNode.textContent = details.email;
@@ -1198,6 +1216,9 @@ class FastToolkitFirebaseSync {
             // localStorage is only a compatibility cache, so its disappearance
             // is never an account-level delete. Explicit removeCloudData()
             // calls update the shadow first and still sync normally.
+            if (this.sessionUid) {
+                this.setLastActiveUid(this.sessionUid);
+            }
             removedKeys.forEach(({ key, shadowValue }) => {
                 this.writeLocalRaw(key, shadowValue, { notify: true });
             });
@@ -1220,6 +1241,14 @@ class FastToolkitFirebaseSync {
     }
 
     handleStorageEvent(event) {
+        if (event && (event.key === null || event.key === '')) {
+            this.localShadow.clear();
+            this.clearLastActiveUid();
+            if (typeof window !== 'undefined' && typeof window.syncFromCloudStorage === 'function') {
+                try { window.syncFromCloudStorage(); } catch (e) { }
+            }
+            return;
+        }
         const key = event && (event.key || (event.detail && event.detail.key));
         if (!key || !FAST_TOOLKIT_SYNC_KEYS.includes(key)) return;
         const newValue = event.newValue !== undefined

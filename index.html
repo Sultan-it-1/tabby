@@ -580,10 +580,17 @@
 
             if (window.FastToolkitFirebase) {
                 window.FastToolkitFirebase.onUserChange((user) => {
-                    if (user && user.email) {
+                    const userCard = document.getElementById('userProfileCard');
+                    const isReady = window.FastToolkitFirebase.isSessionReady && window.FastToolkitFirebase.isSessionReady();
+                    if (user && user.email && isReady) {
                         if (emailTxt) emailTxt.innerText = user.email;
+                        if (userCard) userCard.title = `حسابك النشط: ${user.email}`;
+                    } else if (user && user.email) {
+                        if (emailTxt) emailTxt.innerText = '⏳ جاري استرداد البيانات والمزامنة...';
+                        if (userCard) userCard.title = 'جاري التحقق واسترداد النسخة السحابية لحسابك...';
                     } else {
-                        if (emailTxt) emailTxt.innerText = 'سجل الدخول عبر Google';
+                        if (emailTxt) emailTxt.innerText = '🔑 دخول (بياناتك آمنة محلياً)';
+                        if (userCard) userCard.title = '🛡️ بياناتك الحالية على الجهاز آمنة تماماً، وستُدمج تلقائياً مع حسابك فور تسجيل الدخول.';
                     }
                 });
                 window.FastToolkitFirebase.onSyncStateChange((state) => {

@@ -511,8 +511,8 @@ function triggerDeleteAll() {
 }
 
 function confirmDeleteAll() {
-    const val = document.getElementById('deleteAllConfirmInput').value.trim();
-    if (val === 'delete all') {
+    const val = document.getElementById('deleteAllConfirmInput').value.trim().toLowerCase();
+    if (val === 'delete all' || val === 'مسح') {
         ciaCards = [];
         saveCIAData();
         closeCiaModal();
@@ -691,7 +691,7 @@ window.triggerDeleteAll = triggerDeleteAll;
 document.addEventListener('DOMContentLoaded', () => {
     if (window.FastToolkitFirebase) {
         let activeCloudUser = window.FastToolkitFirebase.user;
-        let activeSyncState = { status: 'connecting' };
+        let activeSyncState = window.FastToolkitFirebase.syncState || { status: 'connecting' };
         const renderCloudStatus = () => {
             const el = document.getElementById('ciaCloudStatus');
             if (!el) return;
@@ -701,15 +701,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.onclick = () => window.FastToolkitFirebase.loginWithGoogle();
                 return;
             }
-            const labels = {
-                synced: `🟢 تمت المزامنة (${activeCloudUser.email})`,
-                syncing: '🟡 جاري حفظ التغييرات...',
-                offline: '🟠 دون اتصال — محفوظ محليًا',
-                error: '🔴 تعذر الحفظ — ستتم إعادة المحاولة',
-                connecting: '⏳ جاري الاتصال بالسحابة...'
-            };
-            el.innerText = labels[activeSyncState.status] || labels.connecting;
-            el.style.color = activeSyncState.status === 'synced' ? '#34D399' : activeSyncState.status === 'error' ? '#ff5555' : activeSyncState.status === 'offline' ? '#fb923c' : '#fbbf24';
+            const hasPendingChanges = Boolean(activeSyncState.pending && activeSyncState.pending > 0);
+            const isSyncingWithPending = activeSyncState.status === 'syncing' && hasPendingChanges;
+
+            let statusText = `🟢 تمت المزامنة (${activeCloudUser.email})`;
+            let statusColor = '#34D399';
+
+            if (isSyncingWithPending) {
+                statusText = '🟡 جاري حفظ التغييرات...';
+                statusColor = '#fbbf24';
+            } else if (activeSyncState.status === 'error') {
+                statusText = '🔴 تعذر الحفظ — ستتم إعادة المحاولة';
+                statusColor = '#ff5555';
+            } else if (activeSyncState.status === 'offline') {
+                statusText = '🟠 دون اتصال — محفوظ محليًا';
+                statusColor = '#fb923c';
+            }
+
+            el.innerText = statusText;
+            el.style.color = statusColor;
             el.onclick = null;
         };
         window.FastToolkitFirebase.onUserChange((user) => {
@@ -720,6 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeSyncState = state;
             renderCloudStatus();
         });
+        renderCloudStatus();
     }
 });
 window.confirmDeleteAll = confirmDeleteAll;
