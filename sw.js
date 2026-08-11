@@ -20,6 +20,7 @@ const ASSETS_TO_CACHE = [
   "./theme.css",
   "./theme-utils.js",
   "./settings.js",
+  "./drive-backup-utils.js",
   "./firebase-config.js",
   "./crm-ticket-tracker.js",
   "./version.js",
