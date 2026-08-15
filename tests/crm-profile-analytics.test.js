@@ -77,6 +77,10 @@ test('crm-profile-analytics provides runtime installer source for execution', ()
     assert.match(runtime, /data-role="break-time"/);
     assert.match(runtime, /data-role="sessions-count"/);
     assert.match(runtime, /data-role="tickets-count"/);
+    assert.match(runtime, /data-role="longest-session-link"/);
+    assert.match(runtime, /data-role="shortest-session-link"/);
+    assert.match(runtime, /data-role="longest-ticket-link"/);
+    assert.match(runtime, /data-role="shortest-ticket-link"/);
     assert.match(runtime, /data-action="scan"/);
     assert.match(runtime, /data-action="copy"/);
 });

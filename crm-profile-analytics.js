@@ -196,6 +196,51 @@
         const totalActiveMs = totalOnlineMs + totalBreakMs + totalOtherMs;
         const utilizationRate = totalActiveMs > 0 ? Math.min(100, Math.round((totalOnlineMs / totalActiveMs) * 100)) : 100;
 
+        function calculateExtremes(ticketsCompleted) {
+            const validSessions = (ticketsCompleted || []).filter(s => s.durationMs > 0);
+            let longestSession = null;
+            let shortestSession = null;
+
+            if (validSessions.length > 0) {
+                const sorted = [...validSessions].sort((a, b) => b.durationMs - a.durationMs);
+                longestSession = sorted[0];
+                shortestSession = sorted[sorted.length - 1];
+            } else if (ticketsCompleted && ticketsCompleted.length > 0) {
+                longestSession = ticketsCompleted[0];
+                shortestSession = ticketsCompleted[0];
+            }
+
+            const ticketMap = new Map();
+            (ticketsCompleted || []).forEach(s => {
+                const prev = ticketMap.get(s.ticketId) || { ticketId: s.ticketId, totalMs: 0 };
+                prev.totalMs += (s.durationMs || 0);
+                ticketMap.set(s.ticketId, prev);
+            });
+
+            const ticketTotals = Array.from(ticketMap.values()).filter(t => t.totalMs > 0);
+            let longestTicket = null;
+            let shortestTicket = null;
+
+            if (ticketTotals.length > 0) {
+                ticketTotals.sort((a, b) => b.totalMs - a.totalMs);
+                longestTicket = ticketTotals[0];
+                shortestTicket = ticketTotals[ticketTotals.length - 1];
+            } else if (ticketMap.size > 0) {
+                const first = ticketMap.values().next().value;
+                longestTicket = first;
+                shortestTicket = first;
+            }
+
+            return {
+                longestSession,
+                shortestSession,
+                longestTicket,
+                shortestTicket
+            };
+        }
+
+        const extremes = calculateExtremes(ticketsCompleted);
+
         return {
             shiftStart,
             totalOnlineMs,
@@ -210,6 +255,7 @@
             avgTicketDurationMs,
             utilizationRate,
             ticketsCompleted,
+            extremes,
             events
         };
     }
@@ -432,6 +478,51 @@
             const totalActiveMs = totalOnlineMs + totalBreakMs + totalOtherMs;
             const utilizationRate = totalActiveMs > 0 ? Math.min(100, Math.round((totalOnlineMs / totalActiveMs) * 100)) : 100;
 
+            function _calculateExtremes(ticketsCompleted) {
+                const validSessions = (ticketsCompleted || []).filter(s => s.durationMs > 0);
+                let longestSession = null;
+                let shortestSession = null;
+
+                if (validSessions.length > 0) {
+                    const sorted = [...validSessions].sort((a, b) => b.durationMs - a.durationMs);
+                    longestSession = sorted[0];
+                    shortestSession = sorted[sorted.length - 1];
+                } else if (ticketsCompleted && ticketsCompleted.length > 0) {
+                    longestSession = ticketsCompleted[0];
+                    shortestSession = ticketsCompleted[0];
+                }
+
+                const ticketMap = new Map();
+                (ticketsCompleted || []).forEach(s => {
+                    const prev = ticketMap.get(s.ticketId) || { ticketId: s.ticketId, totalMs: 0 };
+                    prev.totalMs += (s.durationMs || 0);
+                    ticketMap.set(s.ticketId, prev);
+                });
+
+                const ticketTotals = Array.from(ticketMap.values()).filter(t => t.totalMs > 0);
+                let longestTicket = null;
+                let shortestTicket = null;
+
+                if (ticketTotals.length > 0) {
+                    ticketTotals.sort((a, b) => b.totalMs - a.totalMs);
+                    longestTicket = ticketTotals[0];
+                    shortestTicket = ticketTotals[ticketTotals.length - 1];
+                } else if (ticketMap.size > 0) {
+                    const first = ticketMap.values().next().value;
+                    longestTicket = first;
+                    shortestTicket = first;
+                }
+
+                return {
+                    longestSession,
+                    shortestSession,
+                    longestTicket,
+                    shortestTicket
+                };
+            }
+
+            const extremes = _calculateExtremes(ticketsCompleted);
+
             return {
                 shiftStart,
                 totalOnlineMs,
@@ -446,6 +537,7 @@
                 avgTicketDurationMs,
                 utilizationRate,
                 ticketsCompleted,
+                extremes,
                 events
             };
         }
@@ -529,11 +621,15 @@
                 .metric-tickets b{color:var(--ticket-color)}
                 .metric-time b{color:var(--text-main)}
                 .metric-start b{color:var(--text-main)}
-                .progress-wrap{background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:8px 10px;margin-bottom:10px}
-                .progress-label{display:flex;justify-content:space-between;font-size:9.5px;color:var(--text-muted);margin-bottom:5px;font-weight:700}
-                .progress-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.05);gap:2px}
-                .bar-online{background:var(--online-color);transition:width .3s}
-                .bar-break{background:var(--break-color);transition:width .3s}
+                .extremes-wrap{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:9px 10px;margin-bottom:10px}
+                .extremes-title{font-size:10px;font-weight:800;color:var(--text-main);margin-bottom:7px;display:flex;align-items:center;gap:4px}
+                .extremes-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+                .extreme-item{background:rgba(255,255,255,.03);border:1px solid var(--card-border);border-radius:8px;padding:5px 7px}
+                .extreme-label{font-size:8.5px;color:var(--text-muted);display:block;margin-bottom:3px}
+                .extreme-val{display:flex;align-items:center;justify-content:space-between;gap:4px}
+                .extreme-val a{color:var(--ticket-color);text-decoration:none;font-weight:800;font-size:11px;direction:ltr;background:rgba(56,189,248,.12);padding:1px 5px;border-radius:4px;border:1px solid rgba(56,189,248,.25)}
+                .extreme-val a:hover{background:rgba(56,189,248,.25)}
+                .extreme-val strong{color:var(--text-main);font-size:11.5px;font-variant-numeric:tabular-nums;direction:ltr}
                 .timeline-list{display:grid;gap:4px;max-height:120px;overflow-y:auto;padding-left:3px;margin-bottom:10px;scrollbar-width:thin;scrollbar-color:var(--card-border) transparent}
                 .timeline-list::-webkit-scrollbar{width:4px}
                 .timeline-list::-webkit-scrollbar-thumb{background:var(--card-border);border-radius:4px}
@@ -566,11 +662,37 @@
                     <div class="metric-card metric-time"><span>متوسط التكت</span><b data-role="avg-time">00:00</b></div>
                     <div class="metric-card metric-start"><span>بداية الشفت</span><b data-role="shift-start-time">--:--</b></div>
                 </div>
-                <div class="progress-wrap">
-                    <div class="progress-label"><span>توزيع وقت العمل والبريك</span><span data-role="utilization-label">100% عمل</span></div>
-                    <div class="progress-bar">
-                        <div class="bar-online" data-role="bar-online" style="width:100%"></div>
-                        <div class="bar-break" data-role="bar-break" style="width:0%"></div>
+                <div class="extremes-wrap">
+                    <div class="extremes-title"><span>⏱️</span><span>الأرقام القياسية للسيشن والتكتات</span></div>
+                    <div class="extremes-grid">
+                        <div class="extreme-item">
+                            <span class="extreme-label">أطول سيشن:</span>
+                            <div class="extreme-val">
+                                <a data-role="longest-session-link" href="javascript:void(0)" target="_blank">----</a>
+                                <strong data-role="longest-session-time">00:00</strong>
+                            </div>
+                        </div>
+                        <div class="extreme-item">
+                            <span class="extreme-label">أقصر سيشن:</span>
+                            <div class="extreme-val">
+                                <a data-role="shortest-session-link" href="javascript:void(0)" target="_blank">----</a>
+                                <strong data-role="shortest-session-time">00:00</strong>
+                            </div>
+                        </div>
+                        <div class="extreme-item">
+                            <span class="extreme-label">أطول تكت (إجمالي):</span>
+                            <div class="extreme-val">
+                                <a data-role="longest-ticket-link" href="javascript:void(0)" target="_blank">----</a>
+                                <strong data-role="longest-ticket-time">00:00</strong>
+                            </div>
+                        </div>
+                        <div class="extreme-item">
+                            <span class="extreme-label">أقصر تكت (إجمالي):</span>
+                            <div class="extreme-val">
+                                <a data-role="shortest-ticket-link" href="javascript:void(0)" target="_blank">----</a>
+                                <strong data-role="shortest-ticket-time">00:00</strong>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="timeline-list" data-role="timeline-list"></div>
@@ -604,11 +726,34 @@
             byRole('avg-time').textContent = _formatDuration(metrics.avgTicketDurationMs);
             if (byRole('shift-start-time')) byRole('shift-start-time').textContent = metrics.shiftStart ? _formatTime(metrics.shiftStart) : '--:--';
 
-            const onlinePercent = metrics.utilizationRate;
-            const breakPercent = 100 - onlinePercent;
-            byRole('bar-online').style.width = `${onlinePercent}%`;
-            byRole('bar-break').style.width = `${breakPercent}%`;
-            byRole('utilization-label').textContent = `${onlinePercent}% أونلاين (${breakPercent}% بريك)`;
+            function _buildTicketUrl(ticketId) {
+                if (!ticketId) return 'javascript:void(0)';
+                return `https://crm.tabby.sa/object/ticket/${ticketId}`;
+            }
+
+            function setExtremeItem(roleLink, roleTime, item, isTotal = false) {
+                const linkElem = byRole(roleLink);
+                const timeElem = byRole(roleTime);
+                if (!linkElem || !timeElem) return;
+                if (item && item.ticketId) {
+                    linkElem.textContent = `#${item.ticketId}`;
+                    linkElem.href = _buildTicketUrl(item.ticketId);
+                    linkElem.title = `فتح التكت ${item.ticketId} في CRM`;
+                    const durMs = isTotal ? (item.totalMs || 0) : (item.durationMs || 0);
+                    timeElem.textContent = _formatDuration(durMs);
+                } else {
+                    linkElem.textContent = '----';
+                    linkElem.href = 'javascript:void(0)';
+                    timeElem.textContent = '00:00';
+                }
+            }
+
+            const ext = metrics.extremes || {};
+            setExtremeItem('longest-session-link', 'longest-session-time', ext.longestSession, false);
+            setExtremeItem('shortest-session-link', 'shortest-session-time', ext.shortestSession, false);
+            setExtremeItem('longest-ticket-link', 'longest-ticket-time', ext.longestTicket, true);
+            setExtremeItem('shortest-ticket-link', 'shortest-ticket-time', ext.shortestTicket, true);
+
             byRole('compact-online').textContent = _formatDuration(metrics.totalOnlineMs);
 
             const listElem = byRole('timeline-list');
@@ -649,16 +794,26 @@
             if (!lastMetrics) renderMetrics();
             const m = lastMetrics || _calculateMetrics([]);
             const shiftStartTime = m.shiftStart ? _formatTime(m.shiftStart) : '--:--';
+            const ext = m.extremes || {};
+            const longestSessStr = ext.longestSession ? `#${ext.longestSession.ticketId} (${_formatDuration(ext.longestSession.durationMs)})` : '--';
+            const shortestSessStr = ext.shortestSession ? `#${ext.shortestSession.ticketId} (${_formatDuration(ext.shortestSession.durationMs)})` : '--';
+            const longestTickStr = ext.longestTicket ? `#${ext.longestTicket.ticketId} (${_formatDuration(ext.longestTicket.totalMs)})` : '--';
+            const shortestTickStr = ext.shortestTicket ? `#${ext.shortestTicket.ticketId} (${_formatDuration(ext.shortestTicket.totalMs)})` : '--';
+
             const report = [
                 `📊 تقرير نشاط البروفايل و AUX اليومي:`,
                 `---------------------------------`,
                 `🟢 وقت الأونلاين (Online): ${_formatDuration(m.totalOnlineMs)}`,
                 `🟡 وقت الاستراحة (Break): ${_formatDuration(m.totalBreakMs)}`,
                 `🕒 بداية الشفت الفعلية: ${shiftStartTime}`,
-                `📈 نسبة الالتزام والعمل: ${m.utilizationRate}%`,
                 `🔵 إجمالي السيشن (Sessions): ${m.totalSessions}`,
                 `🎯 إجمالي التكتات الفريدة: ${m.uniqueTicketsCount || m.totalTicketsCompleted}`,
                 `⏱️ متوسط وقت التكت (ABST): ${_formatDuration(m.avgTicketDurationMs)}`,
+                `---------------------------------`,
+                `⏳ أطول سيشن: ${longestSessStr}`,
+                `⚡ أقصر سيشن: ${shortestSessStr}`,
+                `📈 أطول تكت (مجموع): ${longestTickStr}`,
+                `📉 أقصر تكت (مجموع): ${shortestTickStr}`,
                 `---------------------------------`
             ].join('\n');
 
