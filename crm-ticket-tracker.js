@@ -409,7 +409,7 @@
                 <div class="typing-bar" data-role="typing-bar">
                     <div class="typing-metric"><span>الحروف</span><b data-role="chars-count">0</b></div>
                     <div class="typing-metric"><span>الجمل</span><b data-role="sentences-count">0</b></div>
-                    <div class="typing-metric"><span>حروف التكت</span><b data-role="ticket-chars">0</b></div>
+                    <div class="typing-metric"><span>التكت الحالي</span><b data-role="ticket-chars">0</b></div>
                 </div>
                 <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
                 <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
