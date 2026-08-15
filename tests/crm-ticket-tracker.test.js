@@ -135,6 +135,15 @@ test('bookmarklet includes analytics view, line chart, and cumulative writing st
     assert.match(runtime, /fastToolkit_crm_ticket_tracker_history_v1/);
 });
 
+test('bookmarklet discovers and displays Backoffice BO link beside ticket ID', () => {
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /data-role="bo-link"/);
+    assert.match(runtime, /findBackofficeUrl/);
+    assert.match(runtime, /backoffice\.tabby\.(?:sa|ai)/);
+    assert.match(runtime, /hd_ticket_link/);
+    assert.match(runtime, /BO ↗/);
+});
+
 
 
 

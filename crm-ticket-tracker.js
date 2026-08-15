@@ -416,7 +416,12 @@
                 .icon-btn:hover{filter:brightness(1.15);transform:scale(1.04)}
                 .ticket{display:flex;align-items:center;justify-content:space-between;background:var(--card-bg);padding:9px 11px;border-radius:11px;margin-bottom:9px}
                 .ticket-label{font-size:11px;color:var(--text-muted)}
+                .ticket-links-wrap{display:flex;align-items:center;gap:6px}
                 .ticket-link{color:var(--link-color);text-decoration:none;font-weight:800;font-size:14.5px;direction:ltr}
+                .bo-link{display:none;align-items:center;justify-content:center;padding:2px 7px;background:rgba(56,189,248,.18);border:1px solid rgba(56,189,248,.35);color:rgb(56,189,248);border-radius:6px;font-size:10px;font-weight:800;text-decoration:none;transition:background .15s,transform .1s;letter-spacing:.3px;line-height:1.2}
+                .bo-link:hover{background:rgba(56,189,248,.32);transform:scale(1.05)}
+                .recent-bo-link{color:rgb(56,189,248);font-size:9px;font-weight:800;text-decoration:none;padding:1px 5px;border-radius:4px;background:rgba(56,189,248,.14)}
+                .recent-bo-link:hover{background:rgba(56,189,248,.28)}
                 .times{display:grid;grid-template-columns:1fr;gap:8px}
                 .metric{background:var(--card-bg);border:1px solid var(--card-border);padding:9px 10px;border-radius:11px}
                 .metric span{display:block;color:var(--text-muted);font-size:10px;margin-bottom:4px;font-weight:600}
@@ -467,7 +472,13 @@
                     </div>
                 </div>
                 <div class="main-view" data-role="main-view">
-                    <div class="ticket"><span class="ticket-label" data-role="ticket-status">بانتظار تكت</span><a class="ticket-link" data-role="ticket-link" href="javascript:void(0)">----</a></div>
+                    <div class="ticket">
+                        <span class="ticket-label" data-role="ticket-status">بانتظار تكت</span>
+                        <div class="ticket-links-wrap">
+                            <a class="bo-link" data-role="bo-link" href="javascript:void(0)" target="_blank" rel="noopener noreferrer" title="فتح التكت في Backoffice" style="display:none;">BO ↗</a>
+                            <a class="ticket-link" data-role="ticket-link" href="javascript:void(0)">----</a>
+                        </div>
+                    </div>
                     <div class="times" data-role="times">
                         <div class="metric"><span>الجلسة الحالية</span><strong data-role="current">00:00</strong></div>
                         <div class="metric" data-role="ticket-total-metric" style="display:none;"><span>مجموع التكت</span><strong data-role="ticket-total">00:00</strong></div>
@@ -653,6 +664,24 @@
             return '';
         }
 
+        function findBackofficeUrl() {
+            try {
+                if (typeof document === 'undefined') return '';
+                const directSelector = document.querySelector('[data-testid*="hd_ticket_link"] a, [data-testid*="property-row--hd_ticket_link"] a');
+                if (directSelector && directSelector.href && /backoffice\.tabby\.(?:sa|ai)/i.test(directSelector.href)) {
+                    return directSelector.href.trim();
+                }
+                const boAnchors = document.querySelectorAll('a[href*="backoffice.tabby.sa/tickets"], a[href*="backoffice.tabby.ai/tickets"]');
+                for (let i = 0; i < boAnchors.length; i++) {
+                    const href = boAnchors[i].href;
+                    if (href && /backoffice\.tabby\.(?:sa|ai)/i.test(href)) {
+                        return href.trim();
+                    }
+                }
+            } catch (e) {}
+            return '';
+        }
+
         function getLiveDotStyle(durationMs, isLight) {
             if (durationMs >= 20 * 60 * 1000) return { bg: isLight ? 'rgb(220,38,38)' : 'rgb(248,113,113)', shadow: `0 0 10px ${isLight ? 'rgb(220,38,38)' : 'rgb(248,113,113)'}` };
             if (durationMs >= 15 * 60 * 1000) return { bg: isLight ? 'rgb(217,119,6)' : 'rgb(251,191,36)', shadow: `0 0 10px ${isLight ? 'rgb(217,119,6)' : 'rgb(251,191,36)'}` };
@@ -676,6 +705,22 @@
             ticketLink.textContent = shortTicketId(ticketId);
             ticketLink.style.visibility = ticketId ? 'visible' : 'hidden';
             ticketLink.href = ticketId ? buildTicketUrl(ticketId) : 'javascript:void(0)';
+
+            const boLink = byRole('bo-link');
+            if (boLink) {
+                if (ticket && !ticket.boUrl) {
+                    const foundBo = findBackofficeUrl();
+                    if (foundBo) ticket.boUrl = foundBo;
+                }
+                const currentBo = ticket && ticket.boUrl ? ticket.boUrl : findBackofficeUrl();
+                if (currentBo && ticketId) {
+                    if (ticket) ticket.boUrl = currentBo;
+                    boLink.href = currentBo;
+                    boLink.style.display = 'inline-flex';
+                } else {
+                    boLink.style.display = 'none';
+                }
+            }
 
             const currentElem = byRole('current');
             currentElem.textContent = formatDuration(sessionMs);
@@ -731,6 +776,12 @@
                 .forEach(([recentId, recentTicket]) => {
                     const row = document.createElement('div');
                     row.className = 'recent-row';
+
+                    const linkCol = document.createElement('div');
+                    linkCol.style.display = 'flex';
+                    linkCol.style.alignItems = 'center';
+                    linkCol.style.gap = '5px';
+
                     const link = document.createElement('a');
                     link.href = buildTicketUrl(recentId);
                     link.textContent = shortTicketId(recentId);
@@ -738,12 +789,25 @@
                         finalizeActive(Date.now());
                         saveState();
                     });
+                    linkCol.appendChild(link);
+
+                    if (recentTicket && recentTicket.boUrl) {
+                        const rBo = document.createElement('a');
+                        rBo.className = 'recent-bo-link';
+                        rBo.href = recentTicket.boUrl;
+                        rBo.target = '_blank';
+                        rBo.rel = 'noopener noreferrer';
+                        rBo.textContent = 'BO ↗';
+                        rBo.title = 'فتح في Backoffice';
+                        linkCol.appendChild(rBo);
+                    }
+
                     const duration = document.createElement('span');
                     duration.textContent = formatDuration(ticketTotalMs(recentId, timestamp));
                     const visits = document.createElement('small');
                     const visitsCount = Math.max(0, Number(recentTicket.visits) || 0);
                     visits.textContent = visitsCount > 1 ? `زرتها ${visitsCount} مرات` : '';
-                    row.append(link, duration, visits);
+                    row.append(linkCol, duration, visits);
                     recent.appendChild(row);
                 });
         }
