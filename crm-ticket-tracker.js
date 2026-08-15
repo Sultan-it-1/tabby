@@ -185,29 +185,98 @@
             return `…${text.slice(-4)}`;
         }
 
+        function totalSessionsCount() {
+            return Object.values(state.tickets).reduce((sum, ticket) => (
+                sum + Math.max(1, Number(ticket && ticket.visits) || 0)
+            ), 0);
+        }
+
         function summaryText(timestamp) {
             const ticketCount = Object.keys(state.tickets).length;
+            const sessionsCount = totalSessionsCount();
             const total = shiftTotalMs(timestamp);
             const average = ticketCount ? total / ticketCount : 0;
             const lines = [
                 `ملخص التكتات ${state.day}`,
                 `عدد التكتات: ${ticketCount}`,
+                `عدد السيشن: ${sessionsCount}`,
                 `إجمالي الوقت: ${formatDuration(total)}`,
-                `متوسط التكت: ${formatDuration(average)}`
+                `ABST: ${formatDuration(average)}`
             ];
             if (state.active) {
-                lines.push(`التكت الحالي ${shortTicketId(state.active.id)}: ${formatDuration(currentSessionMs(timestamp))}`);
-                lines.push(`مجموع التكت الحالي: ${formatDuration(currentTicketTotalMs(timestamp))}`);
+                const activeTicket = state.tickets[state.active.id];
+                const isRepeated = Boolean(activeTicket && Number(activeTicket.visits) > 1);
+                const activeUrl = buildTicketUrl(state.active.id);
+                lines.push(`التكت الحالي (${activeUrl}): ${formatDuration(currentSessionMs(timestamp))}`);
+                if (isRepeated) {
+                    lines.push(`مجموع التكت الحالي: ${formatDuration(currentTicketTotalMs(timestamp))}`);
+                    lines.push(`تكررت: ${Number(activeTicket.visits)} مرات`);
+                }
             }
             const ticketRows = Object.entries(state.tickets)
                 .sort((first, second) => (Number(second[1].lastOpenedAt) || 0) - (Number(first[1].lastOpenedAt) || 0));
             if (ticketRows.length) {
                 lines.push('', 'تفاصيل التكتات:');
                 ticketRows.forEach(([ticketId, ticket]) => {
-                    lines.push(`${shortTicketId(ticketId)} — ${formatDuration(ticketTotalMs(ticketId, timestamp))} — ${Math.max(0, Number(ticket.visits) || 0)} زيارات`);
+                    const visits = Math.max(0, Number(ticket.visits) || 0);
+                    const visitsText = visits > 1 ? ` — تكررت ${visits} مرات` : '';
+                    lines.push(`${buildTicketUrl(ticketId)} — ${formatDuration(ticketTotalMs(ticketId, timestamp))}${visitsText}`);
                 });
             }
             return lines.join('\n');
+        }
+
+        const POS_STORAGE_KEY = 'fastToolkit_crm_ticket_tracker_pos_v1';
+
+        function loadSavedPosition() {
+            try {
+                const raw = localStorage.getItem(POS_STORAGE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (typeof parsed.left === 'number' && typeof parsed.top === 'number') {
+                    return parsed;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function savePosition(pos) {
+            try {
+                localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(pos));
+            } catch (e) {}
+        }
+
+        function applyPosition(elem, pos) {
+            if (!pos || !elem) return;
+            const margin = 8;
+            const width = elem.offsetWidth || 295;
+            const height = elem.offsetHeight || 220;
+            const maxLeft = Math.max(margin, (window.innerWidth || 1200) - width - margin);
+            const maxTop = Math.max(margin, (window.innerHeight || 800) - height - margin);
+            const left = Math.min(Math.max(margin, pos.left), maxLeft);
+            const top = Math.min(Math.max(margin, pos.top), maxTop);
+            elem.style.left = `${left}px`;
+            elem.style.top = `${top}px`;
+            elem.style.bottom = 'auto';
+            elem.style.right = 'auto';
+        }
+
+        const THEME_STORAGE_KEY = 'fastToolkit_crm_ticket_tracker_theme_v1';
+
+        function loadSavedTheme() {
+            try {
+                const saved = localStorage.getItem(THEME_STORAGE_KEY);
+                if (saved === 'light' || saved === 'dark') return saved;
+                if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+                    return 'light';
+                }
+            } catch (e) {}
+            return 'dark';
+        }
+
+        function saveTheme(theme) {
+            try { localStorage.setItem(THEME_STORAGE_KEY, theme); }
+            catch (e) {}
         }
 
         let state = loadState(Date.now());
@@ -222,22 +291,105 @@
         const shadow = host.attachShadow({ mode: 'open' });
         shadow.innerHTML = `
             <style>
-                :host{all:initial}.panel,.compact{position:fixed;z-index:2147483647;left:16px;bottom:16px;direction:rtl;font-family:Segoe UI,Tahoma,sans-serif;color:#f8fafc;box-sizing:border-box}
-                .panel{width:260px;padding:13px;background:linear-gradient(145deg,#111827,#080d14);border:1px solid rgba(52,211,153,.35);border-radius:16px;box-shadow:0 18px 55px rgba(0,0,0,.5)}
-                .header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.brand{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800}.live{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 9px #34d399}
-                button,a{font:inherit}.min{border:0;background:rgba(255,255,255,.07);color:#cbd5e1;width:26px;height:26px;border-radius:8px;cursor:pointer}.ticket{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);padding:8px 9px;border-radius:10px;margin-bottom:8px}.ticket-label{font-size:10px;color:#94a3b8}.ticket-link{color:#6ee7b7;text-decoration:none;font-weight:800;font-size:13px;direction:ltr}
-                .times{display:grid;grid-template-columns:1fr 1fr;gap:7px}.metric{background:rgba(255,255,255,.035);border:1px solid rgba(148,163,184,.12);padding:8px;border-radius:10px}.metric span{display:block;color:#94a3b8;font-size:9px;margin-bottom:3px}.metric strong{display:block;color:#f8fafc;font-size:16px;direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
-                .stats{display:flex;justify-content:space-between;gap:8px;margin-top:8px;color:#94a3b8;font-size:9px}.stats b{color:#e2e8f0;font-variant-numeric:tabular-nums}.actions{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:10px}.copy,.reset{border-radius:9px;padding:7px 8px;cursor:pointer}.copy{border:1px solid rgba(52,211,153,.35);background:rgba(16,185,129,.13);color:#a7f3d0}.reset{border:1px solid rgba(248,113,113,.2);background:rgba(127,29,29,.12);color:#fca5a5}.hint{margin-top:8px;color:#64748b;font-size:8px;text-align:center}.compact{display:none;align-items:center;gap:7px;border:1px solid rgba(52,211,153,.4);border-radius:999px;padding:7px 10px;background:#0b111a;box-shadow:0 10px 30px rgba(0,0,0,.45);cursor:pointer;font-size:10px}.compact strong{color:#6ee7b7;direction:ltr;font-variant-numeric:tabular-nums}.toast{display:none;margin-top:7px;color:#a7f3d0;font-size:9px;text-align:center}
-                .recent-wrap{margin-top:9px;padding-top:8px;border-top:1px solid rgba(148,163,184,.12)}.recent-title{color:#64748b;font-size:8px;margin-bottom:4px}.recent{display:grid;gap:3px}.recent-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:7px;padding:4px 6px;border-radius:7px;background:rgba(255,255,255,.025);font-size:9px}.recent-row a{color:#a7f3d0;text-decoration:none;direction:ltr;font-weight:700}.recent-row span{color:#cbd5e1;direction:ltr;font-variant-numeric:tabular-nums}.recent-row small{color:#64748b;direction:rtl}
+                :host{
+                    all:initial;
+                    --bg-panel:linear-gradient(145deg,#111827,#080d14);
+                    --border-panel:rgba(52,211,153,.38);
+                    --shadow-panel:0 22px 65px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05);
+                    --text-main:#f8fafc;
+                    --text-muted:#94a3b8;
+                    --text-sub:#64748b;
+                    --card-bg:rgba(255,255,255,.04);
+                    --card-border:rgba(148,163,184,.14);
+                    --link-color:#6ee7b7;
+                    --btn-icon-bg:rgba(255,255,255,.08);
+                    --btn-icon-color:#cbd5e1;
+                    --copy-bg:rgba(16,185,129,.14);
+                    --copy-border:rgba(52,211,153,.35);
+                    --copy-color:#a7f3d0;
+                    --reset-bg:rgba(127,29,29,.14);
+                    --reset-border:rgba(248,113,113,.22);
+                    --reset-color:#fca5a5;
+                    --compact-bg:#0b111a;
+                    --compact-time:#6ee7b7;
+                }
+                :host(.light-theme){
+                    --bg-panel:linear-gradient(145deg,#ffffff,#f8fafc);
+                    --border-panel:rgba(16,185,129,.35);
+                    --shadow-panel:0 18px 50px rgba(15,23,42,.14),0 0 0 1px rgba(0,0,0,.06);
+                    --text-main:#0f172a;
+                    --text-muted:#64748b;
+                    --text-sub:#94a3b8;
+                    --card-bg:rgba(0,0,0,.035);
+                    --card-border:rgba(0,0,0,.08);
+                    --link-color:#059669;
+                    --btn-icon-bg:rgba(0,0,0,.05);
+                    --btn-icon-color:#475569;
+                    --copy-bg:rgba(16,185,129,.12);
+                    --copy-border:rgba(16,185,129,.35);
+                    --copy-color:#047857;
+                    --reset-bg:rgba(239,68,68,.08);
+                    --reset-border:rgba(239,68,68,.25);
+                    --reset-color:#b91c1c;
+                    --compact-bg:#ffffff;
+                    --compact-time:#059669;
+                }
+                .panel,.compact{position:fixed;z-index:2147483647;left:20px;bottom:20px;direction:rtl;font-family:'Segoe UI',Tahoma,sans-serif;color:var(--text-main);box-sizing:border-box;user-select:none;-webkit-user-select:none;touch-action:none}
+                .panel{width:295px;padding:15px 16px;background:var(--bg-panel);border:1px solid var(--border-panel);border-radius:18px;box-shadow:var(--shadow-panel);cursor:grab}
+                .panel:active{cursor:grabbing}
+                .header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px;cursor:grab}
+                .brand{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--text-main)}
+                .live{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399}
+                .header-actions{display:flex;align-items:center;gap:5px}
+                button,a{font:inherit}
+                .icon-btn{border:0;background:var(--btn-icon-bg);color:var(--btn-icon-color);width:28px;height:28px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .2s,transform .1s}
+                .icon-btn:hover{filter:brightness(1.15);transform:scale(1.04)}
+                .ticket{display:flex;align-items:center;justify-content:space-between;background:var(--card-bg);padding:9px 11px;border-radius:11px;margin-bottom:9px}
+                .ticket-label{font-size:11px;color:var(--text-muted)}
+                .ticket-link{color:var(--link-color);text-decoration:none;font-weight:800;font-size:14.5px;direction:ltr}
+                .times{display:grid;grid-template-columns:1fr;gap:8px}
+                .metric{background:var(--card-bg);border:1px solid var(--card-border);padding:9px 10px;border-radius:11px}
+                .metric span{display:block;color:var(--text-muted);font-size:10px;margin-bottom:4px;font-weight:600}
+                .metric strong{display:block;color:var(--text-main);font-size:19px;direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+                .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px;color:var(--text-muted);font-size:9.5px;background:var(--card-bg);border:1px solid var(--card-border);padding:6px 4px;border-radius:9px;text-align:center}
+                .stats span{display:flex;flex-direction:column;gap:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                .stats b{color:var(--text-main);font-variant-numeric:tabular-nums;font-size:11.5px}
+                .actions{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:12px}
+                .copy,.reset{border-radius:10px;padding:8px 10px;cursor:pointer;font-size:10.5px;font-weight:700}
+                .copy{border:1px solid var(--copy-border);background:var(--copy-bg);color:var(--copy-color)}
+                .reset{border:1px solid var(--reset-border);background:var(--reset-bg);color:var(--reset-color)}
+                .hint{margin-top:9px;color:var(--text-sub);font-size:8.5px;text-align:center}
+                .compact{display:none;align-items:center;gap:8px;border:1px solid var(--border-panel);border-radius:999px;padding:8px 13px;background:var(--compact-bg);box-shadow:var(--shadow-panel);cursor:grab;font-size:11px}
+                .compact:active{cursor:grabbing}
+                .compact strong{color:var(--compact-time);direction:ltr;font-variant-numeric:tabular-nums;font-size:13px}
+                .toast{display:none;margin-top:8px;color:var(--copy-color);font-size:10px;text-align:center}
+                .recent-wrap{margin-top:10px;padding-top:9px;border-top:1px solid var(--card-border)}
+                .recent-title{color:var(--text-sub);font-size:9px;margin-bottom:5px}
+                .recent{display:grid;gap:4px}
+                .recent-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:5px 7px;border-radius:8px;background:var(--card-bg);font-size:10px}
+                .recent-row a{color:var(--link-color);text-decoration:none;direction:ltr;font-weight:700}
+                .recent-row span{color:var(--text-main);direction:ltr;font-variant-numeric:tabular-nums}
+                .recent-row small{color:var(--text-sub);direction:rtl}
             </style>
             <section class="panel" data-role="panel" aria-label="عداد وقت التكتات">
-                <div class="header"><div class="brand"><span class="live"></span><span>عداد التكتات</span></div><button class="min" data-action="minimize" title="تصغير">−</button></div>
-                <div class="ticket"><span class="ticket-label" data-role="ticket-status">بانتظار تكت</span><a class="ticket-link" data-role="ticket-link" href="#">----</a></div>
-                <div class="times">
-                    <div class="metric"><span>الجلسة الحالية</span><strong data-role="current">00:00</strong></div>
-                    <div class="metric"><span>مجموع التكت</span><strong data-role="ticket-total">00:00</strong></div>
+                <div class="header">
+                    <div class="brand"><span class="live"></span><span>عداد التكتات</span></div>
+                    <div class="header-actions">
+                        <button class="icon-btn" data-action="toggle-theme" title="تبديل المظهر النهاري/الليلي">☀️</button>
+                        <button class="icon-btn" data-action="minimize" title="تصغير">−</button>
+                    </div>
                 </div>
-                <div class="stats"><span>التكتات: <b data-role="count">0</b></span><span>المتوسط: <b data-role="average">00:00</b></span><span>الزيارات: <b data-role="visits">0</b></span></div>
+                <div class="ticket"><span class="ticket-label" data-role="ticket-status">بانتظار تكت</span><a class="ticket-link" data-role="ticket-link" href="#">----</a></div>
+                <div class="times" data-role="times">
+                    <div class="metric"><span>الجلسة الحالية</span><strong data-role="current">00:00</strong></div>
+                    <div class="metric" data-role="ticket-total-metric" style="display:none;"><span>مجموع التكت</span><strong data-role="ticket-total">00:00</strong></div>
+                </div>
+                <div class="stats">
+                    <span>التكتات<b data-role="count">0</b></span>
+                    <span>السيشن<b data-role="sessions">0</b></span>
+                    <span>ABST<b data-role="average">00:00</b></span>
+                    <span>تكررت<b data-role="visits">0</b></span>
+                </div>
                 <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
                 <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
                 <div class="toast" data-role="toast"></div>
@@ -252,6 +404,118 @@
         const ticketLink = byRole('ticket-link');
         let toastTimer = null;
 
+        let currentTheme = loadSavedTheme();
+
+        function applyTheme(theme) {
+            currentTheme = theme;
+            const themeBtn = shadow.querySelector('[data-action="toggle-theme"]');
+            if (theme === 'light') {
+                host.classList.add('light-theme');
+                if (themeBtn) {
+                    themeBtn.textContent = '🌙';
+                    themeBtn.title = 'تفعيل الوضع الليلي';
+                }
+            } else {
+                host.classList.remove('light-theme');
+                if (themeBtn) {
+                    themeBtn.textContent = '☀️';
+                    themeBtn.title = 'تفعيل الوضع النهاري';
+                }
+            }
+        }
+
+        function toggleTheme() {
+            const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+            applyTheme(nextTheme);
+            saveTheme(nextTheme);
+            render(Date.now());
+        }
+
+        applyTheme(currentTheme);
+
+        function makeDraggable(elem, onDragEnd) {
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let initialLeft = 0;
+            let initialTop = 0;
+            let hasMoved = false;
+
+            elem.addEventListener('pointerdown', (event) => {
+                if (event.button !== 0) return;
+                if (event.target.closest('button:not([data-role="compact"]), a, input, select, textarea')) return;
+
+                isDragging = true;
+                hasMoved = false;
+                startX = event.clientX;
+                startY = event.clientY;
+
+                const rect = elem.getBoundingClientRect();
+                initialLeft = rect.left;
+                initialTop = rect.top;
+
+                elem.setPointerCapture(event.pointerId);
+            });
+
+            elem.addEventListener('pointermove', (event) => {
+                if (!isDragging) return;
+                const dx = event.clientX - startX;
+                const dy = event.clientY - startY;
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                    hasMoved = true;
+                }
+                if (!hasMoved) return;
+
+                const margin = 8;
+                const maxLeft = Math.max(margin, window.innerWidth - elem.offsetWidth - margin);
+                const maxTop = Math.max(margin, window.innerHeight - elem.offsetHeight - margin);
+                const targetLeft = Math.min(Math.max(margin, initialLeft + dx), maxLeft);
+                const targetTop = Math.min(Math.max(margin, initialTop + dy), maxTop);
+
+                elem.style.left = `${targetLeft}px`;
+                elem.style.top = `${targetTop}px`;
+                elem.style.bottom = 'auto';
+                elem.style.right = 'auto';
+            });
+
+            const onEnd = (event) => {
+                if (!isDragging) return;
+                isDragging = false;
+                try {
+                    elem.releasePointerCapture(event.pointerId);
+                } catch (e) {}
+
+                if (hasMoved) {
+                    const rect = elem.getBoundingClientRect();
+                    const newPos = { left: rect.left, top: rect.top };
+                    savePosition(newPos);
+                    if (onDragEnd) onDragEnd(newPos);
+                }
+            };
+
+            elem.addEventListener('pointerup', onEnd);
+            elem.addEventListener('pointercancel', onEnd);
+
+            return () => hasMoved;
+        }
+
+        const initialPos = loadSavedPosition();
+        if (initialPos) {
+            applyPosition(panel, initialPos);
+            applyPosition(compact, initialPos);
+        }
+
+        const isCompactMoved = makeDraggable(compact, pos => applyPosition(panel, pos));
+        makeDraggable(panel, pos => applyPosition(compact, pos));
+
+        window.addEventListener('resize', () => {
+            const currentPos = loadSavedPosition();
+            if (currentPos) {
+                applyPosition(panel, currentPos);
+                applyPosition(compact, currentPos);
+            }
+        });
+
         function showToast(message) {
             const toast = byRole('toast');
             toast.textContent = message;
@@ -260,22 +524,70 @@
             toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 1800);
         }
 
+        function getDurationColor(durationMs, isLight) {
+            if (durationMs >= 20 * 60 * 1000) return isLight ? '#dc2626' : '#f87171';
+            if (durationMs >= 15 * 60 * 1000) return isLight ? '#d97706' : '#fbbf24';
+            return '';
+        }
+
+        function getLiveDotStyle(durationMs, isLight) {
+            if (durationMs >= 20 * 60 * 1000) return { bg: isLight ? '#dc2626' : '#f87171', shadow: `0 0 10px ${isLight ? '#dc2626' : '#f87171'}` };
+            if (durationMs >= 15 * 60 * 1000) return { bg: isLight ? '#d97706' : '#fbbf24', shadow: `0 0 10px ${isLight ? '#d97706' : '#fbbf24'}` };
+            return { bg: '#10b981', shadow: '0 0 10px #10b981' };
+        }
+
         function render(timestamp) {
             const ticketId = state.active ? state.active.id : '';
             const ticket = ticketId ? ensureTicket(ticketId, timestamp) : null;
             const ticketCount = Object.keys(state.tickets).length;
+            const sessionsCount = totalSessionsCount();
             const total = shiftTotalMs(timestamp);
+            const isRepeated = Boolean(ticket && Number(ticket.visits) > 1);
+            const isLight = currentTheme === 'light';
+            const sessionMs = currentSessionMs(timestamp);
+            const totalMs = currentTicketTotalMs(timestamp);
+            const sessionColor = getDurationColor(sessionMs, isLight);
+            const totalColor = getDurationColor(totalMs, isLight);
+
             byRole('ticket-status').textContent = ticketId ? 'التكت الحالي' : 'بانتظار تكت من الرابط';
             ticketLink.textContent = shortTicketId(ticketId);
             ticketLink.style.visibility = ticketId ? 'visible' : 'hidden';
             ticketLink.href = ticketId ? buildTicketUrl(ticketId) : '#';
-            byRole('current').textContent = formatDuration(currentSessionMs(timestamp));
-            byRole('ticket-total').textContent = formatDuration(currentTicketTotalMs(timestamp));
+
+            const currentElem = byRole('current');
+            currentElem.textContent = formatDuration(sessionMs);
+            currentElem.style.color = sessionColor || (isLight ? '#0f172a' : '#f8fafc');
+
+            const totalMetric = byRole('ticket-total-metric');
+            const timesWrap = byRole('times');
+            if (totalMetric) {
+                totalMetric.style.display = isRepeated ? 'block' : 'none';
+            }
+            if (timesWrap) {
+                timesWrap.style.gridTemplateColumns = isRepeated ? '1fr 1fr' : '1fr';
+            }
+
+            const totalElem = byRole('ticket-total');
+            totalElem.textContent = formatDuration(totalMs);
+            totalElem.style.color = totalColor || (isLight ? '#0f172a' : '#f8fafc');
+
             byRole('count').textContent = String(ticketCount);
+            if (byRole('sessions')) byRole('sessions').textContent = String(sessionsCount);
             byRole('average').textContent = formatDuration(ticketCount ? total / ticketCount : 0);
             byRole('visits').textContent = String(ticket ? Math.max(0, Number(ticket.visits) || 0) : 0);
             byRole('compact-ticket').textContent = shortTicketId(ticketId);
-            byRole('compact-time').textContent = formatDuration(currentTicketTotalMs(timestamp));
+
+            const compactTimeElem = byRole('compact-time');
+            const compactTimeMs = isRepeated ? totalMs : sessionMs;
+            const compactColor = getDurationColor(compactTimeMs, isLight);
+            compactTimeElem.textContent = formatDuration(compactTimeMs);
+            compactTimeElem.style.color = compactColor || (isLight ? '#059669' : '#6ee7b7');
+
+            const dotStyle = getLiveDotStyle(compactTimeMs, isLight);
+            shadow.querySelectorAll('.live').forEach(dot => {
+                dot.style.background = dotStyle.bg;
+                dot.style.boxShadow = dotStyle.shadow;
+            });
 
             const recent = byRole('recent');
             recent.replaceChildren();
@@ -295,20 +607,25 @@
                     const duration = document.createElement('span');
                     duration.textContent = formatDuration(ticketTotalMs(recentId, timestamp));
                     const visits = document.createElement('small');
-                    visits.textContent = `${Math.max(0, Number(recentTicket.visits) || 0)} زيارة`;
+                    const visitsCount = Math.max(0, Number(recentTicket.visits) || 0);
+                    visits.textContent = visitsCount > 1 ? `تكررت ${visitsCount} مرات` : '';
                     row.append(link, duration, visits);
                     recent.appendChild(row);
                 });
         }
 
         function minimize() {
+            const rect = panel.getBoundingClientRect();
             panel.style.display = 'none';
             compact.style.display = 'flex';
+            applyPosition(compact, { left: rect.left, top: rect.top });
         }
 
         function show() {
+            const rect = compact.getBoundingClientRect();
             panel.style.display = 'block';
             compact.style.display = 'none';
+            applyPosition(panel, { left: rect.left, top: rect.top });
         }
 
         async function copySummary() {
@@ -339,8 +656,12 @@
             showToast('تم تصفير العداد');
         }
 
+        shadow.querySelector('[data-action="toggle-theme"]').addEventListener('click', toggleTheme);
         shadow.querySelector('[data-action="minimize"]').addEventListener('click', minimize);
-        compact.addEventListener('click', show);
+        compact.addEventListener('click', () => {
+            if (isCompactMoved && isCompactMoved()) return;
+            show();
+        });
         shadow.querySelector('[data-action="copy"]').addEventListener('click', copySummary);
         shadow.querySelector('[data-action="reset"]').addEventListener('click', resetShift);
         ticketLink.addEventListener('click', () => {

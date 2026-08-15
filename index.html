@@ -547,7 +547,28 @@
 
             if (window.FastToolkitCrmTicketTracker && bookmarkletLink) {
                 const bookmarklet = window.FastToolkitCrmTicketTracker.buildBookmarklet();
+                const defaultLabel = bookmarkletLink.textContent;
+                const bookmarkTitle = 'العداد';
+
                 bookmarkletLink.setAttribute('href', bookmarklet);
+                bookmarkletLink.setAttribute('title', bookmarkTitle);
+
+                bookmarkletLink.addEventListener('dragstart', event => {
+                    bookmarkletLink.textContent = bookmarkTitle;
+                    if (event.dataTransfer) {
+                        event.dataTransfer.setData('text/uri-list', bookmarklet);
+                        event.dataTransfer.setData('text/plain', bookmarklet);
+                        event.dataTransfer.setData('text/html', `<a href="${bookmarklet}">${bookmarkTitle}</a>`);
+                    }
+                    setTimeout(() => {
+                        bookmarkletLink.textContent = defaultLabel;
+                    }, 0);
+                });
+
+                bookmarkletLink.addEventListener('dragend', () => {
+                    bookmarkletLink.textContent = defaultLabel;
+                });
+
                 bookmarkletLink.addEventListener('click', event => {
                     event.preventDefault();
                     if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر إلى شريط المفضلة، أو استخدم زر النسخ.';
