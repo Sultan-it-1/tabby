@@ -856,9 +856,12 @@
 
             const reportLines = [
                 `📊 تقرير نشاط البروفايل و AUX:`,
-                `---------------------------------`,
-                `🟡 Break: ${_formatDuration(m.totalBreakMs)}`
+                `---------------------------------`
             ];
+
+            if (m.totalBreakMs > 0) {
+                reportLines.push(`🟡 Break: ${_formatDuration(m.totalBreakMs)}`);
+            }
 
             if (m.totalLunchMs > 0) {
                 reportLines.push(`🍔 Lunch: ${_formatDuration(m.totalLunchMs)}`);
