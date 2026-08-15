@@ -245,6 +245,9 @@
             } catch (e) {}
         }
 
+        let compactPos = loadSavedPosition();
+        let panelPos = null;
+
         function applyPosition(elem, pos) {
             if (!pos || !elem) return;
             const margin = 8;
@@ -498,20 +501,26 @@
             return () => hasMoved;
         }
 
-        const initialPos = loadSavedPosition();
-        if (initialPos) {
-            applyPosition(panel, initialPos);
-            applyPosition(compact, initialPos);
+        if (compactPos) {
+            applyPosition(compact, compactPos);
+            applyPosition(panel, compactPos);
         }
 
-        const isCompactMoved = makeDraggable(compact, pos => applyPosition(panel, pos));
-        makeDraggable(panel, pos => applyPosition(compact, pos));
+        const isCompactMoved = makeDraggable(compact, (pos) => {
+            compactPos = pos;
+            savePosition(pos);
+        });
+
+        makeDraggable(panel, (pos) => {
+            panelPos = pos;
+        });
 
         window.addEventListener('resize', () => {
-            const currentPos = loadSavedPosition();
-            if (currentPos) {
-                applyPosition(panel, currentPos);
-                applyPosition(compact, currentPos);
+            if (compactPos) {
+                applyPosition(compact, compactPos);
+            }
+            if (panel.style.display !== 'none') {
+                applyPosition(panel, panelPos || compactPos);
             }
         });
 
@@ -614,17 +623,20 @@
         }
 
         function minimize() {
-            const rect = panel.getBoundingClientRect();
             panel.style.display = 'none';
             compact.style.display = 'flex';
-            applyPosition(compact, { left: rect.left, top: rect.top });
+            if (compactPos) {
+                applyPosition(compact, compactPos);
+            }
         }
 
         function show() {
-            const rect = compact.getBoundingClientRect();
             panel.style.display = 'block';
             compact.style.display = 'none';
-            applyPosition(panel, { left: rect.left, top: rect.top });
+            const targetPos = panelPos || compactPos;
+            if (targetPos) {
+                applyPosition(panel, targetPos);
+            }
         }
 
         async function copySummary() {
