@@ -121,6 +121,20 @@ test('bookmarklet resets automatically after 4 hours of inactivity', () => {
     assert.match(bookmarklet, /lastActivityAt/);
 });
 
+test('bookmarklet includes analytics view, line chart, and cumulative writing stats', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /toggle-analytics/);
+    assert.match(bookmarklet, /data-role="analytics-view"/);
+    assert.match(bookmarklet, /data-role="chart-container"/);
+    assert.match(bookmarklet, /data-role="all-chars"/);
+    assert.match(bookmarklet, /data-role="all-sentences"/);
+    assert.match(bookmarklet, /data-role="all-sessions"/);
+    assert.match(bookmarklet, /data-role="all-abst"/);
+    assert.match(bookmarklet, /chartGrad_/);
+    assert.match(bookmarklet, /polyline/);
+    assert.match(bookmarklet, /fastToolkit_crm_ticket_tracker_history_v1/);
+});
+
 
 
 

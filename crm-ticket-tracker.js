@@ -66,6 +66,53 @@
         }
 
         const INACTIVITY_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 hours
+        const HISTORY_STORAGE_KEY = 'fastToolkit_crm_ticket_tracker_history_v1';
+
+        function loadHistory() {
+            try {
+                const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e) {}
+            return [];
+        }
+
+        function saveHistory(history) {
+            try {
+                localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.slice(-60)));
+            } catch (e) {}
+        }
+
+        function recordCompletedStateToHistory(candidate) {
+            if (!candidate || typeof candidate !== 'object') return;
+            const tickets = candidate.tickets && typeof candidate.tickets === 'object' ? candidate.tickets : {};
+            const ticketCount = Object.keys(tickets).length;
+            const sessions = Object.values(tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.visits)) || 0), 0);
+            const chars = Math.max(0, Number(candidate.totalChars) || 0);
+            const sentences = Math.max(0, Number(candidate.totalSentences) || 0);
+            const totalMs = Object.values(tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.totalMs)) || 0), 0);
+            const abstMs = ticketCount > 0 ? Math.round(totalMs / ticketCount) : 0;
+
+            if (sessions === 0 && ticketCount === 0 && chars === 0) return;
+
+            let history = loadHistory();
+            const dayKey = candidate.day || localDayKey(Number(candidate.shiftStartedAt) || Date.now());
+            const idx = history.findIndex(h => h.day === dayKey);
+            const entry = {
+                day: dayKey,
+                sessions,
+                ticketsCount: ticketCount,
+                abstMs,
+                totalMs,
+                chars,
+                sentences
+            };
+            if (idx >= 0) history[idx] = entry;
+            else history.push(entry);
+            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0));
+            saveHistory(history);
+        }
 
         function createEmptyState(timestamp) {
             return {
@@ -104,6 +151,7 @@
             }
             const lastActive = Number(candidate.lastActivityAt) || Number(candidate.shiftStartedAt) || 0;
             if (lastActive > 0 && (timestamp - lastActive) > INACTIVITY_TIMEOUT_MS) {
+                recordCompletedStateToHistory(candidate);
                 return createEmptyState(timestamp);
             }
             const normalized = createEmptyState(timestamp);
@@ -395,35 +443,74 @@
                 .recent-row a{color:var(--link-color);text-decoration:none;direction:ltr;font-weight:700}
                 .recent-row span{color:var(--text-main);direction:ltr;font-variant-numeric:tabular-nums}
                 .recent-row small{color:var(--text-sub);direction:rtl}
+                .analytics-view{display:none}
+                .analytics-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--card-border)}
+                .analytics-title{font-size:11.5px;font-weight:800;color:var(--text-main);display:flex;align-items:center;gap:5px}
+                .chart-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--card-bg);padding:3px;border-radius:8px;margin-bottom:8px;border:1px solid var(--card-border)}
+                .chart-tab{border:0;background:transparent;color:var(--text-muted);padding:4px 6px;border-radius:6px;cursor:pointer;font-size:9.5px;font-weight:700;transition:all .15s}
+                .chart-tab.active{background:var(--copy-bg);color:var(--copy-color);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+                .chart-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:8px 6px 4px 6px;margin-bottom:8px}
+                .chart-container{width:100%;height:100px}
+                .all-stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;margin-bottom:8px}
+                .all-stat-item{background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;padding:5px 6px;text-align:center}
+                .all-stat-item span{display:block;font-size:8.5px;color:var(--text-muted);margin-bottom:2px}
+                .all-stat-item b{display:block;font-size:12px;color:var(--text-main);font-variant-numeric:tabular-nums}
+                .analytics-footer{display:flex;align-items:center;justify-content:space-between;font-size:8.5px;color:var(--text-sub);padding-top:2px}
             </style>
             <section class="panel" data-role="panel" aria-label="عداد وقت التكتات">
                 <div class="header">
                     <div class="brand"><span class="live"></span><span>عداد التكتات</span></div>
                     <div class="header-actions">
+                        <button class="icon-btn" data-action="toggle-analytics" title="سجل وإحصائيات الأداء">📊</button>
                         <button class="icon-btn" data-action="toggle-theme" title="تبديل المظهر النهاري/الليلي">☀️</button>
                         <button class="icon-btn" data-action="minimize" title="تصغير">−</button>
                     </div>
                 </div>
-                <div class="ticket"><span class="ticket-label" data-role="ticket-status">بانتظار تكت</span><a class="ticket-link" data-role="ticket-link" href="#">----</a></div>
-                <div class="times" data-role="times">
-                    <div class="metric"><span>الجلسة الحالية</span><strong data-role="current">00:00</strong></div>
-                    <div class="metric" data-role="ticket-total-metric" style="display:none;"><span>مجموع التكت</span><strong data-role="ticket-total">00:00</strong></div>
+                <div class="main-view" data-role="main-view">
+                    <div class="ticket"><span class="ticket-label" data-role="ticket-status">بانتظار تكت</span><a class="ticket-link" data-role="ticket-link" href="#">----</a></div>
+                    <div class="times" data-role="times">
+                        <div class="metric"><span>الجلسة الحالية</span><strong data-role="current">00:00</strong></div>
+                        <div class="metric" data-role="ticket-total-metric" style="display:none;"><span>مجموع التكت</span><strong data-role="ticket-total">00:00</strong></div>
+                    </div>
+                    <div class="stats" data-role="stats">
+                        <span>التكتات<b data-role="count">0</b></span>
+                        <span>السيشن<b data-role="sessions">0</b></span>
+                        <span>ABST<b data-role="average">00:00</b></span>
+                        <span data-role="visits-stat" style="display:none;">زرتها<b data-role="visits">0</b></span>
+                    </div>
+                    <div class="typing-bar" data-role="typing-bar">
+                        <div class="typing-metric"><span>الحروف</span><b data-role="chars-count">0</b></div>
+                        <div class="typing-metric"><span>الجمل</span><b data-role="sentences-count">0</b></div>
+                        <div class="typing-metric"><span>التكت الحالي</span><b data-role="ticket-chars">0</b></div>
+                    </div>
+                    <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
+                    <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
+                    <div class="toast" data-role="toast"></div>
+                    <div class="hint">قراءة فقط — لا يكتب ولا يرسل شيئًا داخل CRM</div>
                 </div>
-                <div class="stats" data-role="stats">
-                    <span>التكتات<b data-role="count">0</b></span>
-                    <span>السيشن<b data-role="sessions">0</b></span>
-                    <span>ABST<b data-role="average">00:00</b></span>
-                    <span data-role="visits-stat" style="display:none;">زرتها<b data-role="visits">0</b></span>
+                <div class="analytics-view" data-role="analytics-view">
+                    <div class="analytics-header">
+                        <div class="analytics-title"><span>📈</span><span>منحنى أداء الأيام السابقة</span></div>
+                        <button class="icon-btn" data-action="close-analytics" title="رجوع للعداد">✕</button>
+                    </div>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" data-action="chart-tab-sessions">السيشن اليومي</button>
+                        <button class="chart-tab" data-action="chart-tab-abst">معدل ABST</button>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-container" data-role="chart-container"></div>
+                    </div>
+                    <div class="all-stats-grid">
+                        <div class="all-stat-item"><span>إجمالي الحروف (كل الأيام)</span><b data-role="all-chars">0</b></div>
+                        <div class="all-stat-item"><span>إجمالي الجمل (كل الأيام)</span><b data-role="all-sentences">0</b></div>
+                        <div class="all-stat-item"><span>إجمالي السيشن</span><b data-role="all-sessions">0</b></div>
+                        <div class="all-stat-item"><span>متوسط ABST العام</span><b data-role="all-abst">00:00</b></div>
+                    </div>
+                    <div class="analytics-footer">
+                        <span>* أيام الإجازات والأيام بدون نشاط مستبعدة</span>
+                        <b data-role="active-days-count">0 أيام</b>
+                    </div>
                 </div>
-                <div class="typing-bar" data-role="typing-bar">
-                    <div class="typing-metric"><span>الحروف</span><b data-role="chars-count">0</b></div>
-                    <div class="typing-metric"><span>الجمل</span><b data-role="sentences-count">0</b></div>
-                    <div class="typing-metric"><span>التكت الحالي</span><b data-role="ticket-chars">0</b></div>
-                </div>
-                <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
-                <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
-                <div class="toast" data-role="toast"></div>
-                <div class="hint">قراءة فقط — لا يكتب ولا يرسل شيئًا داخل CRM</div>
             </section>
             <button class="compact" data-role="compact" type="button"><span class="live"></span><span data-role="compact-ticket">----</span><strong data-role="compact-time">00:00</strong></button>
         `;
@@ -698,12 +785,172 @@
 
         function resetShift() {
             if (!window.confirm('تصفير عداد تكتات اليوم؟')) return;
+            recordCurrentDayToHistory(Date.now());
             state = createEmptyState(Date.now());
             const ticketId = extractTicketId(window.location.href);
             if (ticketId) startTicket(ticketId, Date.now());
             saveState();
             render(Date.now());
             showToast('تم تصفير العداد');
+        }
+
+        let isAnalyticsOpen = false;
+        let currentChartMetric = 'sessions'; // 'sessions' or 'abst'
+
+        function recordCurrentDayToHistory(timestamp) {
+            const ticketCount = Object.keys(state.tickets).length;
+            const sessions = totalSessionsCount();
+            const chars = Math.max(0, Number(state.totalChars) || 0);
+            const sentences = Math.max(0, Number(state.totalSentences) || 0);
+            const total = shiftTotalMs(timestamp);
+            const abst = ticketCount > 0 ? Math.round(total / ticketCount) : 0;
+
+            if (sessions === 0 && ticketCount === 0 && chars === 0) return;
+
+            let history = loadHistory();
+            const dayKey = state.day || localDayKey(timestamp);
+            const idx = history.findIndex(h => h.day === dayKey);
+            const entry = {
+                day: dayKey,
+                sessions,
+                ticketsCount: ticketCount,
+                abstMs: abst,
+                totalMs: total,
+                chars,
+                sentences
+            };
+            if (idx >= 0) history[idx] = entry;
+            else history.push(entry);
+            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0));
+            saveHistory(history);
+        }
+
+        function renderAnalyticsView() {
+            recordCurrentDayToHistory(Date.now());
+            const history = loadHistory().filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0));
+
+            let totalAllChars = 0;
+            let totalAllSentences = 0;
+            let totalAllSessions = 0;
+            let totalAllTickets = 0;
+            let totalAllDurationMs = 0;
+
+            history.forEach(h => {
+                totalAllChars += Number(h.chars) || 0;
+                totalAllSentences += Number(h.sentences) || 0;
+                totalAllSessions += Number(h.sessions) || 0;
+                totalAllTickets += Number(h.ticketsCount) || 0;
+                totalAllDurationMs += Number(h.totalMs) || 0;
+            });
+
+            const averageAllAbst = totalAllTickets > 0 ? Math.round(totalAllDurationMs / totalAllTickets) : 0;
+
+            const allCharsElem = byRole('all-chars');
+            const allSentencesElem = byRole('all-sentences');
+            const allSessionsElem = byRole('all-sessions');
+            const allAbstElem = byRole('all-abst');
+            const activeDaysElem = byRole('active-days-count');
+
+            if (allCharsElem) allCharsElem.textContent = String(totalAllChars);
+            if (allSentencesElem) allSentencesElem.textContent = String(totalAllSentences);
+            if (allSessionsElem) allSessionsElem.textContent = String(totalAllSessions);
+            if (allAbstElem) allAbstElem.textContent = formatDuration(averageAllAbst);
+            if (activeDaysElem) activeDaysElem.textContent = `${history.length} أيام عمل`;
+
+            const chartContainer = byRole('chart-container');
+            if (!chartContainer) return;
+
+            if (!history.length) {
+                chartContainer.innerHTML = '<div style="text-align:center;padding:24px 0;color:var(--text-muted);font-size:11px">لا توجد بيانات سابقة بعد — ستتراكم تلقائياً مع العمل.</div>';
+                return;
+            }
+
+            const isAbst = currentChartMetric === 'abst';
+            const values = history.map(h => isAbst ? Math.round((Number(h.abstMs) || 0) / 1000) : (Number(h.sessions) || 0));
+            const labels = history.map(h => {
+                const parts = (h.day || '').split('-');
+                return parts.length === 3 ? `${parts[1]}/${parts[2]}` : h.day;
+            });
+
+            const minVal = Math.min(...values);
+            const maxVal = Math.max(...values);
+            const range = (maxVal - minVal) || (maxVal > 0 ? maxVal : 1);
+
+            const width = 255;
+            const height = 95;
+            const padX = 22;
+            const padY = 16;
+            const plotW = width - padX * 2;
+            const plotH = height - padY * 2;
+
+            const points = values.map((val, i) => {
+                const x = history.length === 1 ? width / 2 : padX + (i / (history.length - 1)) * plotW;
+                const normY = range === 0 ? 0.5 : (val - minVal) / range;
+                const y = height - padY - normY * plotH;
+                return { x, y, val, label: labels[i] };
+            });
+
+            const pointsStr = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+            const areaStr = `${points[0].x.toFixed(1)},${height - padY} ${pointsStr} ${points[points.length - 1].x.toFixed(1)},${height - padY}`;
+
+            const lineColor = isAbst ? '#38bdf8' : '#34d399';
+            const gradId = `chartGrad_${isAbst ? 'abst' : 'sess'}`;
+
+            let dotsHtml = '';
+            points.forEach(p => {
+                const valText = isAbst ? formatDuration(p.val * 1000) : String(p.val);
+                dotsHtml += `
+                    <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${lineColor}" stroke="var(--bg-panel)" stroke-width="1.5"/>
+                    <text x="${p.x.toFixed(1)}" y="${Math.max(10, p.y - 5).toFixed(1)}" text-anchor="middle" font-size="8" fill="var(--text-main)" font-weight="700">${valText}</text>
+                    <text x="${p.x.toFixed(1)}" y="${(height - 2).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="var(--text-muted)">${p.label}</text>
+                `;
+            });
+
+            chartContainer.innerHTML = `
+                <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible;display:block">
+                    <defs>
+                        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.35"/>
+                            <stop offset="100%" stop-color="${lineColor}" stop-opacity="0.0"/>
+                        </linearGradient>
+                    </defs>
+                    <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" stroke="var(--card-border)" stroke-width="1" stroke-dasharray="2 2"/>
+                    <polygon points="${areaStr}" fill="url(#${gradId})"/>
+                    <polyline points="${pointsStr}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    ${dotsHtml}
+                </svg>
+            `;
+        }
+
+        function toggleAnalytics() {
+            isAnalyticsOpen = !isAnalyticsOpen;
+            const mainView = byRole('main-view');
+            const analyticsView = byRole('analytics-view');
+            if (mainView) mainView.style.display = isAnalyticsOpen ? 'none' : 'block';
+            if (analyticsView) analyticsView.style.display = isAnalyticsOpen ? 'block' : 'none';
+            if (isAnalyticsOpen) renderAnalyticsView();
+        }
+
+        shadow.querySelector('[data-action="toggle-analytics"]').addEventListener('click', toggleAnalytics);
+        const closeAnalyticsBtn = shadow.querySelector('[data-action="close-analytics"]');
+        if (closeAnalyticsBtn) closeAnalyticsBtn.addEventListener('click', toggleAnalytics);
+
+        const tabSessions = shadow.querySelector('[data-action="chart-tab-sessions"]');
+        const tabAbst = shadow.querySelector('[data-action="chart-tab-abst"]');
+
+        if (tabSessions && tabAbst) {
+            tabSessions.addEventListener('click', () => {
+                currentChartMetric = 'sessions';
+                tabSessions.classList.add('active');
+                tabAbst.classList.remove('active');
+                renderAnalyticsView();
+            });
+            tabAbst.addEventListener('click', () => {
+                currentChartMetric = 'abst';
+                tabAbst.classList.add('active');
+                tabSessions.classList.remove('active');
+                renderAnalyticsView();
+            });
         }
 
         shadow.querySelector('[data-action="toggle-theme"]').addEventListener('click', toggleTheme);
