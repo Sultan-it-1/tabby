@@ -114,6 +114,13 @@ test('bookmarklet tracks agent characters and sentences count', () => {
     assert.match(bookmarklet, /onUserTyping/);
 });
 
+test('bookmarklet resets automatically after 4 hours of inactivity', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /4\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+    assert.match(bookmarklet, /INACTIVITY_TIMEOUT_MS/);
+    assert.match(bookmarklet, /lastActivityAt/);
+});
+
 
 
 

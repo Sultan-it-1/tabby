@@ -65,11 +65,14 @@
             ].join('-');
         }
 
+        const INACTIVITY_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 hours
+
         function createEmptyState(timestamp) {
             return {
                 version: 1,
                 day: localDayKey(timestamp),
                 shiftStartedAt: timestamp,
+                lastActivityAt: timestamp,
                 tickets: {},
                 active: null,
                 totalChars: 0,
@@ -96,11 +99,17 @@
         }
 
         function normalizeState(candidate, timestamp) {
-            if (!candidate || typeof candidate !== 'object' || candidate.day !== localDayKey(timestamp)) {
+            if (!candidate || typeof candidate !== 'object') {
+                return createEmptyState(timestamp);
+            }
+            const lastActive = Number(candidate.lastActivityAt) || Number(candidate.shiftStartedAt) || 0;
+            if (lastActive > 0 && (timestamp - lastActive) > INACTIVITY_TIMEOUT_MS) {
                 return createEmptyState(timestamp);
             }
             const normalized = createEmptyState(timestamp);
+            normalized.day = candidate.day || localDayKey(timestamp);
             normalized.shiftStartedAt = Number(candidate.shiftStartedAt) || timestamp;
+            normalized.lastActivityAt = timestamp;
             normalized.tickets = candidate.tickets && typeof candidate.tickets === 'object' ? candidate.tickets : {};
             normalized.totalChars = Math.max(0, Number(candidate.totalChars) || 0);
             normalized.totalSentences = Math.max(0, Number(candidate.totalSentences) || 0);
@@ -722,6 +731,7 @@
             if (event.type === 'input') {
                 const inserted = typeof event.data === 'string' ? event.data : '';
                 const count = inserted.length || 1;
+                state.lastActivityAt = Date.now();
                 state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + count;
                 if (state.active) {
                     const ticket = ensureTicket(state.active.id, Date.now());
@@ -735,6 +745,7 @@
                     }
                 }
             } else if (event.type === 'keydown' && event.key === 'Enter') {
+                state.lastActivityAt = Date.now();
                 state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
                 if (state.active) {
                     const ticket = ensureTicket(state.active.id, Date.now());
@@ -751,6 +762,7 @@
         const interval = window.setInterval(() => {
             const timestamp = Date.now();
             syncCurrentTicket(timestamp);
+            state.lastActivityAt = timestamp;
             if (state.active) state.active.lastHeartbeatAt = timestamp;
             if (timestamp - lastSavedAt >= SAVE_INTERVAL) {
                 saveState();
