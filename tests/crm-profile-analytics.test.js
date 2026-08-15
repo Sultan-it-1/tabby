@@ -84,3 +84,9 @@ test('crm-profile-analytics provides runtime installer source for execution', ()
     assert.match(runtime, /data-action="scan"/);
     assert.match(runtime, /data-action="copy"/);
 });
+
+test('crm-profile-analytics builds inline bookmarklet', () => {
+    const inlineBml = analytics.buildInlineBookmarklet();
+    assert.ok(inlineBml.startsWith('javascript:'));
+    assert.match(inlineBml, /fastToolkit_crm_profile_analytics_host_v1/);
+});

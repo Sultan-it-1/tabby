@@ -291,7 +291,11 @@
     }
 
     function buildBookmarklet() {
-        return `javascript:(function(){var s=document.createElement('script');s.src='https://tabby.sultanops.com/crm-profile-analytics.js?v='+Date.now();document.head.appendChild(s);})();`;
+        return `javascript:(function(){var existing=window.__FAST_TOOLKIT_CRM_PROFILE_ANALYTICS__;if(existing&&typeof existing.show==='function'){existing.show();return;}var s=document.createElement('script');s.src='https://tabby.sultanops.com/crm-profile-analytics.js?v='+Date.now();s.onload=function(){if(window.FastToolkitCrmProfileAnalytics&&typeof window.FastToolkitCrmProfileAnalytics.install==='function'){window.FastToolkitCrmProfileAnalytics.install();}};document.head.appendChild(s);})();`;
+    }
+
+    function buildInlineBookmarklet() {
+        return `javascript:void((${install.toString()})());`;
     }
 
     function install() {
@@ -744,21 +748,30 @@
             const metrics = _calculateMetrics(events);
             lastMetrics = metrics;
 
-            byRole('online-time').textContent = _formatDuration(metrics.totalOnlineMs);
-            byRole('break-time').textContent = _formatDuration(metrics.totalBreakMs);
+            const onlineElem = byRole('online-time');
+            if (onlineElem) onlineElem.textContent = _formatDuration(metrics.totalOnlineMs);
+
+            const breakElem = byRole('break-time');
+            if (breakElem) breakElem.textContent = _formatDuration(metrics.totalBreakMs);
+
             const lunchCard = byRole('lunch-card');
-            if (lunchCard) {
+            const lunchTime = byRole('lunch-time');
+            if (lunchCard && lunchCard.style) {
                 if (metrics.totalLunchMs > 0) {
                     lunchCard.style.display = 'block';
-                    byRole('lunch-time').textContent = _formatDuration(metrics.totalLunchMs);
+                    if (lunchTime) lunchTime.textContent = _formatDuration(metrics.totalLunchMs);
                 } else {
                     lunchCard.style.display = 'none';
                 }
             }
 
             const dynamicAuxContainer = byRole('dynamic-aux-container');
-            if (dynamicAuxContainer) {
-                dynamicAuxContainer.replaceChildren();
+            if (dynamicAuxContainer && dynamicAuxContainer.style) {
+                if (typeof dynamicAuxContainer.replaceChildren === 'function') {
+                    dynamicAuxContainer.replaceChildren();
+                } else {
+                    dynamicAuxContainer.innerHTML = '';
+                }
                 if (metrics.auxBreakdown && Object.keys(metrics.auxBreakdown).length > 0) {
                     Object.entries(metrics.auxBreakdown).forEach(([name, dur]) => {
                         const card = document.createElement('div');
@@ -775,10 +788,18 @@
                     dynamicAuxContainer.style.display = 'none';
                 }
             }
-            if (byRole('sessions-count')) byRole('sessions-count').textContent = String(metrics.totalSessions);
-            byRole('tickets-count').textContent = String(metrics.uniqueTicketsCount || metrics.totalTicketsCompleted);
-            byRole('avg-time').textContent = _formatDuration(metrics.avgTicketDurationMs);
-            if (byRole('shift-start-time')) byRole('shift-start-time').textContent = metrics.shiftStart ? _formatTime(metrics.shiftStart) : '--:--';
+
+            const sessionsElem = byRole('sessions-count');
+            if (sessionsElem) sessionsElem.textContent = String(metrics.totalSessions);
+
+            const ticketsElem = byRole('tickets-count');
+            if (ticketsElem) ticketsElem.textContent = String(metrics.uniqueTicketsCount || metrics.totalTicketsCompleted);
+
+            const avgElem = byRole('avg-time');
+            if (avgElem) avgElem.textContent = _formatDuration(metrics.avgTicketDurationMs);
+
+            const shiftElem = byRole('shift-start-time');
+            if (shiftElem) shiftElem.textContent = metrics.shiftStart ? _formatTime(metrics.shiftStart) : '--:--';
 
             function _buildTicketUrl(ticketId) {
                 if (!ticketId) return 'javascript:void(0)';
@@ -808,31 +829,38 @@
             setExtremeItem('longest-ticket-link', 'longest-ticket-time', ext.longestTicket, true);
             setExtremeItem('shortest-ticket-link', 'shortest-ticket-time', ext.shortestTicket, true);
 
-            byRole('compact-online').textContent = _formatDuration(metrics.totalOnlineMs);
+            const compactOnline = byRole('compact-online');
+            if (compactOnline) compactOnline.textContent = _formatDuration(metrics.totalOnlineMs);
 
             const listElem = byRole('timeline-list');
-            listElem.replaceChildren();
+            if (listElem) {
+                if (typeof listElem.replaceChildren === 'function') {
+                    listElem.replaceChildren();
+                } else {
+                    listElem.innerHTML = '';
+                }
 
-            if (events.length === 0) {
-                const emptyRow = document.createElement('div');
-                emptyRow.className = 'timeline-row';
-                emptyRow.style.justifyContent = 'center';
-                emptyRow.style.color = 'var(--text-muted)';
-                emptyRow.textContent = 'بانتظار تحميل تايم لاين الـ CRM...';
-                listElem.appendChild(emptyRow);
-            } else {
-                events.slice().reverse().forEach(ev => {
-                    const row = document.createElement('div');
-                    row.className = 'timeline-row';
-                    const text = document.createElement('span');
-                    text.className = 'timeline-text';
-                    text.textContent = ev.label;
-                    const time = document.createElement('span');
-                    time.className = 'timeline-time';
-                    time.textContent = _formatTime(ev.time);
-                    row.append(text, time);
-                    listElem.appendChild(row);
-                });
+                if (events.length === 0) {
+                    const emptyRow = document.createElement('div');
+                    emptyRow.className = 'timeline-row';
+                    emptyRow.style.justifyContent = 'center';
+                    emptyRow.style.color = 'var(--text-muted)';
+                    emptyRow.textContent = 'بانتظار تحميل تايم لاين الـ CRM...';
+                    listElem.appendChild(emptyRow);
+                } else {
+                    events.slice().reverse().forEach(ev => {
+                        const row = document.createElement('div');
+                        row.className = 'timeline-row';
+                        const text = document.createElement('span');
+                        text.className = 'timeline-text';
+                        text.textContent = ev.label;
+                        const time = document.createElement('span');
+                        time.className = 'timeline-time';
+                        time.textContent = _formatTime(ev.time);
+                        row.append(text, time);
+                        listElem.appendChild(row);
+                    });
+                }
             }
         }
 
@@ -941,6 +969,16 @@
         return api;
     }
 
+    if (typeof window !== 'undefined' && window.location && !window.location.hostname.includes('sultanops.com') && !window.location.pathname.includes('index.html')) {
+        try {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => { install(); }, { once: true });
+            } else {
+                install();
+            }
+        } catch (e) {}
+    }
+
     return {
         parseDateStr,
         formatDuration,
@@ -950,6 +988,7 @@
         extractTimelineTextFromDOM,
         getRuntimeSource,
         buildBookmarklet,
+        buildInlineBookmarklet,
         install
     };
 }));
