@@ -90,11 +90,11 @@
             const ticketCount = Object.keys(tickets).length;
             const sessions = Object.values(tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.visits)) || 0), 0);
             const chars = Math.max(0, Number(candidate.totalChars) || 0);
-            const sentences = Math.max(0, Number(candidate.totalSentences) || 0);
+            const words = Math.max(0, Number(candidate.totalWords) || Number(candidate.totalSentences) || 0);
             const totalMs = Object.values(tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.totalMs)) || 0), 0);
             const abstMs = ticketCount > 0 ? Math.round(totalMs / ticketCount) : 0;
 
-            if (sessions === 0 && ticketCount === 0 && chars === 0) return;
+            if (sessions === 0 && ticketCount === 0 && chars === 0 && words === 0) return;
 
             let history = loadHistory();
             const dayKey = candidate.day || localDayKey(Number(candidate.shiftStartedAt) || Date.now());
@@ -106,11 +106,11 @@
                 abstMs,
                 totalMs,
                 chars,
-                sentences
+                words
             };
             if (idx >= 0) history[idx] = entry;
             else history.push(entry);
-            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0));
+            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0));
             saveHistory(history);
         }
 
@@ -123,7 +123,7 @@
                 tickets: {},
                 active: null,
                 totalChars: 0,
-                totalSentences: 0
+                totalWords: 0
             };
         }
 
@@ -133,7 +133,7 @@
                     totalMs: 0,
                     visits: 0,
                     chars: 0,
-                    sentences: 0,
+                    words: 0,
                     firstOpenedAt: timestamp,
                     lastOpenedAt: timestamp,
                     lastLeftAt: null
@@ -141,7 +141,7 @@
             }
             const ticket = state.tickets[ticketId];
             if (typeof ticket.chars !== 'number') ticket.chars = 0;
-            if (typeof ticket.sentences !== 'number') ticket.sentences = 0;
+            if (typeof ticket.words !== 'number') ticket.words = typeof ticket.sentences === 'number' ? ticket.sentences : 0;
             return ticket;
         }
 
@@ -267,7 +267,7 @@
                 `إجمالي الوقت: ${formatDuration(total)}`,
                 `ABST: ${formatDuration(average)}`,
                 `إجمالي الحروف: ${Math.max(0, Number(state.totalChars) || 0)}`,
-                `إجمالي الجمل: ${Math.max(0, Number(state.totalSentences) || 0)}`
+                `إجمالي الكلمات: ${Math.max(0, Number(state.totalWords) || 0)}`
             ];
             if (state.active) {
                 const activeTicket = state.tickets[state.active.id];
@@ -480,7 +480,7 @@
                     </div>
                     <div class="typing-bar" data-role="typing-bar">
                         <div class="typing-metric"><span>الحروف</span><b data-role="chars-count">0</b></div>
-                        <div class="typing-metric"><span>الجمل</span><b data-role="sentences-count">0</b></div>
+                        <div class="typing-metric"><span>الكلمات</span><b data-role="words-count">0</b></div>
                         <div class="typing-metric"><span>التكت الحالي</span><b data-role="ticket-chars">0</b></div>
                     </div>
                     <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
@@ -502,7 +502,7 @@
                     </div>
                     <div class="all-stats-grid">
                         <div class="all-stat-item"><span>إجمالي الحروف (كل الأيام)</span><b data-role="all-chars">0</b></div>
-                        <div class="all-stat-item"><span>إجمالي الجمل (كل الأيام)</span><b data-role="all-sentences">0</b></div>
+                        <div class="all-stat-item"><span>إجمالي الكلمات (كل الأيام)</span><b data-role="all-words">0</b></div>
                         <div class="all-stat-item"><span>إجمالي السيشن</span><b data-role="all-sessions">0</b></div>
                         <div class="all-stat-item"><span>متوسط ABST العام</span><b data-role="all-abst">00:00</b></div>
                     </div>
@@ -707,7 +707,7 @@
             }
             byRole('visits').textContent = String(ticket ? Math.max(0, Number(ticket.visits) || 0) : 0);
             if (byRole('chars-count')) byRole('chars-count').textContent = String(Math.max(0, Number(state.totalChars) || 0));
-            if (byRole('sentences-count')) byRole('sentences-count').textContent = String(Math.max(0, Number(state.totalSentences) || 0));
+            if (byRole('words-count')) byRole('words-count').textContent = String(Math.max(0, Number(state.totalWords) || 0));
             if (byRole('ticket-chars')) byRole('ticket-chars').textContent = String(ticket ? (Math.max(0, Number(ticket.chars) || 0)) : 0);
             byRole('compact-ticket').textContent = shortTicketId(ticketId);
 
@@ -801,11 +801,11 @@
             const ticketCount = Object.keys(state.tickets).length;
             const sessions = totalSessionsCount();
             const chars = Math.max(0, Number(state.totalChars) || 0);
-            const sentences = Math.max(0, Number(state.totalSentences) || 0);
+            const words = Math.max(0, Number(state.totalWords) || 0);
             const total = shiftTotalMs(timestamp);
             const abst = ticketCount > 0 ? Math.round(total / ticketCount) : 0;
 
-            if (sessions === 0 && ticketCount === 0 && chars === 0) return;
+            if (sessions === 0 && ticketCount === 0 && chars === 0 && words === 0) return;
 
             let history = loadHistory();
             const dayKey = state.day || localDayKey(timestamp);
@@ -817,27 +817,27 @@
                 abstMs: abst,
                 totalMs: total,
                 chars,
-                sentences
+                words
             };
             if (idx >= 0) history[idx] = entry;
             else history.push(entry);
-            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0));
+            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0));
             saveHistory(history);
         }
 
         function renderAnalyticsView() {
             recordCurrentDayToHistory(Date.now());
-            const history = loadHistory().filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0));
+            const history = loadHistory().filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0));
 
             let totalAllChars = 0;
-            let totalAllSentences = 0;
+            let totalAllWords = 0;
             let totalAllSessions = 0;
             let totalAllTickets = 0;
             let totalAllDurationMs = 0;
 
             history.forEach(h => {
                 totalAllChars += Number(h.chars) || 0;
-                totalAllSentences += Number(h.sentences) || 0;
+                totalAllWords += Number(h.words) || Number(h.sentences) || 0;
                 totalAllSessions += Number(h.sessions) || 0;
                 totalAllTickets += Number(h.ticketsCount) || 0;
                 totalAllDurationMs += Number(h.totalMs) || 0;
@@ -846,13 +846,13 @@
             const averageAllAbst = totalAllTickets > 0 ? Math.round(totalAllDurationMs / totalAllTickets) : 0;
 
             const allCharsElem = byRole('all-chars');
-            const allSentencesElem = byRole('all-sentences');
+            const allWordsElem = byRole('all-words');
             const allSessionsElem = byRole('all-sessions');
             const allAbstElem = byRole('all-abst');
             const activeDaysElem = byRole('active-days-count');
 
             if (allCharsElem) allCharsElem.textContent = String(totalAllChars);
-            if (allSentencesElem) allSentencesElem.textContent = String(totalAllSentences);
+            if (allWordsElem) allWordsElem.textContent = String(totalAllWords);
             if (allSessionsElem) allSessionsElem.textContent = String(totalAllSessions);
             if (allAbstElem) allAbstElem.textContent = formatDuration(averageAllAbst);
             if (activeDaysElem) activeDaysElem.textContent = `${history.length} أيام عمل`;
@@ -966,22 +966,18 @@
             saveState();
         });
 
-        let sentenceTextBuffer = '';
+        let wordTextBuffer = '';
 
-        function commitSentenceIfValid(timestamp) {
-            const cleanText = sentenceTextBuffer.trim();
-            if (!cleanText) return;
-            const words = cleanText.split(/\s+/).filter(w => w.length > 0);
-            const meaningfulChars = cleanText.replace(/[.!?؟\s\n\r]+/g, '').length;
-
-            if (words.length >= 2 || meaningfulChars >= 6) {
-                state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
+        function commitWordIfValid(timestamp) {
+            const clean = wordTextBuffer.trim();
+            if (clean.length > 0 && /[\p{L}\p{N}]/u.test(clean)) {
+                state.totalWords = (Math.max(0, Number(state.totalWords) || 0)) + 1;
                 if (state.active) {
                     const ticket = ensureTicket(state.active.id, timestamp);
-                    ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                    ticket.words = (Math.max(0, Number(ticket.words) || 0)) + 1;
                 }
-                sentenceTextBuffer = '';
             }
+            wordTextBuffer = '';
         }
 
         function onUserTyping(event) {
@@ -1016,20 +1012,23 @@
                     }
                 }
 
+                // 3. Real-time word boundary detection (whitespace & punctuation)
                 if (data.length > 0) {
-                    sentenceTextBuffer += data;
+                    for (let i = 0; i < data.length; i++) {
+                        const ch = data[i];
+                        if (/[\s\n\r,.!؟?،;:؛]/.test(ch)) {
+                            commitWordIfValid(now);
+                        } else {
+                            wordTextBuffer += ch;
+                        }
+                    }
                 } else if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
-                    sentenceTextBuffer += '\n';
-                }
-
-                // 3. Smart sentence termination detection (. ! ? ؟ or newline)
-                if (/[.!?؟\n]/.test(data) || inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
-                    commitSentenceIfValid(now);
+                    commitWordIfValid(now);
                 }
             } else if (event.type === 'keydown' && event.key === 'Enter') {
-                commitSentenceIfValid(now);
+                commitWordIfValid(now);
             } else if (event.type === 'blur' || event.type === 'change') {
-                commitSentenceIfValid(now);
+                commitWordIfValid(now);
             }
             render(now);
         }

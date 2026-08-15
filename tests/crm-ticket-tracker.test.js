@@ -104,12 +104,12 @@ test('bookmarklet supports light and dark themes with persistent toggle', () => 
     assert.match(runtime, /toggleTheme/);
 });
 
-test('bookmarklet tracks agent characters and sentences count', () => {
+test('bookmarklet tracks agent characters and words count', () => {
     const runtime = tracker.getRuntimeSource();
     assert.match(runtime, /totalChars/);
-    assert.match(runtime, /totalSentences/);
+    assert.match(runtime, /totalWords/);
     assert.match(runtime, /data-role="chars-count"/);
-    assert.match(runtime, /data-role="sentences-count"/);
+    assert.match(runtime, /data-role="words-count"/);
     assert.match(runtime, /data-role="ticket-chars"/);
     assert.match(runtime, /onUserTyping/);
 });
@@ -127,7 +127,7 @@ test('bookmarklet includes analytics view, line chart, and cumulative writing st
     assert.match(runtime, /data-role="analytics-view"/);
     assert.match(runtime, /data-role="chart-container"/);
     assert.match(runtime, /data-role="all-chars"/);
-    assert.match(runtime, /data-role="all-sentences"/);
+    assert.match(runtime, /data-role="all-words"/);
     assert.match(runtime, /data-role="all-sessions"/);
     assert.match(runtime, /data-role="all-abst"/);
     assert.match(runtime, /chartGrad_/);
