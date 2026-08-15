@@ -128,8 +128,7 @@
         }
 
         function ensureTicket(ticketId, timestamp) {
-            const current = state.tickets[ticketId];
-            if (!current || typeof current !== 'object') {
+            if (!state.tickets[ticketId] || typeof state.tickets[ticketId] !== 'object') {
                 state.tickets[ticketId] = {
                     totalMs: 0,
                     visits: 0,
@@ -140,9 +139,10 @@
                     lastLeftAt: null
                 };
             }
-            if (typeof current.chars !== 'number') current.chars = 0;
-            if (typeof current.sentences !== 'number') current.sentences = 0;
-            return state.tickets[ticketId];
+            const ticket = state.tickets[ticketId];
+            if (typeof ticket.chars !== 'number') ticket.chars = 0;
+            if (typeof ticket.sentences !== 'number') ticket.sentences = 0;
+            return ticket;
         }
 
         function normalizeState(candidate, timestamp) {
@@ -1046,7 +1046,7 @@
             return fastToolkitCrmTicketTrackerRuntime({ action: 'install' });
         },
         buildBookmarklet() {
-            return `javascript:(${fastToolkitCrmTicketTrackerRuntime.toString()})({action:'install'});`;
+            return `javascript:void((${fastToolkitCrmTicketTrackerRuntime.toString()})({action:'install'}));`;
         }
     });
 });
