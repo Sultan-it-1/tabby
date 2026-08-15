@@ -49,53 +49,83 @@
     function parseTimeline(rawText) {
         if (!rawText) return [];
         const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-        const events = [];
+        const rawEvents = [];
+
+        function parseExactDate(str, fallbackDate = new Date()) {
+            if (!str) return null;
+            const fullMatch = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+            if (fullMatch) {
+                const day = parseInt(fullMatch[1], 10);
+                const month = parseInt(fullMatch[2], 10) - 1;
+                const year = parseInt(fullMatch[3], 10);
+                const hours = parseInt(fullMatch[4], 10);
+                const minutes = parseInt(fullMatch[5], 10);
+                const seconds = fullMatch[6] ? parseInt(fullMatch[6], 10) : 0;
+                return new Date(year, month, day, hours, minutes, seconds).getTime();
+            }
+            const timeMatch = str.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+            if (timeMatch) {
+                const d = new Date(fallbackDate);
+                d.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), timeMatch[3] ? parseInt(timeMatch[3], 10) : 0, 0);
+                return d.getTime();
+            }
+            return null;
+        }
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            const statusMatch = line.match(/^Status:\s*([A-Za-z]+)\s+([A-Za-z]+)/i);
+            let statusMatch = line.match(/^Status:\s*([A-Za-z0-9_\- ]+?)(?:\s+(?:➔|->|to)\s+|\s+)([A-Za-z0-9_\- ]+)$/i);
+            let fromStatus = '', toStatus = '';
             if (statusMatch) {
-                const fromStatus = statusMatch[1];
-                const toStatus = statusMatch[2];
+                fromStatus = statusMatch[1].trim();
+                toStatus = statusMatch[2].trim();
+            } else {
+                const singleStatus = line.match(/^Status:\s*([A-Za-z0-9_\- ]+)/i);
+                if (singleStatus) {
+                    toStatus = singleStatus[1].trim();
+                }
+            }
+
+            if (toStatus) {
                 let eventTime = null;
                 for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
-                    const tMatch = lines[j].match(/(?:Status Changed At:\s*)?(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})/i);
+                    const tMatch = lines[j].match(/Status Changed At:\s*(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})/i);
                     if (tMatch) {
-                        eventTime = parseDateStr(tMatch[1]);
+                        eventTime = parseExactDate(tMatch[1]);
                         break;
                     }
                 }
                 if (!eventTime) {
                     for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
-                        const tMatch = lines[j].match(/\b\d{1,2}:\d{2}\b/);
+                        const tMatch = lines[j].match(/(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/);
                         if (tMatch) {
-                            eventTime = parseDateStr(tMatch[0]);
+                            eventTime = parseExactDate(tMatch[1] || tMatch[2]);
                             break;
                         }
                     }
                 }
-                events.push({
+                rawEvents.push({
                     type: 'status',
                     from: fromStatus,
                     to: toStatus,
                     time: eventTime || Date.now(),
-                    label: `تغيير الحالة: ${fromStatus} ➔ ${toStatus}`
+                    label: `تغيير الحالة: ${fromStatus ? fromStatus + ' ➔ ' : ''}${toStatus}`
                 });
             }
 
             const linkedMatch = line.match(/linked with Ticket\s*\(([^)]+)\)/i);
             if (linkedMatch) {
-                const ticketId = linkedMatch[1];
+                const ticketId = linkedMatch[1].trim();
                 let eventTime = null;
                 for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
-                    const tMatch = lines[j].match(/(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/);
+                    const tMatch = lines[j].match(/Last assigned at:\s*(?:.+?\s+)?(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/i);
                     if (tMatch) {
-                        eventTime = parseDateStr(tMatch[0]);
+                        eventTime = parseExactDate(tMatch[1] || tMatch[2] || tMatch[3]);
                         break;
                     }
                 }
-                events.push({
+                rawEvents.push({
                     type: 'ticket_linked',
                     ticketId,
                     time: eventTime || Date.now(),
@@ -105,16 +135,16 @@
 
             const unlinkedMatch = line.match(/unlinked from Ticket\s*\(([^)]+)\)/i);
             if (unlinkedMatch) {
-                const ticketId = unlinkedMatch[1];
+                const ticketId = unlinkedMatch[1].trim();
                 let eventTime = null;
                 for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
                     const tMatch = lines[j].match(/(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/);
                     if (tMatch) {
-                        eventTime = parseDateStr(tMatch[0]);
+                        eventTime = parseExactDate(tMatch[1] || tMatch[2]);
                         break;
                     }
                 }
-                events.push({
+                rawEvents.push({
                     type: 'ticket_unlinked',
                     ticketId,
                     time: eventTime || Date.now(),
@@ -123,7 +153,21 @@
             }
         }
 
-        return events.sort((a, b) => a.time - b.time);
+        const sorted = rawEvents.sort((a, b) => a.time - b.time);
+
+        // Isolate current shift: find latest Offline -> Online transition (or from today's start)
+        let currentShiftStartIndex = 0;
+        for (let k = sorted.length - 1; k >= 0; k--) {
+            const ev = sorted[k];
+            if (ev.type === 'status' && ev.to.toLowerCase() === 'online') {
+                if ((ev.from || '').toLowerCase() === 'offline') {
+                    currentShiftStartIndex = k;
+                    break;
+                }
+            }
+        }
+
+        return sorted.slice(currentShiftStartIndex);
     }
 
     function calculateMetrics(events) {
@@ -346,53 +390,83 @@
         function _parseTimeline(rawText) {
             if (!rawText) return [];
             const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-            const events = [];
+            const rawEvents = [];
+
+            function parseExactDate(str, fallbackDate = new Date()) {
+                if (!str) return null;
+                const fullMatch = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+                if (fullMatch) {
+                    const day = parseInt(fullMatch[1], 10);
+                    const month = parseInt(fullMatch[2], 10) - 1;
+                    const year = parseInt(fullMatch[3], 10);
+                    const hours = parseInt(fullMatch[4], 10);
+                    const minutes = parseInt(fullMatch[5], 10);
+                    const seconds = fullMatch[6] ? parseInt(fullMatch[6], 10) : 0;
+                    return new Date(year, month, day, hours, minutes, seconds).getTime();
+                }
+                const timeMatch = str.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+                if (timeMatch) {
+                    const d = new Date(fallbackDate);
+                    d.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), timeMatch[3] ? parseInt(timeMatch[3], 10) : 0, 0);
+                    return d.getTime();
+                }
+                return null;
+            }
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
-                const statusMatch = line.match(/^Status:\s*([A-Za-z]+)\s+([A-Za-z]+)/i);
+                let statusMatch = line.match(/^Status:\s*([A-Za-z0-9_\- ]+?)(?:\s+(?:➔|->|to)\s+|\s+)([A-Za-z0-9_\- ]+)$/i);
+                let fromStatus = '', toStatus = '';
                 if (statusMatch) {
-                    const fromStatus = statusMatch[1];
-                    const toStatus = statusMatch[2];
+                    fromStatus = statusMatch[1].trim();
+                    toStatus = statusMatch[2].trim();
+                } else {
+                    const singleStatus = line.match(/^Status:\s*([A-Za-z0-9_\- ]+)/i);
+                    if (singleStatus) {
+                        toStatus = singleStatus[1].trim();
+                    }
+                }
+
+                if (toStatus) {
                     let eventTime = null;
                     for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
-                        const tMatch = lines[j].match(/(?:Status Changed At:\s*)?(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})/i);
+                        const tMatch = lines[j].match(/Status Changed At:\s*(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})/i);
                         if (tMatch) {
-                            eventTime = _parseDateStr(tMatch[1]);
+                            eventTime = parseExactDate(tMatch[1]);
                             break;
                         }
                     }
                     if (!eventTime) {
                         for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
-                            const tMatch = lines[j].match(/\b\d{1,2}:\d{2}\b/);
+                            const tMatch = lines[j].match(/(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/);
                             if (tMatch) {
-                                eventTime = _parseDateStr(tMatch[0]);
+                                eventTime = parseExactDate(tMatch[1] || tMatch[2]);
                                 break;
                             }
                         }
                     }
-                    events.push({
+                    rawEvents.push({
                         type: 'status',
                         from: fromStatus,
                         to: toStatus,
                         time: eventTime || Date.now(),
-                        label: `تغيير الحالة: ${fromStatus} ➔ ${toStatus}`
+                        label: `تغيير الحالة: ${fromStatus ? fromStatus + ' ➔ ' : ''}${toStatus}`
                     });
                 }
 
                 const linkedMatch = line.match(/linked with Ticket\s*\(([^)]+)\)/i);
                 if (linkedMatch) {
-                    const ticketId = linkedMatch[1];
+                    const ticketId = linkedMatch[1].trim();
                     let eventTime = null;
                     for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
-                        const tMatch = lines[j].match(/(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/);
+                        const tMatch = lines[j].match(/Last assigned at:\s*(?:.+?\s+)?(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/i);
                         if (tMatch) {
-                            eventTime = _parseDateStr(tMatch[0]);
+                            eventTime = parseExactDate(tMatch[1] || tMatch[2] || tMatch[3]);
                             break;
                         }
                     }
-                    events.push({
+                    rawEvents.push({
                         type: 'ticket_linked',
                         ticketId,
                         time: eventTime || Date.now(),
@@ -402,16 +476,16 @@
 
                 const unlinkedMatch = line.match(/unlinked from Ticket\s*\(([^)]+)\)/i);
                 if (unlinkedMatch) {
-                    const ticketId = unlinkedMatch[1];
+                    const ticketId = unlinkedMatch[1].trim();
                     let eventTime = null;
                     for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 3); j++) {
                         const tMatch = lines[j].match(/(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})|(\b\d{1,2}:\d{2}\b)/);
                         if (tMatch) {
-                            eventTime = _parseDateStr(tMatch[0]);
+                            eventTime = parseExactDate(tMatch[1] || tMatch[2]);
                             break;
                         }
                     }
-                    events.push({
+                    rawEvents.push({
                         type: 'ticket_unlinked',
                         ticketId,
                         time: eventTime || Date.now(),
@@ -420,7 +494,20 @@
                 }
             }
 
-            return events.sort((a, b) => a.time - b.time);
+            const sorted = rawEvents.sort((a, b) => a.time - b.time);
+
+            let currentShiftStartIndex = 0;
+            for (let k = sorted.length - 1; k >= 0; k--) {
+                const ev = sorted[k];
+                if (ev.type === 'status' && ev.to.toLowerCase() === 'online') {
+                    if ((ev.from || '').toLowerCase() === 'offline') {
+                        currentShiftStartIndex = k;
+                        break;
+                    }
+                }
+            }
+
+            return sorted.slice(currentShiftStartIndex);
         }
 
         function _calculateMetrics(events) {
@@ -950,17 +1037,49 @@
             host.remove();
         }
 
+        async function autoScanTimeline() {
+            showToast('⏳ جاري سحب وتحليل التايم لاين...');
+            try {
+                let scrollContainer = document.querySelector('[data-testid="object-aside"]') ||
+                                      (document.querySelector('[role="group"]') ? document.querySelector('[role="group"]').parentElement : null) ||
+                                      document.body;
+                
+                if (scrollContainer) {
+                    let cur = scrollContainer;
+                    for (let i = 0; i < 5 && cur && cur !== document.body; i++) {
+                        const ov = (typeof window.getComputedStyle === 'function') ? window.getComputedStyle(cur).overflowY : '';
+                        if (ov === 'auto' || ov === 'scroll') {
+                            scrollContainer = cur;
+                            break;
+                        }
+                        cur = cur.parentElement;
+                    }
+
+                    for (let step = 0; step < 4; step++) {
+                        if (typeof scrollContainer.scrollTop !== 'undefined') {
+                            scrollContainer.scrollTop = scrollContainer.scrollHeight || 1000;
+                        }
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                    if (typeof scrollContainer.scrollTop !== 'undefined') {
+                        scrollContainer.scrollTop = 0;
+                    }
+                }
+            } catch (e) {}
+
+            renderMetrics();
+            showToast('✅ تم سحب وتحديث بيانات الشفت');
+        }
+
         shadow.querySelector('[data-action="toggle-theme"]').addEventListener('click', toggleTheme);
         shadow.querySelector('[data-action="minimize"]').addEventListener('click', minimize);
         shadow.querySelector('[data-action="close"]').addEventListener('click', close);
-        shadow.querySelector('[data-action="scan"]').addEventListener('click', () => {
-            renderMetrics();
-            showToast('🔄 تم تحديث البيانات من التايم لاين');
-        });
+        shadow.querySelector('[data-action="scan"]').addEventListener('click', autoScanTimeline);
         shadow.querySelector('[data-action="copy"]').addEventListener('click', copyReport);
         compact.addEventListener('click', show);
 
         renderMetrics();
+        setTimeout(autoScanTimeline, 400);
         const intervalId = setInterval(renderMetrics, 10000);
         window.addEventListener('pagehide', () => clearInterval(intervalId), { once: true });
 
