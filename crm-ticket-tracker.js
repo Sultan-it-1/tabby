@@ -8,8 +8,12 @@
 
         function extractTicketId(input) {
             try {
-                const url = new URL(input, `https://${EXPECTED_HOST}/`);
-                if (url.hostname.toLowerCase() !== EXPECTED_HOST) return '';
+                const currentOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : `https://${EXPECTED_HOST}`;
+                const url = new URL(input, currentOrigin);
+                const host = url.hostname.toLowerCase();
+                if (host !== EXPECTED_HOST && host !== 'crm.tabby.ai' && !host.endsWith('.tabby.sa') && !host.endsWith('.tabby.ai') && host !== 'localhost' && host !== '127.0.0.1') {
+                    return '';
+                }
                 const match = url.pathname.match(/(?:^|\/)(?:queue|object)\/ticket\/([^/]+)/i);
                 if (!match || !match[1]) return '';
                 try { return decodeURIComponent(match[1]); }
@@ -36,21 +40,10 @@
                 : `${pad(totalMinutes)}:${pad(seconds)}`;
         }
 
-        function isCrmHost(host) {
-            const h = (host || '').toLowerCase();
-            return h === EXPECTED_HOST || h === 'crm.tabby.ai' || h.endsWith('.tabby.sa') || h.endsWith('.tabby.ai') || h.includes('crm') || h === 'localhost' || h === '127.0.0.1';
-        }
-
         if (request.action === 'extract') return extractTicketId(request.url);
         if (request.action === 'ticketUrl') return buildTicketUrl(request.ticketId);
         if (request.action === 'format') return formatDuration(request.milliseconds);
         if (request.action !== 'install' || typeof window === 'undefined' || typeof document === 'undefined') return null;
-
-        const currentHost = (window.location && window.location.hostname ? window.location.hostname : '').toLowerCase();
-        if (!isCrmHost(currentHost)) {
-            window.alert('افتح صفحة CRM (crm.tabby.sa) أولاً، ثم اضغط على «العداد» من شريط المفضلة.');
-            return null;
-        }
 
         const existing = window.__FAST_TOOLKIT_CRM_TICKET_TRACKER__;
         if (existing && typeof existing.show === 'function') {

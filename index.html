@@ -551,15 +551,31 @@
                 const bookmarkTitle = 'العداد';
 
                 bookmarkletLink.setAttribute('href', bookmarklet);
-                bookmarkletLink.setAttribute('title', 'اسحب هذا الزر إلى شريط المفضلة');
+                bookmarkletLink.setAttribute('title', 'اسحب الزر إلى شريط المفضلة لإنشاء أداة «العداد»');
                 bookmarkletLink.textContent = defaultLabel;
 
-                bookmarkletLink.addEventListener('dragstart', () => {
+                const setDragTitle = () => {
                     bookmarkletLink.textContent = bookmarkTitle;
-                });
-
-                bookmarkletLink.addEventListener('dragend', () => {
+                };
+                const resetDefaultTitle = () => {
                     bookmarkletLink.textContent = defaultLabel;
+                };
+
+                bookmarkletLink.addEventListener('pointerdown', setDragTitle);
+                bookmarkletLink.addEventListener('mousedown', setDragTitle);
+                bookmarkletLink.addEventListener('dragstart', setDragTitle);
+
+                bookmarkletLink.addEventListener('dragend', resetDefaultTitle);
+                bookmarkletLink.addEventListener('pointerup', resetDefaultTitle);
+                bookmarkletLink.addEventListener('mouseup', resetDefaultTitle);
+                bookmarkletLink.addEventListener('mouseleave', resetDefaultTitle);
+                window.addEventListener('mouseup', resetDefaultTitle);
+
+                bookmarkletLink.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (window.FastToolkitCrmTicketTracker && typeof window.FastToolkitCrmTicketTracker.install === 'function') {
+                        window.FastToolkitCrmTicketTracker.install();
+                    }
                 });
 
                 if (bookmarkletCopyBtn) {
