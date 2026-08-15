@@ -73,12 +73,13 @@ test('bookmarklet supports dragging and stores window position', () => {
     assert.match(bookmarklet, /width:295px/);
 });
 
-test('bookmarklet includes total sessions count, ABST label, and repeated visits label', () => {
+test('bookmarklet includes total sessions count, ABST label, and visited again label', () => {
     const bookmarklet = tracker.buildBookmarklet();
     assert.match(bookmarklet, /totalSessionsCount/);
     assert.match(bookmarklet, /ABST/);
     assert.match(bookmarklet, /data-role="sessions"/);
-    assert.match(bookmarklet, /تكررت/);
+    assert.match(bookmarklet, /زرتها/);
+    assert.match(bookmarklet, /visits-stat/);
 });
 
 test('bookmarklet copies full ticket url in summary', () => {

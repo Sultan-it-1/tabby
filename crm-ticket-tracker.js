@@ -209,7 +209,7 @@
                 lines.push(`التكت الحالي (${activeUrl}): ${formatDuration(currentSessionMs(timestamp))}`);
                 if (isRepeated) {
                     lines.push(`مجموع التكت الحالي: ${formatDuration(currentTicketTotalMs(timestamp))}`);
-                    lines.push(`تكررت: ${Number(activeTicket.visits)} مرات`);
+                    lines.push(`زرتها: ${Number(activeTicket.visits)} مرات`);
                 }
             }
             const ticketRows = Object.entries(state.tickets)
@@ -218,7 +218,7 @@
                 lines.push('', 'تفاصيل التكتات:');
                 ticketRows.forEach(([ticketId, ticket]) => {
                     const visits = Math.max(0, Number(ticket.visits) || 0);
-                    const visitsText = visits > 1 ? ` — تكررت ${visits} مرات` : '';
+                    const visitsText = visits > 1 ? ` — زرتها ${visits} مرات` : '';
                     lines.push(`${buildTicketUrl(ticketId)} — ${formatDuration(ticketTotalMs(ticketId, timestamp))}${visitsText}`);
                 });
             }
@@ -386,11 +386,11 @@
                     <div class="metric"><span>الجلسة الحالية</span><strong data-role="current">00:00</strong></div>
                     <div class="metric" data-role="ticket-total-metric" style="display:none;"><span>مجموع التكت</span><strong data-role="ticket-total">00:00</strong></div>
                 </div>
-                <div class="stats">
+                <div class="stats" data-role="stats">
                     <span>التكتات<b data-role="count">0</b></span>
                     <span>السيشن<b data-role="sessions">0</b></span>
                     <span>ABST<b data-role="average">00:00</b></span>
-                    <span>تكررت<b data-role="visits">0</b></span>
+                    <span data-role="visits-stat" style="display:none;">زرتها<b data-role="visits">0</b></span>
                 </div>
                 <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
                 <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
@@ -582,6 +582,14 @@
             byRole('count').textContent = String(ticketCount);
             if (byRole('sessions')) byRole('sessions').textContent = String(sessionsCount);
             byRole('average').textContent = formatDuration(ticketCount ? total / ticketCount : 0);
+            const visitsStat = byRole('visits-stat');
+            const statsWrap = byRole('stats');
+            if (visitsStat) {
+                visitsStat.style.display = isRepeated ? 'flex' : 'none';
+            }
+            if (statsWrap) {
+                statsWrap.style.gridTemplateColumns = isRepeated ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)';
+            }
             byRole('visits').textContent = String(ticket ? Math.max(0, Number(ticket.visits) || 0) : 0);
             byRole('compact-ticket').textContent = shortTicketId(ticketId);
 
@@ -616,7 +624,7 @@
                     duration.textContent = formatDuration(ticketTotalMs(recentId, timestamp));
                     const visits = document.createElement('small');
                     const visitsCount = Math.max(0, Number(recentTicket.visits) || 0);
-                    visits.textContent = visitsCount > 1 ? `تكررت ${visitsCount} مرات` : '';
+                    visits.textContent = visitsCount > 1 ? `زرتها ${visitsCount} مرات` : '';
                     row.append(link, duration, visits);
                     recent.appendChild(row);
                 });
