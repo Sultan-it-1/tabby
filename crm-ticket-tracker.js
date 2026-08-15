@@ -1046,7 +1046,13 @@
             return fastToolkitCrmTicketTrackerRuntime({ action: 'install' });
         },
         buildBookmarklet() {
+            return `javascript:(function(){var existing=window.__FAST_TOOLKIT_CRM_TICKET_TRACKER__;if(existing&&typeof existing.show==='function'){existing.show();return;}var s=document.createElement('script');s.src='https://tabby.sultanops.com/crm-ticket-tracker.js?v='+Date.now();s.onload=function(){if(window.FastToolkitCrmTicketTracker)window.FastToolkitCrmTicketTracker.install();};document.head.appendChild(s);})();`;
+        },
+        buildInlineBookmarklet() {
             return `javascript:void((${fastToolkitCrmTicketTrackerRuntime.toString()})({action:'install'}));`;
+        },
+        getRuntimeSource() {
+            return fastToolkitCrmTicketTrackerRuntime.toString();
         }
     });
 });

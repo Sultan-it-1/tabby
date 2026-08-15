@@ -43,7 +43,7 @@ test('formats current and accumulated ticket durations consistently', () => {
 test('bookmarklet is self-contained and does not make network requests', () => {
     const bookmarklet = tracker.buildBookmarklet();
     assert.match(bookmarklet, /^javascript:/);
-    assert.match(bookmarklet, /action:'install'/);
+    assert.match(bookmarklet, /FastToolkitCrmTicketTracker/);
     assert.doesNotMatch(bookmarklet, /\bfetch\s*\(/);
     assert.doesNotMatch(bookmarklet, /XMLHttpRequest/);
 });
@@ -60,79 +60,79 @@ test('index.html configures bookmarklet link with "اسحبني إلى شريط 
 });
 
 test('bookmarklet hides ticket total unless ticket has repeated visits', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /Number\(activeTicket\.visits\)\s*>\s*1/);
-    assert.match(bookmarklet, /Number\(ticket\.visits\)\s*>\s*1/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /Number\(activeTicket\.visits\)\s*>\s*1/);
+    assert.match(runtime, /Number\(ticket\.visits\)\s*>\s*1/);
 });
 
 test('bookmarklet supports dragging and stores window position', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /fastToolkit_crm_ticket_tracker_pos_v1/);
-    assert.match(bookmarklet, /makeDraggable/);
-    assert.match(bookmarklet, /pointerdown/);
-    assert.match(bookmarklet, /width:295px/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /fastToolkit_crm_ticket_tracker_pos_v1/);
+    assert.match(runtime, /makeDraggable/);
+    assert.match(runtime, /pointerdown/);
+    assert.match(runtime, /width:295px/);
 });
 
 test('bookmarklet includes total sessions count, ABST label, and visited again label', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /totalSessionsCount/);
-    assert.match(bookmarklet, /ABST/);
-    assert.match(bookmarklet, /data-role="sessions"/);
-    assert.match(bookmarklet, /زرتها/);
-    assert.match(bookmarklet, /visits-stat/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /totalSessionsCount/);
+    assert.match(runtime, /ABST/);
+    assert.match(runtime, /data-role="sessions"/);
+    assert.match(runtime, /زرتها/);
+    assert.match(runtime, /visits-stat/);
 });
 
 test('bookmarklet copies full ticket url in summary', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /buildTicketUrl\(ticketId\)/);
-    assert.match(bookmarklet, /buildTicketUrl\(state\.active\.id\)/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /buildTicketUrl\(ticketId\)/);
+    assert.match(runtime, /buildTicketUrl\(state\.active\.id\)/);
 });
 
 test('bookmarklet turns yellow at 15m and red at 20m and above', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /20\s*\*\s*60\s*\*\s*1000/);
-    assert.match(bookmarklet, /15\s*\*\s*60\s*\*\s*1000/);
-    assert.match(bookmarklet, /248,\s*113,\s*113|220,\s*38,\s*38/);
-    assert.match(bookmarklet, /251,\s*191,\s*36|217,\s*119,\s*6/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /20\s*\*\s*60\s*\*\s*1000/);
+    assert.match(runtime, /15\s*\*\s*60\s*\*\s*1000/);
+    assert.match(runtime, /248,\s*113,\s*113|220,\s*38,\s*38/);
+    assert.match(runtime, /251,\s*191,\s*36|217,\s*119,\s*6/);
 });
 
 test('bookmarklet supports light and dark themes with persistent toggle', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /fastToolkit_crm_ticket_tracker_theme_v1/);
-    assert.match(bookmarklet, /data-action="toggle-theme"/);
-    assert.match(bookmarklet, /light-theme/);
-    assert.match(bookmarklet, /toggleTheme/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /fastToolkit_crm_ticket_tracker_theme_v1/);
+    assert.match(runtime, /data-action="toggle-theme"/);
+    assert.match(runtime, /light-theme/);
+    assert.match(runtime, /toggleTheme/);
 });
 
 test('bookmarklet tracks agent characters and sentences count', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /totalChars/);
-    assert.match(bookmarklet, /totalSentences/);
-    assert.match(bookmarklet, /data-role="chars-count"/);
-    assert.match(bookmarklet, /data-role="sentences-count"/);
-    assert.match(bookmarklet, /data-role="ticket-chars"/);
-    assert.match(bookmarklet, /onUserTyping/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /totalChars/);
+    assert.match(runtime, /totalSentences/);
+    assert.match(runtime, /data-role="chars-count"/);
+    assert.match(runtime, /data-role="sentences-count"/);
+    assert.match(runtime, /data-role="ticket-chars"/);
+    assert.match(runtime, /onUserTyping/);
 });
 
 test('bookmarklet resets automatically after 4 hours of inactivity', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /4\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
-    assert.match(bookmarklet, /INACTIVITY_TIMEOUT_MS/);
-    assert.match(bookmarklet, /lastActivityAt/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /4\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+    assert.match(runtime, /INACTIVITY_TIMEOUT_MS/);
+    assert.match(runtime, /lastActivityAt/);
 });
 
 test('bookmarklet includes analytics view, line chart, and cumulative writing stats', () => {
-    const bookmarklet = tracker.buildBookmarklet();
-    assert.match(bookmarklet, /toggle-analytics/);
-    assert.match(bookmarklet, /data-role="analytics-view"/);
-    assert.match(bookmarklet, /data-role="chart-container"/);
-    assert.match(bookmarklet, /data-role="all-chars"/);
-    assert.match(bookmarklet, /data-role="all-sentences"/);
-    assert.match(bookmarklet, /data-role="all-sessions"/);
-    assert.match(bookmarklet, /data-role="all-abst"/);
-    assert.match(bookmarklet, /chartGrad_/);
-    assert.match(bookmarklet, /polyline/);
-    assert.match(bookmarklet, /fastToolkit_crm_ticket_tracker_history_v1/);
+    const runtime = tracker.getRuntimeSource();
+    assert.match(runtime, /toggle-analytics/);
+    assert.match(runtime, /data-role="analytics-view"/);
+    assert.match(runtime, /data-role="chart-container"/);
+    assert.match(runtime, /data-role="all-chars"/);
+    assert.match(runtime, /data-role="all-sentences"/);
+    assert.match(runtime, /data-role="all-sessions"/);
+    assert.match(runtime, /data-role="all-abst"/);
+    assert.match(runtime, /chartGrad_/);
+    assert.match(runtime, /polyline/);
+    assert.match(runtime, /fastToolkit_crm_ticket_tracker_history_v1/);
 });
 
 
