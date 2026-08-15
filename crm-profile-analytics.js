@@ -145,18 +145,22 @@
             shiftStart = statusEvents[0].time;
         }
 
+        let totalLunchMs = 0;
+
         for (let i = 0; i < statusEvents.length; i++) {
             const current = statusEvents[i];
             const next = statusEvents[i + 1];
             const startTime = current.time;
             const endTime = next ? next.time : Date.now();
             const duration = Math.max(0, endTime - startTime);
-            const statusKey = current.to.toLowerCase();
+            const statusKey = (current.to || '').toLowerCase();
 
             if (statusKey === 'online') {
                 totalOnlineMs += duration;
             } else if (statusKey === 'break') {
                 totalBreakMs += duration;
+            } else if (statusKey === 'lunch') {
+                totalLunchMs += duration;
             } else if (statusKey === 'offline') {
                 totalOfflineMs += duration;
             } else {
@@ -245,6 +249,7 @@
             shiftStart,
             totalOnlineMs,
             totalBreakMs,
+            totalLunchMs,
             totalOtherMs,
             totalOfflineMs,
             totalSessions: totalTicketsLinked,
@@ -427,18 +432,22 @@
                 shiftStart = statusEvents[0].time;
             }
 
+            let totalLunchMs = 0;
+
             for (let i = 0; i < statusEvents.length; i++) {
                 const current = statusEvents[i];
                 const next = statusEvents[i + 1];
                 const startTime = current.time;
                 const endTime = next ? next.time : Date.now();
                 const duration = Math.max(0, endTime - startTime);
-                const statusKey = current.to.toLowerCase();
+                const statusKey = (current.to || '').toLowerCase();
 
                 if (statusKey === 'online') {
                     totalOnlineMs += duration;
                 } else if (statusKey === 'break') {
                     totalBreakMs += duration;
+                } else if (statusKey === 'lunch') {
+                    totalLunchMs += duration;
                 } else if (statusKey === 'offline') {
                     totalOfflineMs += duration;
                 } else {
@@ -527,6 +536,7 @@
                 shiftStart,
                 totalOnlineMs,
                 totalBreakMs,
+                totalLunchMs,
                 totalOtherMs,
                 totalOfflineMs,
                 totalSessions: totalTicketsLinked,
@@ -617,6 +627,7 @@
                 .metric-card b{display:block;font-size:13.5px;font-variant-numeric:tabular-nums;direction:ltr}
                 .metric-online b{color:var(--online-color)}
                 .metric-break b{color:var(--break-color)}
+                .metric-lunch b{color:rgb(249,115,22)}
                 .metric-sessions b{color:rgb(168,85,247)}
                 .metric-tickets b{color:var(--ticket-color)}
                 .metric-time b{color:var(--text-main)}
@@ -655,11 +666,12 @@
                     </div>
                 </div>
                 <div class="metrics-grid">
-                    <div class="metric-card metric-online"><span>وقت الأونلاين</span><b data-role="online-time">00:00:00</b></div>
-                    <div class="metric-card metric-break"><span>وقت البريك</span><b data-role="break-time">00:00:00</b></div>
+                    <div class="metric-card metric-online"><span>Online</span><b data-role="online-time">00:00:00</b></div>
+                    <div class="metric-card metric-break"><span>Break</span><b data-role="break-time">00:00:00</b></div>
+                    <div class="metric-card metric-lunch" data-role="lunch-card" style="display:none;"><span>Lunch</span><b data-role="lunch-time">00:00:00</b></div>
                     <div class="metric-card metric-sessions"><span>السيشن</span><b data-role="sessions-count">0</b></div>
                     <div class="metric-card metric-tickets"><span>التكتات</span><b data-role="tickets-count">0</b></div>
-                    <div class="metric-card metric-time"><span>متوسط التكت</span><b data-role="avg-time">00:00</b></div>
+                    <div class="metric-card metric-time"><span>ABST</span><b data-role="avg-time">00:00</b></div>
                     <div class="metric-card metric-start"><span>بداية الشفت</span><b data-role="shift-start-time">--:--</b></div>
                 </div>
                 <div class="extremes-wrap">
@@ -721,6 +733,15 @@
 
             byRole('online-time').textContent = _formatDuration(metrics.totalOnlineMs);
             byRole('break-time').textContent = _formatDuration(metrics.totalBreakMs);
+            const lunchCard = byRole('lunch-card');
+            if (lunchCard) {
+                if (metrics.totalLunchMs > 0) {
+                    lunchCard.style.display = 'block';
+                    byRole('lunch-time').textContent = _formatDuration(metrics.totalLunchMs);
+                } else {
+                    lunchCard.style.display = 'none';
+                }
+            }
             if (byRole('sessions-count')) byRole('sessions-count').textContent = String(metrics.totalSessions);
             byRole('tickets-count').textContent = String(metrics.uniqueTicketsCount || metrics.totalTicketsCompleted);
             byRole('avg-time').textContent = _formatDuration(metrics.avgTicketDurationMs);
@@ -800,22 +821,31 @@
             const longestTickStr = ext.longestTicket ? `#${ext.longestTicket.ticketId} (${_formatDuration(ext.longestTicket.totalMs)})` : '--';
             const shortestTickStr = ext.shortestTicket ? `#${ext.shortestTicket.ticketId} (${_formatDuration(ext.shortestTicket.totalMs)})` : '--';
 
-            const report = [
-                `📊 تقرير نشاط البروفايل و AUX اليومي:`,
+            const reportLines = [
+                `📊 تقرير نشاط البروفايل و AUX:`,
                 `---------------------------------`,
-                `🟢 وقت الأونلاين (Online): ${_formatDuration(m.totalOnlineMs)}`,
-                `🟡 وقت الاستراحة (Break): ${_formatDuration(m.totalBreakMs)}`,
-                `🕒 بداية الشفت الفعلية: ${shiftStartTime}`,
-                `🔵 إجمالي السيشن (Sessions): ${m.totalSessions}`,
-                `🎯 إجمالي التكتات الفريدة: ${m.uniqueTicketsCount || m.totalTicketsCompleted}`,
-                `⏱️ متوسط وقت التكت (ABST): ${_formatDuration(m.avgTicketDurationMs)}`,
+                `🟢 Online: ${_formatDuration(m.totalOnlineMs)}`,
+                `🟡 Break: ${_formatDuration(m.totalBreakMs)}`
+            ];
+
+            if (m.totalLunchMs > 0) {
+                reportLines.push(`🍔 Lunch: ${_formatDuration(m.totalLunchMs)}`);
+            }
+
+            reportLines.push(
+                `🕒 بداية الشفت: ${shiftStartTime}`,
+                `🔵 السيشن: ${m.totalSessions}`,
+                `🎯 التكتات: ${m.uniqueTicketsCount || m.totalTicketsCompleted}`,
+                `⏱️ ABST: ${_formatDuration(m.avgTicketDurationMs)}`,
                 `---------------------------------`,
                 `⏳ أطول سيشن: ${longestSessStr}`,
                 `⚡ أقصر سيشن: ${shortestSessStr}`,
                 `📈 أطول تكت (مجموع): ${longestTickStr}`,
                 `📉 أقصر تكت (مجموع): ${shortestTickStr}`,
                 `---------------------------------`
-            ].join('\n');
+            );
+
+            const report = reportLines.join('\n');
 
             navigator.clipboard.writeText(report).then(() => {
                 showToast('✅ تم نسخ التقرير الشامل بنجاح!');
