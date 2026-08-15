@@ -442,8 +442,10 @@
                 .compact strong{color:var(--compact-time);direction:ltr;font-variant-numeric:tabular-nums;font-size:13px}
                 .toast{display:none;margin-top:8px;color:var(--copy-color);font-size:10px;text-align:center}
                 .recent-wrap{margin-top:10px;padding-top:9px;border-top:1px solid var(--card-border)}
-                .recent-title{color:var(--text-sub);font-size:9px;margin-bottom:5px}
-                .recent{display:grid;gap:4px}
+                .recent-title{color:var(--text-sub);font-size:9px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
+                .recent{display:grid;gap:4px;max-height:115px;overflow-y:auto;padding-left:3px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--card-border) transparent}
+                .recent::-webkit-scrollbar{width:4px}
+                .recent::-webkit-scrollbar-thumb{background:var(--card-border);border-radius:4px}
                 .recent-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:5px 7px;border-radius:8px;background:var(--card-bg);font-size:10px}
                 .recent-row a{color:var(--link-color);text-decoration:none;direction:ltr;font-weight:700}
                 .recent-row span{color:var(--text-main);direction:ltr;font-variant-numeric:tabular-nums}
@@ -494,7 +496,7 @@
                         <div class="typing-metric"><span>الكلمات</span><b data-role="words-count">0</b></div>
                         <div class="typing-metric"><span>التكت الحالي</span><b data-role="ticket-chars">0</b></div>
                     </div>
-                    <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
+                    <div class="recent-wrap"><div class="recent-title" data-role="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
                     <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
                     <div class="toast" data-role="toast"></div>
                     <div class="hint">قراءة فقط — لا يكتب ولا يرسل شيئًا داخل CRM</div>
@@ -770,10 +772,15 @@
 
             const recent = byRole('recent');
             recent.replaceChildren();
-            Object.entries(state.tickets)
-                .sort((first, second) => (Number(second[1].lastOpenedAt) || 0) - (Number(first[1].lastOpenedAt) || 0))
-                .slice(0, 4)
-                .forEach(([recentId, recentTicket]) => {
+            const ticketEntries = Object.entries(state.tickets)
+                .sort((first, second) => (Number(second[1].lastOpenedAt) || 0) - (Number(first[1].lastOpenedAt) || 0));
+
+            const recentTitle = byRole('recent-title');
+            if (recentTitle) {
+                recentTitle.textContent = ticketEntries.length > 0 ? `آخر التكتات (${ticketEntries.length})` : 'آخر التكتات';
+            }
+
+            ticketEntries.forEach(([recentId, recentTicket]) => {
                     const row = document.createElement('div');
                     row.className = 'recent-row';
 
