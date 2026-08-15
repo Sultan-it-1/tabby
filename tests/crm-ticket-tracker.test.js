@@ -104,6 +104,16 @@ test('bookmarklet supports light and dark themes with persistent toggle', () => 
     assert.match(bookmarklet, /toggleTheme/);
 });
 
+test('bookmarklet tracks agent characters and sentences count', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /totalChars/);
+    assert.match(bookmarklet, /totalSentences/);
+    assert.match(bookmarklet, /data-role="chars-count"/);
+    assert.match(bookmarklet, /data-role="sentences-count"/);
+    assert.match(bookmarklet, /data-role="ticket-chars"/);
+    assert.match(bookmarklet, /onUserTyping/);
+});
+
 
 
 

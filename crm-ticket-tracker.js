@@ -71,7 +71,9 @@
                 day: localDayKey(timestamp),
                 shiftStartedAt: timestamp,
                 tickets: {},
-                active: null
+                active: null,
+                totalChars: 0,
+                totalSentences: 0
             };
         }
 
@@ -81,11 +83,15 @@
                 state.tickets[ticketId] = {
                     totalMs: 0,
                     visits: 0,
+                    chars: 0,
+                    sentences: 0,
                     firstOpenedAt: timestamp,
                     lastOpenedAt: timestamp,
                     lastLeftAt: null
                 };
             }
+            if (typeof current.chars !== 'number') current.chars = 0;
+            if (typeof current.sentences !== 'number') current.sentences = 0;
             return state.tickets[ticketId];
         }
 
@@ -96,6 +102,8 @@
             const normalized = createEmptyState(timestamp);
             normalized.shiftStartedAt = Number(candidate.shiftStartedAt) || timestamp;
             normalized.tickets = candidate.tickets && typeof candidate.tickets === 'object' ? candidate.tickets : {};
+            normalized.totalChars = Math.max(0, Number(candidate.totalChars) || 0);
+            normalized.totalSentences = Math.max(0, Number(candidate.totalSentences) || 0);
             normalized.active = candidate.active && typeof candidate.active.id === 'string'
                 ? {
                     id: candidate.active.id,
@@ -200,7 +208,9 @@
                 `عدد التكتات: ${ticketCount}`,
                 `عدد السيشن: ${sessionsCount}`,
                 `إجمالي الوقت: ${formatDuration(total)}`,
-                `ABST: ${formatDuration(average)}`
+                `ABST: ${formatDuration(average)}`,
+                `إجمالي الحروف: ${Math.max(0, Number(state.totalChars) || 0)}`,
+                `إجمالي الجمل: ${Math.max(0, Number(state.totalSentences) || 0)}`
             ];
             if (state.active) {
                 const activeTicket = state.tickets[state.active.id];
@@ -219,7 +229,8 @@
                 ticketRows.forEach(([ticketId, ticket]) => {
                     const visits = Math.max(0, Number(ticket.visits) || 0);
                     const visitsText = visits > 1 ? ` — زرتها ${visits} مرات` : '';
-                    lines.push(`${buildTicketUrl(ticketId)} — ${formatDuration(ticketTotalMs(ticketId, timestamp))}${visitsText}`);
+                    const charsText = ticket.chars ? ` (${ticket.chars} حرف)` : '';
+                    lines.push(`${buildTicketUrl(ticketId)} — ${formatDuration(ticketTotalMs(ticketId, timestamp))}${charsText}${visitsText}`);
                 });
             }
             return lines.join('\n');
@@ -356,6 +367,9 @@
                 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px;color:var(--text-muted);font-size:9.5px;background:var(--card-bg);border:1px solid var(--card-border);padding:6px 4px;border-radius:9px;text-align:center}
                 .stats span{display:flex;flex-direction:column;gap:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 .stats b{color:var(--text-main);font-variant-numeric:tabular-nums;font-size:11.5px}
+                .typing-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px;color:var(--text-muted);font-size:9px;background:var(--card-bg);border:1px solid var(--card-border);padding:5px 4px;border-radius:9px;text-align:center}
+                .typing-metric{display:flex;flex-direction:column;gap:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                .typing-metric b{color:var(--text-main);font-variant-numeric:tabular-nums;font-size:11px}
                 .actions{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:12px}
                 .copy,.reset{border-radius:10px;padding:8px 10px;cursor:pointer;font-size:10.5px;font-weight:700}
                 .copy{border:1px solid var(--copy-border);background:var(--copy-bg);color:var(--copy-color)}
@@ -391,6 +405,11 @@
                     <span>السيشن<b data-role="sessions">0</b></span>
                     <span>ABST<b data-role="average">00:00</b></span>
                     <span data-role="visits-stat" style="display:none;">زرتها<b data-role="visits">0</b></span>
+                </div>
+                <div class="typing-bar" data-role="typing-bar">
+                    <div class="typing-metric"><span>الحروف</span><b data-role="chars-count">0</b></div>
+                    <div class="typing-metric"><span>الجمل</span><b data-role="sentences-count">0</b></div>
+                    <div class="typing-metric"><span>حروف التكت</span><b data-role="ticket-chars">0</b></div>
                 </div>
                 <div class="recent-wrap"><div class="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
                 <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
@@ -591,6 +610,9 @@
                 statsWrap.style.gridTemplateColumns = isRepeated ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)';
             }
             byRole('visits').textContent = String(ticket ? Math.max(0, Number(ticket.visits) || 0) : 0);
+            if (byRole('chars-count')) byRole('chars-count').textContent = String(Math.max(0, Number(state.totalChars) || 0));
+            if (byRole('sentences-count')) byRole('sentences-count').textContent = String(Math.max(0, Number(state.totalSentences) || 0));
+            if (byRole('ticket-chars')) byRole('ticket-chars').textContent = String(ticket ? (Math.max(0, Number(ticket.chars) || 0)) : 0);
             byRole('compact-ticket').textContent = shortTicketId(ticketId);
 
             const compactTimeElem = byRole('compact-time');
@@ -688,6 +710,43 @@
             saveState();
         });
 
+        function onUserTyping(event) {
+            if (!event || !event.target) return;
+            try {
+                if (event.target.getRootNode && event.target.getRootNode() === shadow) return;
+            } catch (e) {}
+            const target = event.target;
+            const isEditable = Boolean(target.isContentEditable || target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.type !== 'password' && target.type !== 'hidden'));
+            if (!isEditable) return;
+
+            if (event.type === 'input') {
+                const inserted = typeof event.data === 'string' ? event.data : '';
+                const count = inserted.length || 1;
+                state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + count;
+                if (state.active) {
+                    const ticket = ensureTicket(state.active.id, Date.now());
+                    ticket.chars = (Math.max(0, Number(ticket.chars) || 0)) + count;
+                }
+                if (/[.!?؟\n]/.test(inserted)) {
+                    state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
+                    if (state.active) {
+                        const ticket = ensureTicket(state.active.id, Date.now());
+                        ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                    }
+                }
+            } else if (event.type === 'keydown' && event.key === 'Enter') {
+                state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
+                if (state.active) {
+                    const ticket = ensureTicket(state.active.id, Date.now());
+                    ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                }
+            }
+            render(Date.now());
+        }
+
+        document.addEventListener('input', onUserTyping, true);
+        document.addEventListener('keydown', onUserTyping, true);
+
         let lastSavedAt = 0;
         const interval = window.setInterval(() => {
             const timestamp = Date.now();
@@ -703,6 +762,8 @@
         window.addEventListener('pagehide', () => {
             finalizeActive(Date.now());
             saveState();
+            document.removeEventListener('input', onUserTyping, true);
+            document.removeEventListener('keydown', onUserTyping, true);
             window.clearInterval(interval);
         }, { once: true });
 
