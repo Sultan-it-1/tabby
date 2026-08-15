@@ -500,15 +500,15 @@
 
             <div class="advanced-tool-panel">
                 <div class="advanced-tool-title"><span aria-hidden="true">⏱️</span><span>عداد وقت تكتات CRM</span></div>
-                <p>يتعرف على التكت من الرابط، ويعرض وقت الجلسة الحالية ومجموع جميع مرات الرجوع لنفس التكت.</p>
+                <p>يتعرف على التكت من الرابط، ويعرض وقت الجلسة الحالية ومجموع جميع مرات التكرار لنفس التكت.</p>
                 <div class="advanced-bookmarklet-row">
-                    <a href="#" draggable="true" class="advanced-bookmarklet-link" id="crmTrackerBookmarklet">اسحبني إلى شريط المفضلة</a>
-                    <button type="button" class="advanced-copy-btn" id="copyCrmTrackerBookmarklet">نسخ الرابط</button>
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="crmTrackerBookmarklet" title="اسحب إلى شريط المفضلة كـ «العداد»">العداد</a>
+                    <button type="button" class="advanced-copy-btn" id="copyCrmTrackerBookmarklet">نسخ كود العداد</button>
                 </div>
                 <ol class="advanced-steps">
-                    <li>اسحب الزر الأخضر إلى شريط المفضلة.</li>
-                    <li>افتح <b>crm.tabby.sa</b> واضغط المفضلة مرة واحدة.</li>
-                    <li>اتركه يعمل؛ سيتابع تغيّر التكتات تلقائيًا حتى تحديث الصفحة.</li>
+                    <li>اسحب زر <b>العداد</b> الأخضر إلى شريط المفضلة في متصفحك.</li>
+                    <li>افتح <b>crm.tabby.sa</b> واضغط على «العداد» في المفضلة مرة واحدة.</li>
+                    <li>سيعمل العداد تلقائياً ويتابع تغيّر التكتات والوقت.</li>
                 </ol>
                 <div class="advanced-safety">قراءة فقط: لا يكتب ملاحظات، لا يضغط أزرارًا، ولا يرسل أي بيانات.</div>
                 <div class="advanced-copy-status" id="crmTrackerCopyStatus" aria-live="polite"></div>
@@ -520,7 +520,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js?v=2.5.0"></script>
-    <script src="crm-ticket-tracker.js?v=2.3.3"></script>
+    <script src="crm-ticket-tracker.js?v=2.5.0"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const emailTxt = document.getElementById('userEmailTxt');
@@ -547,39 +547,16 @@
 
             if (window.FastToolkitCrmTicketTracker && bookmarkletLink) {
                 const bookmarklet = window.FastToolkitCrmTicketTracker.buildBookmarklet();
-                const defaultLabel = bookmarkletLink.textContent;
-                const bookmarkTitle = 'العداد';
-
                 bookmarkletLink.setAttribute('href', bookmarklet);
-                bookmarkletLink.setAttribute('title', bookmarkTitle);
+                bookmarkletLink.setAttribute('title', 'اسحب هذا الزر إلى شريط المفضلة لإنشاء أداة «العداد»');
 
-                bookmarkletLink.addEventListener('dragstart', event => {
-                    bookmarkletLink.textContent = bookmarkTitle;
-                    if (event.dataTransfer) {
-                        event.dataTransfer.setData('text/uri-list', bookmarklet);
-                        event.dataTransfer.setData('text/plain', bookmarklet);
-                        event.dataTransfer.setData('text/html', `<a href="${bookmarklet}">${bookmarkTitle}</a>`);
-                    }
-                    setTimeout(() => {
-                        bookmarkletLink.textContent = defaultLabel;
-                    }, 0);
-                });
-
-                bookmarkletLink.addEventListener('dragend', () => {
-                    bookmarkletLink.textContent = defaultLabel;
-                });
-
-                bookmarkletLink.addEventListener('click', event => {
-                    event.preventDefault();
-                    if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر إلى شريط المفضلة، أو استخدم زر النسخ.';
-                });
                 if (bookmarkletCopyBtn) {
                     bookmarkletCopyBtn.addEventListener('click', async () => {
                         try {
                             await navigator.clipboard.writeText(bookmarklet);
-                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'تم نسخ رابط الـBookmarklet ✅';
+                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'تم نسخ كود «العداد» بنجاح ✅ يمكنك إضافته للمفضلة';
                         } catch (e) {
-                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر الأخضر مباشرة إلى شريط المفضلة.';
+                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب زر «العداد» مباشرة إلى شريط المفضلة.';
                         }
                     });
                 }

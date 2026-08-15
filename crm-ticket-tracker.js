@@ -36,13 +36,19 @@
                 : `${pad(totalMinutes)}:${pad(seconds)}`;
         }
 
+        function isCrmHost(host) {
+            const h = (host || '').toLowerCase();
+            return h === EXPECTED_HOST || h === 'crm.tabby.ai' || h.endsWith('.tabby.sa') || h.endsWith('.tabby.ai') || h.includes('crm') || h === 'localhost' || h === '127.0.0.1';
+        }
+
         if (request.action === 'extract') return extractTicketId(request.url);
         if (request.action === 'ticketUrl') return buildTicketUrl(request.ticketId);
         if (request.action === 'format') return formatDuration(request.milliseconds);
         if (request.action !== 'install' || typeof window === 'undefined' || typeof document === 'undefined') return null;
 
-        if (window.location.hostname.toLowerCase() !== EXPECTED_HOST) {
-            window.alert('افتح CRM أولًا ثم شغّل عداد التكتات من المفضلة.');
+        const currentHost = (window.location && window.location.hostname ? window.location.hostname : '').toLowerCase();
+        if (!isCrmHost(currentHost)) {
+            window.alert('افتح صفحة CRM (crm.tabby.sa) أولاً، ثم اضغط على «العداد» من شريط المفضلة.');
             return null;
         }
 
@@ -702,6 +708,9 @@
         },
         formatDuration(milliseconds) {
             return fastToolkitCrmTicketTrackerRuntime({ action: 'format', milliseconds });
+        },
+        install() {
+            return fastToolkitCrmTicketTrackerRuntime({ action: 'install' });
         },
         buildBookmarklet() {
             return `javascript:(${fastToolkitCrmTicketTrackerRuntime.toString()})({action:'install'});`;
