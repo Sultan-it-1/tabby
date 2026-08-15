@@ -966,6 +966,8 @@
             saveState();
         });
 
+        let sentenceTextBuffer = '';
+
         function onUserTyping(event) {
             if (!event || !event.target) return;
             try {
@@ -975,31 +977,61 @@
             const isEditable = Boolean(target.isContentEditable || target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.type !== 'password' && target.type !== 'hidden'));
             if (!isEditable) return;
 
+            const now = Date.now();
+            state.lastActivityAt = now;
+
             if (event.type === 'input') {
-                const inserted = typeof event.data === 'string' ? event.data : '';
-                const count = inserted.length || 1;
-                state.lastActivityAt = Date.now();
-                state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + count;
-                if (state.active) {
-                    const ticket = ensureTicket(state.active.id, Date.now());
-                    ticket.chars = (Math.max(0, Number(ticket.chars) || 0)) + count;
+                const inputType = event.inputType || '';
+                const data = typeof event.data === 'string' ? event.data : '';
+
+                // 1. Ignore all deletion actions (Backspace, Delete, Cut, etc.)
+                if (inputType.startsWith('delete') || inputType === 'deleteContentBackward' || inputType === 'deleteContentForward' || inputType === 'deleteByCut') {
+                    render(now);
+                    return;
                 }
-                if (/[.!?؟\n]/.test(inserted)) {
-                    state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
+
+                // 2. Count characters inserted
+                let count = 0;
+                if (data.length > 0) {
+                    count = data.length;
+                    sentenceTextBuffer += data;
+                } else if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
+                    count = 1;
+                    sentenceTextBuffer += '\n';
+                }
+
+                if (count > 0) {
+                    state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + count;
                     if (state.active) {
-                        const ticket = ensureTicket(state.active.id, Date.now());
-                        ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                        const ticket = ensureTicket(state.active.id, now);
+                        ticket.chars = (Math.max(0, Number(ticket.chars) || 0)) + count;
+                    }
+                }
+
+                // 3. Smart sentence termination detection (. ! ? ؟ or newline)
+                if (/[.!?؟\n]/.test(data) || inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
+                    const meaningfulText = sentenceTextBuffer.replace(/[.!?؟\s\n]+/g, '');
+                    if (meaningfulText.length >= 2) {
+                        state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
+                        if (state.active) {
+                            const ticket = ensureTicket(state.active.id, now);
+                            ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                        }
+                        sentenceTextBuffer = '';
                     }
                 }
             } else if (event.type === 'keydown' && event.key === 'Enter') {
-                state.lastActivityAt = Date.now();
-                state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
-                if (state.active) {
-                    const ticket = ensureTicket(state.active.id, Date.now());
-                    ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                const meaningfulText = sentenceTextBuffer.replace(/[.!?؟\s\n]+/g, '');
+                if (meaningfulText.length >= 2) {
+                    state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
+                    if (state.active) {
+                        const ticket = ensureTicket(state.active.id, now);
+                        ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                    }
+                    sentenceTextBuffer = '';
                 }
             }
-            render(Date.now());
+            render(now);
         }
 
         document.addEventListener('input', onUserTyping, true);
