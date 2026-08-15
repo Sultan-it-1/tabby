@@ -968,6 +968,22 @@
 
         let sentenceTextBuffer = '';
 
+        function commitSentenceIfValid(timestamp) {
+            const cleanText = sentenceTextBuffer.trim();
+            if (!cleanText) return;
+            const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+            const meaningfulChars = cleanText.replace(/[.!?؟\s\n\r]+/g, '').length;
+
+            if (words.length >= 2 || meaningfulChars >= 6) {
+                state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
+                if (state.active) {
+                    const ticket = ensureTicket(state.active.id, timestamp);
+                    ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
+                }
+                sentenceTextBuffer = '';
+            }
+        }
+
         function onUserTyping(event) {
             if (!event || !event.target) return;
             try {
@@ -990,52 +1006,38 @@
                     return;
                 }
 
-                // 2. Count characters inserted
-                let count = 0;
-                if (data.length > 0) {
-                    count = data.length;
-                    sentenceTextBuffer += data;
-                } else if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
-                    count = 1;
-                    sentenceTextBuffer += '\n';
-                }
-
-                if (count > 0) {
-                    state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + count;
+                // 2. Count ONLY real characters (Excluding spaces, tabs, and newlines!)
+                const meaningfulChars = data.replace(/\s+/g, '').length;
+                if (meaningfulChars > 0) {
+                    state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + meaningfulChars;
                     if (state.active) {
                         const ticket = ensureTicket(state.active.id, now);
-                        ticket.chars = (Math.max(0, Number(ticket.chars) || 0)) + count;
+                        ticket.chars = (Math.max(0, Number(ticket.chars) || 0)) + meaningfulChars;
                     }
+                }
+
+                if (data.length > 0) {
+                    sentenceTextBuffer += data;
+                } else if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
+                    sentenceTextBuffer += '\n';
                 }
 
                 // 3. Smart sentence termination detection (. ! ? ؟ or newline)
                 if (/[.!?؟\n]/.test(data) || inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
-                    const meaningfulText = sentenceTextBuffer.replace(/[.!?؟\s\n]+/g, '');
-                    if (meaningfulText.length >= 2) {
-                        state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
-                        if (state.active) {
-                            const ticket = ensureTicket(state.active.id, now);
-                            ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
-                        }
-                        sentenceTextBuffer = '';
-                    }
+                    commitSentenceIfValid(now);
                 }
             } else if (event.type === 'keydown' && event.key === 'Enter') {
-                const meaningfulText = sentenceTextBuffer.replace(/[.!?؟\s\n]+/g, '');
-                if (meaningfulText.length >= 2) {
-                    state.totalSentences = (Math.max(0, Number(state.totalSentences) || 0)) + 1;
-                    if (state.active) {
-                        const ticket = ensureTicket(state.active.id, now);
-                        ticket.sentences = (Math.max(0, Number(ticket.sentences) || 0)) + 1;
-                    }
-                    sentenceTextBuffer = '';
-                }
+                commitSentenceIfValid(now);
+            } else if (event.type === 'blur' || event.type === 'change') {
+                commitSentenceIfValid(now);
             }
             render(now);
         }
 
         document.addEventListener('input', onUserTyping, true);
         document.addEventListener('keydown', onUserTyping, true);
+        document.addEventListener('change', onUserTyping, true);
+        document.addEventListener('blur', onUserTyping, true);
 
         let lastSavedAt = 0;
         const interval = window.setInterval(() => {
