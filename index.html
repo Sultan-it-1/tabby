@@ -502,11 +502,11 @@
                 <div class="advanced-tool-title"><span aria-hidden="true">⏱️</span><span>عداد وقت تكتات CRM</span></div>
                 <p>يتعرف على التكت من الرابط، ويعرض وقت الجلسة الحالية ومجموع جميع مرات التكرار لنفس التكت.</p>
                 <div class="advanced-bookmarklet-row">
-                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="crmTrackerBookmarklet" title="اسحب إلى شريط المفضلة كـ «العداد»">العداد</a>
-                    <button type="button" class="advanced-copy-btn" id="copyCrmTrackerBookmarklet">نسخ كود العداد</button>
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="crmTrackerBookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyCrmTrackerBookmarklet">نسخ الرابط</button>
                 </div>
                 <ol class="advanced-steps">
-                    <li>اسحب زر <b>العداد</b> الأخضر إلى شريط المفضلة في متصفحك.</li>
+                    <li>اسحب الزر الأخضر إلى شريط المفضلة في متصفحك.</li>
                     <li>افتح <b>crm.tabby.sa</b> واضغط على «العداد» في المفضلة مرة واحدة.</li>
                     <li>سيعمل العداد تلقائياً ويتابع تغيّر التكتات والوقت.</li>
                 </ol>
@@ -547,8 +547,20 @@
 
             if (window.FastToolkitCrmTicketTracker && bookmarkletLink) {
                 const bookmarklet = window.FastToolkitCrmTicketTracker.buildBookmarklet();
+                const defaultLabel = 'اسحبني إلى شريط المفضلة';
+                const bookmarkTitle = 'العداد';
+
                 bookmarkletLink.setAttribute('href', bookmarklet);
-                bookmarkletLink.setAttribute('title', 'اسحب هذا الزر إلى شريط المفضلة لإنشاء أداة «العداد»');
+                bookmarkletLink.setAttribute('title', 'اسحب هذا الزر إلى شريط المفضلة');
+                bookmarkletLink.textContent = defaultLabel;
+
+                bookmarkletLink.addEventListener('dragstart', () => {
+                    bookmarkletLink.textContent = bookmarkTitle;
+                });
+
+                bookmarkletLink.addEventListener('dragend', () => {
+                    bookmarkletLink.textContent = defaultLabel;
+                });
 
                 if (bookmarkletCopyBtn) {
                     bookmarkletCopyBtn.addEventListener('click', async () => {
@@ -556,7 +568,7 @@
                             await navigator.clipboard.writeText(bookmarklet);
                             if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'تم نسخ كود «العداد» بنجاح ✅ يمكنك إضافته للمفضلة';
                         } catch (e) {
-                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب زر «العداد» مباشرة إلى شريط المفضلة.';
+                            if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر الأخضر مباشرة إلى شريط المفضلة.';
                         }
                     });
                 }

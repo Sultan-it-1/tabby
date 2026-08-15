@@ -48,13 +48,15 @@ test('bookmarklet is self-contained and does not make network requests', () => {
     assert.doesNotMatch(bookmarklet, /XMLHttpRequest/);
 });
 
-test('index.html configures bookmarklet link as "العداد" for bookmarks bar drag', () => {
+test('index.html configures bookmarklet link with "اسحبني إلى شريط المفضلة" on page and "العداد" on drag', () => {
     const fs = require('node:fs');
     const path = require('node:path');
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
-    assert.match(indexHtml, /id="crmTrackerBookmarklet"[^>]*>العداد<\/a>/);
-    assert.match(indexHtml, /buildBookmarklet/);
+    assert.match(indexHtml, /id="crmTrackerBookmarklet">اسحبني إلى شريط المفضلة<\/a>/);
+    assert.match(indexHtml, /const bookmarkTitle = 'العداد';/);
+    assert.match(indexHtml, /bookmarkletLink\.addEventListener\('dragstart'/);
+    assert.match(indexHtml, /bookmarkletLink\.addEventListener\('dragend'/);
 });
 
 test('bookmarklet hides ticket total unless ticket has repeated visits', () => {
