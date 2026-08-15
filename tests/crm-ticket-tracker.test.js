@@ -47,3 +47,64 @@ test('bookmarklet is self-contained and does not make network requests', () => {
     assert.doesNotMatch(bookmarklet, /\bfetch\s*\(/);
     assert.doesNotMatch(bookmarklet, /XMLHttpRequest/);
 });
+
+test('index.html configures bookmarklet link to drag as "العداد" while keeping button text', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+
+    assert.match(indexHtml, /id="crmTrackerBookmarklet">اسحبني إلى شريط المفضلة<\/a>/);
+    assert.match(indexHtml, /const bookmarkTitle = 'العداد';/);
+    assert.match(indexHtml, /event\.dataTransfer\.setData\('text\/html',\s*`<a href="\${bookmarklet}">\${bookmarkTitle}<\/a>`\);/);
+});
+
+test('bookmarklet hides ticket total unless ticket has repeated visits', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /Number\(activeTicket\.visits\)\s*>\s*1/);
+    assert.match(bookmarklet, /Number\(ticket\.visits\)\s*>\s*1/);
+});
+
+test('bookmarklet supports dragging and stores window position', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /fastToolkit_crm_ticket_tracker_pos_v1/);
+    assert.match(bookmarklet, /makeDraggable/);
+    assert.match(bookmarklet, /pointerdown/);
+    assert.match(bookmarklet, /width:295px/);
+});
+
+test('bookmarklet includes total sessions count, ABST label, and repeated visits label', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /totalSessionsCount/);
+    assert.match(bookmarklet, /ABST/);
+    assert.match(bookmarklet, /data-role="sessions"/);
+    assert.match(bookmarklet, /تكررت/);
+});
+
+test('bookmarklet copies full ticket url in summary', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /buildTicketUrl\(ticketId\)/);
+    assert.match(bookmarklet, /buildTicketUrl\(state\.active\.id\)/);
+});
+
+test('bookmarklet turns yellow at 15m and red at 20m and above', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /20\s*\*\s*60\s*\*\s*1000/);
+    assert.match(bookmarklet, /15\s*\*\s*60\s*\*\s*1000/);
+    assert.match(bookmarklet, /#f87171/);
+    assert.match(bookmarklet, /#fbbf24/);
+});
+
+test('bookmarklet supports light and dark themes with persistent toggle', () => {
+    const bookmarklet = tracker.buildBookmarklet();
+    assert.match(bookmarklet, /fastToolkit_crm_ticket_tracker_theme_v1/);
+    assert.match(bookmarklet, /data-action="toggle-theme"/);
+    assert.match(bookmarklet, /light-theme/);
+    assert.match(bookmarklet, /toggleTheme/);
+});
+
+
+
+
+
+
+
