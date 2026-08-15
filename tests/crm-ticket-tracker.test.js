@@ -92,8 +92,8 @@ test('bookmarklet turns yellow at 15m and red at 20m and above', () => {
     const bookmarklet = tracker.buildBookmarklet();
     assert.match(bookmarklet, /20\s*\*\s*60\s*\*\s*1000/);
     assert.match(bookmarklet, /15\s*\*\s*60\s*\*\s*1000/);
-    assert.match(bookmarklet, /#f87171/);
-    assert.match(bookmarklet, /#fbbf24/);
+    assert.match(bookmarklet, /248,\s*113,\s*113|220,\s*38,\s*38/);
+    assert.match(bookmarklet, /251,\s*191,\s*36|217,\s*119,\s*6/);
 });
 
 test('bookmarklet supports light and dark themes with persistent toggle', () => {

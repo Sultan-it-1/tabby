@@ -363,53 +363,53 @@
             <style>
                 :host{
                     all:initial;
-                    --bg-panel:linear-gradient(145deg,#111827,#080d14);
+                    --bg-panel:linear-gradient(145deg,rgb(17,24,39),rgb(8,13,20));
                     --border-panel:rgba(52,211,153,.38);
                     --shadow-panel:0 22px 65px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05);
-                    --text-main:#f8fafc;
-                    --text-muted:#94a3b8;
-                    --text-sub:#64748b;
+                    --text-main:rgb(248,250,252);
+                    --text-muted:rgb(148,163,184);
+                    --text-sub:rgb(100,116,139);
                     --card-bg:rgba(255,255,255,.04);
                     --card-border:rgba(148,163,184,.14);
-                    --link-color:#6ee7b7;
+                    --link-color:rgb(110,231,183);
                     --btn-icon-bg:rgba(255,255,255,.08);
-                    --btn-icon-color:#cbd5e1;
+                    --btn-icon-color:rgb(203,213,225);
                     --copy-bg:rgba(16,185,129,.14);
                     --copy-border:rgba(52,211,153,.35);
-                    --copy-color:#a7f3d0;
+                    --copy-color:rgb(167,243,208);
                     --reset-bg:rgba(127,29,29,.14);
                     --reset-border:rgba(248,113,113,.22);
-                    --reset-color:#fca5a5;
-                    --compact-bg:#0b111a;
-                    --compact-time:#6ee7b7;
+                    --reset-color:rgb(252,165,165);
+                    --compact-bg:rgb(11,17,26);
+                    --compact-time:rgb(110,231,183);
                 }
                 :host(.light-theme){
-                    --bg-panel:linear-gradient(145deg,#ffffff,#f8fafc);
+                    --bg-panel:linear-gradient(145deg,rgb(255,255,255),rgb(248,250,252));
                     --border-panel:rgba(16,185,129,.35);
                     --shadow-panel:0 18px 50px rgba(15,23,42,.14),0 0 0 1px rgba(0,0,0,.06);
-                    --text-main:#0f172a;
-                    --text-muted:#64748b;
-                    --text-sub:#94a3b8;
+                    --text-main:rgb(15,23,42);
+                    --text-muted:rgb(100,116,139);
+                    --text-sub:rgb(148,163,184);
                     --card-bg:rgba(0,0,0,.035);
                     --card-border:rgba(0,0,0,.08);
-                    --link-color:#059669;
+                    --link-color:rgb(5,150,105);
                     --btn-icon-bg:rgba(0,0,0,.05);
-                    --btn-icon-color:#475569;
+                    --btn-icon-color:rgb(71,85,105);
                     --copy-bg:rgba(16,185,129,.12);
                     --copy-border:rgba(16,185,129,.35);
-                    --copy-color:#047857;
+                    --copy-color:rgb(4,120,87);
                     --reset-bg:rgba(239,68,68,.08);
                     --reset-border:rgba(239,68,68,.25);
-                    --reset-color:#b91c1c;
-                    --compact-bg:#ffffff;
-                    --compact-time:#059669;
+                    --reset-color:rgb(185,28,28);
+                    --compact-bg:rgb(255,255,255);
+                    --compact-time:rgb(5,150,105);
                 }
                 .panel,.compact{position:fixed;z-index:2147483647;left:20px;bottom:20px;direction:rtl;font-family:'Segoe UI',Tahoma,sans-serif;color:var(--text-main);box-sizing:border-box;user-select:none;-webkit-user-select:none;touch-action:none}
                 .panel{width:295px;padding:15px 16px;background:var(--bg-panel);border:1px solid var(--border-panel);border-radius:18px;box-shadow:var(--shadow-panel);cursor:grab}
                 .panel:active{cursor:grabbing}
                 .header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px;cursor:grab}
                 .brand{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--text-main)}
-                .live{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399}
+                .live{width:9px;height:9px;border-radius:50%;background:rgb(52,211,153);box-shadow:0 0 10px rgb(52,211,153)}
                 .header-actions{display:flex;align-items:center;gap:5px}
                 button,a{font:inherit}
                 .icon-btn{border:0;background:var(--btn-icon-bg);color:var(--btn-icon-color);width:28px;height:28px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .2s,transform .1s}
@@ -467,7 +467,7 @@
                     </div>
                 </div>
                 <div class="main-view" data-role="main-view">
-                    <div class="ticket"><span class="ticket-label" data-role="ticket-status">بانتظار تكت</span><a class="ticket-link" data-role="ticket-link" href="#">----</a></div>
+                    <div class="ticket"><span class="ticket-label" data-role="ticket-status">بانتظار تكت</span><a class="ticket-link" data-role="ticket-link" href="javascript:void(0)">----</a></div>
                     <div class="times" data-role="times">
                         <div class="metric"><span>الجلسة الحالية</span><strong data-role="current">00:00</strong></div>
                         <div class="metric" data-role="ticket-total-metric" style="display:none;"><span>مجموع التكت</span><strong data-role="ticket-total">00:00</strong></div>
@@ -648,15 +648,15 @@
         }
 
         function getDurationColor(durationMs, isLight) {
-            if (durationMs >= 20 * 60 * 1000) return isLight ? '#dc2626' : '#f87171';
-            if (durationMs >= 15 * 60 * 1000) return isLight ? '#d97706' : '#fbbf24';
+            if (durationMs >= 20 * 60 * 1000) return isLight ? 'rgb(220,38,38)' : 'rgb(248,113,113)';
+            if (durationMs >= 15 * 60 * 1000) return isLight ? 'rgb(217,119,6)' : 'rgb(251,191,36)';
             return '';
         }
 
         function getLiveDotStyle(durationMs, isLight) {
-            if (durationMs >= 20 * 60 * 1000) return { bg: isLight ? '#dc2626' : '#f87171', shadow: `0 0 10px ${isLight ? '#dc2626' : '#f87171'}` };
-            if (durationMs >= 15 * 60 * 1000) return { bg: isLight ? '#d97706' : '#fbbf24', shadow: `0 0 10px ${isLight ? '#d97706' : '#fbbf24'}` };
-            return { bg: '#10b981', shadow: '0 0 10px #10b981' };
+            if (durationMs >= 20 * 60 * 1000) return { bg: isLight ? 'rgb(220,38,38)' : 'rgb(248,113,113)', shadow: `0 0 10px ${isLight ? 'rgb(220,38,38)' : 'rgb(248,113,113)'}` };
+            if (durationMs >= 15 * 60 * 1000) return { bg: isLight ? 'rgb(217,119,6)' : 'rgb(251,191,36)', shadow: `0 0 10px ${isLight ? 'rgb(217,119,6)' : 'rgb(251,191,36)'}` };
+            return { bg: 'rgb(16,185,129)', shadow: '0 0 10px rgb(16,185,129)' };
         }
 
         function render(timestamp) {
@@ -675,11 +675,11 @@
             byRole('ticket-status').textContent = ticketId ? 'التكت الحالي' : 'بانتظار تكت من الرابط';
             ticketLink.textContent = shortTicketId(ticketId);
             ticketLink.style.visibility = ticketId ? 'visible' : 'hidden';
-            ticketLink.href = ticketId ? buildTicketUrl(ticketId) : '#';
+            ticketLink.href = ticketId ? buildTicketUrl(ticketId) : 'javascript:void(0)';
 
             const currentElem = byRole('current');
             currentElem.textContent = formatDuration(sessionMs);
-            currentElem.style.color = sessionColor || (isLight ? '#0f172a' : '#f8fafc');
+            currentElem.style.color = sessionColor || (isLight ? 'rgb(15,23,42)' : 'rgb(248,250,252)');
 
             const totalMetric = byRole('ticket-total-metric');
             const timesWrap = byRole('times');
@@ -692,7 +692,7 @@
 
             const totalElem = byRole('ticket-total');
             totalElem.textContent = formatDuration(totalMs);
-            totalElem.style.color = totalColor || (isLight ? '#0f172a' : '#f8fafc');
+            totalElem.style.color = totalColor || (isLight ? 'rgb(15,23,42)' : 'rgb(248,250,252)');
 
             byRole('count').textContent = String(ticketCount);
             if (byRole('sessions')) byRole('sessions').textContent = String(sessionsCount);
@@ -715,7 +715,7 @@
             const compactTimeMs = isRepeated ? totalMs : sessionMs;
             const compactColor = getDurationColor(compactTimeMs, isLight);
             compactTimeElem.textContent = formatDuration(compactTimeMs);
-            compactTimeElem.style.color = compactColor || (isLight ? '#059669' : '#6ee7b7');
+            compactTimeElem.style.color = compactColor || (isLight ? 'rgb(5,150,105)' : 'rgb(110,231,183)');
 
             const dotStyle = getLiveDotStyle(compactTimeMs, isLight);
             shadow.querySelectorAll('.live').forEach(dot => {
@@ -893,7 +893,7 @@
             const pointsStr = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
             const areaStr = `${points[0].x.toFixed(1)},${height - padY} ${pointsStr} ${points[points.length - 1].x.toFixed(1)},${height - padY}`;
 
-            const lineColor = isAbst ? '#38bdf8' : '#34d399';
+            const lineColor = isAbst ? 'rgb(56,189,248)' : 'rgb(52,211,153)';
             const gradId = `chartGrad_${isAbst ? 'abst' : 'sess'}`;
 
             let dotsHtml = '';
@@ -915,7 +915,7 @@
                         </linearGradient>
                     </defs>
                     <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" stroke="var(--card-border)" stroke-width="1" stroke-dasharray="2 2"/>
-                    <polygon points="${areaStr}" fill="url(#${gradId})"/>
+                    <polygon points="${areaStr}" fill="url(%23${gradId})"/>
                     <polyline points="${pointsStr}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     ${dotsHtml}
                 </svg>
