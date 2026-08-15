@@ -57,6 +57,7 @@ test('crm-profile-analytics calculates accurate AUX durations and shift metrics'
     assert.ok(metrics.shiftStart > 0);
     assert.ok(metrics.totalOnlineMs > 0);
     assert.ok(metrics.utilizationRate >= 0 && metrics.utilizationRate <= 100);
+    assert.ok(metrics.totalSessions >= 0);
     assert.ok(metrics.totalTicketsCompleted >= 0);
 });
 
@@ -74,6 +75,7 @@ test('crm-profile-analytics provides runtime installer source for execution', ()
     assert.match(runtime, /fastToolkit_crm_profile_analytics_theme_v1/);
     assert.match(runtime, /data-role="online-time"/);
     assert.match(runtime, /data-role="break-time"/);
+    assert.match(runtime, /data-role="sessions-count"/);
     assert.match(runtime, /data-role="tickets-count"/);
     assert.match(runtime, /data-action="scan"/);
     assert.match(runtime, /data-action="copy"/);

@@ -187,6 +187,10 @@
 
         activeTicketsCount = linkedMap.size;
         const totalTicketsLinked = ticketsCompleted.length + activeTicketsCount;
+        const uniqueTickets = new Set();
+        events.forEach(e => {
+            if (e.ticketId) uniqueTickets.add(e.ticketId);
+        });
         const totalHandledMs = ticketsCompleted.reduce((acc, t) => acc + t.durationMs, 0);
         const avgTicketDurationMs = ticketsCompleted.length > 0 ? Math.round(totalHandledMs / ticketsCompleted.length) : 0;
         const totalActiveMs = totalOnlineMs + totalBreakMs + totalOtherMs;
@@ -198,8 +202,10 @@
             totalBreakMs,
             totalOtherMs,
             totalOfflineMs,
+            totalSessions: totalTicketsLinked,
             totalTicketsLinked,
             totalTicketsCompleted: ticketsCompleted.length,
+            uniqueTicketsCount: uniqueTickets.size || totalTicketsLinked,
             activeTicketsCount,
             avgTicketDurationMs,
             utilizationRate,
@@ -417,6 +423,10 @@
 
             activeTicketsCount = linkedMap.size;
             const totalTicketsLinked = ticketsCompleted.length + activeTicketsCount;
+            const uniqueTickets = new Set();
+            events.forEach(e => {
+                if (e.ticketId) uniqueTickets.add(e.ticketId);
+            });
             const totalHandledMs = ticketsCompleted.reduce((acc, t) => acc + t.durationMs, 0);
             const avgTicketDurationMs = ticketsCompleted.length > 0 ? Math.round(totalHandledMs / ticketsCompleted.length) : 0;
             const totalActiveMs = totalOnlineMs + totalBreakMs + totalOtherMs;
@@ -428,8 +438,10 @@
                 totalBreakMs,
                 totalOtherMs,
                 totalOfflineMs,
+                totalSessions: totalTicketsLinked,
                 totalTicketsLinked,
                 totalTicketsCompleted: ticketsCompleted.length,
+                uniqueTicketsCount: uniqueTickets.size || totalTicketsLinked,
                 activeTicketsCount,
                 avgTicketDurationMs,
                 utilizationRate,
@@ -507,14 +519,16 @@
                 .header-actions{display:flex;align-items:center;gap:5px}
                 .icon-btn{border:0;background:var(--btn-bg);color:var(--text-main);width:28px;height:28px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s}
                 .icon-btn:hover{filter:brightness(1.15);transform:scale(1.05)}
-                .metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px}
-                .metric-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:9px 10px;text-align:center}
-                .metric-card span{display:block;font-size:10px;color:var(--text-muted);margin-bottom:3px;font-weight:600}
-                .metric-card b{display:block;font-size:15px;font-variant-numeric:tabular-nums;direction:ltr}
+                .metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px}
+                .metric-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:11px;padding:7px 6px;text-align:center}
+                .metric-card span{display:block;font-size:9.5px;color:var(--text-muted);margin-bottom:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+                .metric-card b{display:block;font-size:13.5px;font-variant-numeric:tabular-nums;direction:ltr}
                 .metric-online b{color:var(--online-color)}
                 .metric-break b{color:var(--break-color)}
+                .metric-sessions b{color:rgb(168,85,247)}
                 .metric-tickets b{color:var(--ticket-color)}
                 .metric-time b{color:var(--text-main)}
+                .metric-start b{color:var(--text-main)}
                 .progress-wrap{background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:8px 10px;margin-bottom:10px}
                 .progress-label{display:flex;justify-content:space-between;font-size:9.5px;color:var(--text-muted);margin-bottom:5px;font-weight:700}
                 .progress-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.05);gap:2px}
@@ -545,10 +559,12 @@
                     </div>
                 </div>
                 <div class="metrics-grid">
-                    <div class="metric-card metric-online"><span>وقت الأونلاين (Online)</span><b data-role="online-time">00:00:00</b></div>
-                    <div class="metric-card metric-break"><span>وقت البريك (Break)</span><b data-role="break-time">00:00:00</b></div>
-                    <div class="metric-card metric-tickets"><span>التكتات المنجزة</span><b data-role="tickets-count">0</b></div>
-                    <div class="metric-card metric-time"><span>متوسط وقت التكت</span><b data-role="avg-time">00:00</b></div>
+                    <div class="metric-card metric-online"><span>وقت الأونلاين</span><b data-role="online-time">00:00:00</b></div>
+                    <div class="metric-card metric-break"><span>وقت البريك</span><b data-role="break-time">00:00:00</b></div>
+                    <div class="metric-card metric-sessions"><span>السيشن</span><b data-role="sessions-count">0</b></div>
+                    <div class="metric-card metric-tickets"><span>التكتات</span><b data-role="tickets-count">0</b></div>
+                    <div class="metric-card metric-time"><span>متوسط التكت</span><b data-role="avg-time">00:00</b></div>
+                    <div class="metric-card metric-start"><span>بداية الشفت</span><b data-role="shift-start-time">--:--</b></div>
                 </div>
                 <div class="progress-wrap">
                     <div class="progress-label"><span>توزيع وقت العمل والبريك</span><span data-role="utilization-label">100% عمل</span></div>
@@ -583,8 +599,10 @@
 
             byRole('online-time').textContent = _formatDuration(metrics.totalOnlineMs);
             byRole('break-time').textContent = _formatDuration(metrics.totalBreakMs);
-            byRole('tickets-count').textContent = String(metrics.totalTicketsCompleted);
+            if (byRole('sessions-count')) byRole('sessions-count').textContent = String(metrics.totalSessions);
+            byRole('tickets-count').textContent = String(metrics.uniqueTicketsCount || metrics.totalTicketsCompleted);
             byRole('avg-time').textContent = _formatDuration(metrics.avgTicketDurationMs);
+            if (byRole('shift-start-time')) byRole('shift-start-time').textContent = metrics.shiftStart ? _formatTime(metrics.shiftStart) : '--:--';
 
             const onlinePercent = metrics.utilizationRate;
             const breakPercent = 100 - onlinePercent;
@@ -638,8 +656,9 @@
                 `🟡 وقت الاستراحة (Break): ${_formatDuration(m.totalBreakMs)}`,
                 `🕒 بداية الشفت الفعلية: ${shiftStartTime}`,
                 `📈 نسبة الالتزام والعمل: ${m.utilizationRate}%`,
-                `🎯 إجمالي التكتات المنجزة: ${m.totalTicketsCompleted}`,
-                `⏱️ متوسط وقت التكت: ${_formatDuration(m.avgTicketDurationMs)}`,
+                `🔵 إجمالي السيشن (Sessions): ${m.totalSessions}`,
+                `🎯 إجمالي التكتات الفريدة: ${m.uniqueTicketsCount || m.totalTicketsCompleted}`,
+                `⏱️ متوسط وقت التكت (ABST): ${_formatDuration(m.avgTicketDurationMs)}`,
                 `---------------------------------`
             ].join('\n');
 
