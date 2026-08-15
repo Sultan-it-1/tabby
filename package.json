@@ -3,7 +3,7 @@
   "version": "2.5.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/firebase-sync.test.js tests/crm-ticket-tracker.test.js tests/drive-backup-utils.test.js tests/utilities.test.js",
-    "check": "node --check firebase-config.js && node --check crm-ticket-tracker.js && node --check drive-backup-utils.js && node --check card-utils.js && node --check theme-utils.js && node --check card.js && node --check cia.js && node --check date.js && node --check note.js && node --check settings.js && node --check simah.js && node --check sticky.js && node --check sw.js && node --check version.js && node --check chrome-extension/background.js && node --check chrome-extension/content.js && node --check chrome-extension/launcher.js && node --check chrome-extension-dev/background.js && node --check chrome-extension-dev/content.js && npm test"
+    "test": "node --test tests/firebase-sync.test.js tests/crm-ticket-tracker.test.js tests/crm-profile-analytics.test.js tests/drive-backup-utils.test.js tests/utilities.test.js",
+    "check": "node --check firebase-config.js && node --check crm-ticket-tracker.js && node --check crm-profile-analytics.js && node --check drive-backup-utils.js && node --check card-utils.js && node --check theme-utils.js && node --check card.js && node --check cia.js && node --check date.js && node --check note.js && node --check settings.js && node --check simah.js && node --check sticky.js && node --check sw.js && node --check version.js && node --check chrome-extension/background.js && node --check chrome-extension/content.js && node --check chrome-extension/launcher.js && node --check chrome-extension-dev/background.js && node --check chrome-extension-dev/content.js && npm test"
   }
 }
