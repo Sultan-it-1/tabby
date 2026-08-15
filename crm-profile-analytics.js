@@ -857,7 +857,6 @@
             const reportLines = [
                 `📊 تقرير نشاط البروفايل و AUX:`,
                 `---------------------------------`,
-                `🟢 Online: ${_formatDuration(m.totalOnlineMs)}`,
                 `🟡 Break: ${_formatDuration(m.totalBreakMs)}`
             ];
 
