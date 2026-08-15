@@ -146,6 +146,7 @@
         }
 
         let totalLunchMs = 0;
+        const auxBreakdown = {};
 
         for (let i = 0; i < statusEvents.length; i++) {
             const current = statusEvents[i];
@@ -153,7 +154,8 @@
             const startTime = current.time;
             const endTime = next ? next.time : Date.now();
             const duration = Math.max(0, endTime - startTime);
-            const statusKey = (current.to || '').toLowerCase();
+            const rawStatus = (current.to || 'Online').trim();
+            const statusKey = rawStatus.toLowerCase();
 
             if (statusKey === 'online') {
                 totalOnlineMs += duration;
@@ -164,7 +166,10 @@
             } else if (statusKey === 'offline') {
                 totalOfflineMs += duration;
             } else {
+                totalOnlineMs += duration;
                 totalOtherMs += duration;
+                const displayKey = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+                auxBreakdown[displayKey] = (auxBreakdown[displayKey] || 0) + duration;
             }
         }
 
@@ -252,6 +257,7 @@
             totalLunchMs,
             totalOtherMs,
             totalOfflineMs,
+            auxBreakdown,
             totalSessions: totalTicketsLinked,
             totalTicketsLinked,
             totalTicketsCompleted: ticketsCompleted.length,
@@ -433,6 +439,7 @@
             }
 
             let totalLunchMs = 0;
+            const auxBreakdown = {};
 
             for (let i = 0; i < statusEvents.length; i++) {
                 const current = statusEvents[i];
@@ -440,7 +447,8 @@
                 const startTime = current.time;
                 const endTime = next ? next.time : Date.now();
                 const duration = Math.max(0, endTime - startTime);
-                const statusKey = (current.to || '').toLowerCase();
+                const rawStatus = (current.to || 'Online').trim();
+                const statusKey = rawStatus.toLowerCase();
 
                 if (statusKey === 'online') {
                     totalOnlineMs += duration;
@@ -451,7 +459,10 @@
                 } else if (statusKey === 'offline') {
                     totalOfflineMs += duration;
                 } else {
+                    totalOnlineMs += duration;
                     totalOtherMs += duration;
+                    const displayKey = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+                    auxBreakdown[displayKey] = (auxBreakdown[displayKey] || 0) + duration;
                 }
             }
 
@@ -539,6 +550,7 @@
                 totalLunchMs,
                 totalOtherMs,
                 totalOfflineMs,
+                auxBreakdown,
                 totalSessions: totalTicketsLinked,
                 totalTicketsLinked,
                 totalTicketsCompleted: ticketsCompleted.length,
@@ -674,6 +686,7 @@
                     <div class="metric-card metric-time"><span>ABST</span><b data-role="avg-time">00:00</b></div>
                     <div class="metric-card metric-start"><span>بداية الشفت</span><b data-role="shift-start-time">--:--</b></div>
                 </div>
+                <div class="metrics-grid" data-role="dynamic-aux-container" style="display:none;margin-top:-4px;margin-bottom:10px;"></div>
                 <div class="extremes-wrap">
                     <div class="extremes-title"><span>⏱️</span><span>الأرقام القياسية للسيشن والتكتات</span></div>
                     <div class="extremes-grid">
@@ -740,6 +753,26 @@
                     byRole('lunch-time').textContent = _formatDuration(metrics.totalLunchMs);
                 } else {
                     lunchCard.style.display = 'none';
+                }
+            }
+
+            const dynamicAuxContainer = byRole('dynamic-aux-container');
+            if (dynamicAuxContainer) {
+                dynamicAuxContainer.replaceChildren();
+                if (metrics.auxBreakdown && Object.keys(metrics.auxBreakdown).length > 0) {
+                    Object.entries(metrics.auxBreakdown).forEach(([name, dur]) => {
+                        const card = document.createElement('div');
+                        card.className = 'metric-card metric-aux';
+                        const label = document.createElement('span');
+                        label.textContent = name;
+                        const val = document.createElement('b');
+                        val.textContent = _formatDuration(dur);
+                        card.append(label, val);
+                        dynamicAuxContainer.appendChild(card);
+                    });
+                    dynamicAuxContainer.style.display = 'grid';
+                } else {
+                    dynamicAuxContainer.style.display = 'none';
                 }
             }
             if (byRole('sessions-count')) byRole('sessions-count').textContent = String(metrics.totalSessions);
@@ -830,6 +863,14 @@
 
             if (m.totalLunchMs > 0) {
                 reportLines.push(`🍔 Lunch: ${_formatDuration(m.totalLunchMs)}`);
+            }
+
+            if (m.auxBreakdown) {
+                Object.entries(m.auxBreakdown).forEach(([name, dur]) => {
+                    if (dur > 0) {
+                        reportLines.push(`🔹 ${name}: ${_formatDuration(dur)}`);
+                    }
+                });
             }
 
             reportLines.push(
