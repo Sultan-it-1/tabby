@@ -61,12 +61,10 @@ test('crm-profile-analytics calculates accurate AUX durations and shift metrics'
     assert.ok(metrics.totalTicketsCompleted >= 0);
 });
 
-test('crm-profile-analytics builds lightweight loader bookmarklet', () => {
+test('crm-profile-analytics builds self-contained bookmarklet', () => {
     const bml = analytics.buildBookmarklet();
     assert.ok(bml.startsWith('javascript:'));
-    assert.match(bml, /crm-profile-analytics\.js\?v=/);
-    assert.match(bml, /tabby\.sultanops\.com/);
-    assert.ok(bml.length < 500);
+    assert.match(bml, /fastToolkit_crm_profile_analytics_host_v1/);
 });
 
 test('crm-profile-analytics provides runtime installer source for execution', () => {

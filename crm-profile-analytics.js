@@ -291,11 +291,11 @@
     }
 
     function buildBookmarklet() {
-        return `javascript:(function(){var existing=window.__FAST_TOOLKIT_CRM_PROFILE_ANALYTICS__;if(existing&&typeof existing.show==='function'){existing.show();return;}var s=document.createElement('script');s.src='https://tabby.sultanops.com/crm-profile-analytics.js?v='+Date.now();s.onload=function(){if(window.FastToolkitCrmProfileAnalytics&&typeof window.FastToolkitCrmProfileAnalytics.install==='function'){window.FastToolkitCrmProfileAnalytics.install();}};document.head.appendChild(s);})();`;
+        return `javascript:(function(){var existing=window.__FAST_TOOLKIT_CRM_PROFILE_ANALYTICS__;if(existing&&typeof existing.show==='function'){existing.show();return;}(${install.toString()})();})();`;
     }
 
     function buildInlineBookmarklet() {
-        return `javascript:void((${install.toString()})());`;
+        return `javascript:(function(){var existing=window.__FAST_TOOLKIT_CRM_PROFILE_ANALYTICS__;if(existing&&typeof existing.show==='function'){existing.show();return;}(${install.toString()})();})();`;
     }
 
     function install() {
