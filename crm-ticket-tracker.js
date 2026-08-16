@@ -885,16 +885,6 @@
                     row.append(linkCol, duration, visits);
                     recent.appendChild(row);
                 });
-
-            try {
-                if (typeof document !== 'undefined' && typeof document.title === 'string') {
-                    const cleanTitle = document.title.replace(/^🟢\s*\[.*?\]\s*|^🟢\s*⏱️\s*\(.*?\)\s*|^🟢\s*/i, '');
-                    const titlePrefix = ticketId
-                        ? `🟢 [${shortTicketId(ticketId)} | ${formatDuration(sessionMs)}] `
-                        : `🟢 ⏱️ (${ticketCount}) `;
-                    document.title = titlePrefix + cleanTitle;
-                }
-            } catch (e) {}
         }
 
         function minimize() {
