@@ -171,6 +171,72 @@
             return normalized;
         }
 
+        const IDB_DB_NAME = 'FastToolkit_CRM_DB_v1';
+        const IDB_STORE_NAME = 'shift_state';
+
+        if (typeof navigator !== 'undefined' && navigator.storage && typeof navigator.storage.persist === 'function') {
+            try { navigator.storage.persist(); } catch (e) {}
+        }
+
+        function openIDB() {
+            if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+            return new Promise((resolve) => {
+                try {
+                    const req = indexedDB.open(IDB_DB_NAME, 1);
+                    req.onupgradeneeded = function (ev) {
+                        const db = ev.target.result;
+                        if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
+                            db.createObjectStore(IDB_STORE_NAME, { keyPath: 'id' });
+                        }
+                    };
+                    req.onsuccess = function (ev) {
+                        resolve(ev.target.result);
+                    };
+                    req.onerror = function () {
+                        resolve(null);
+                    };
+                } catch (e) {
+                    resolve(null);
+                }
+            });
+        }
+
+        function saveToIDB(dataToSave) {
+            if (typeof indexedDB === 'undefined' || !dataToSave) return;
+            openIDB().then(db => {
+                if (!db) return;
+                try {
+                    const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(IDB_STORE_NAME);
+                    store.put({ id: 'current_state', state: dataToSave, savedAt: Date.now() });
+                } catch (e) {}
+            });
+        }
+
+        function checkAndRestoreFromIDB(timestamp, onRestored) {
+            if (typeof indexedDB === 'undefined') return;
+            openIDB().then(db => {
+                if (!db) return;
+                try {
+                    const tx = db.transaction(IDB_STORE_NAME, 'readonly');
+                    const store = tx.objectStore(IDB_STORE_NAME);
+                    const req = store.get('current_state');
+                    req.onsuccess = function () {
+                        if (req.result && req.result.state) {
+                            const idbState = req.result.state;
+                            const currentSessions = state ? Object.keys(state.tickets || {}).length : 0;
+                            const idbSessions = Object.keys(idbState.tickets || {}).length;
+                            if (currentSessions === 0 && idbSessions > 0 && idbState.day === localDayKey(timestamp)) {
+                                state = normalizeState(idbState, timestamp);
+                                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+                                if (typeof onRestored === 'function') onRestored();
+                            }
+                        }
+                    };
+                } catch (e) {}
+            });
+        }
+
         function loadState(timestamp) {
             try { return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'), timestamp); }
             catch (e) { return createEmptyState(timestamp); }
@@ -178,6 +244,8 @@
 
         function saveState() {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+            catch (e) { }
+            try { saveToIDB(state); }
             catch (e) { }
         }
 
@@ -1133,6 +1201,7 @@
         const api = { show, minimize };
         window.__FAST_TOOLKIT_CRM_TICKET_TRACKER__ = api;
         render(Date.now());
+        checkAndRestoreFromIDB(Date.now(), () => render(Date.now()));
         return api;
     }
 
