@@ -513,22 +513,6 @@
                 <div class="advanced-safety">قراءة فقط: لا يكتب ملاحظات، لا يضغط أزرارًا، ولا يرسل أي بيانات.</div>
                 <div class="advanced-copy-status" id="crmTrackerCopyStatus" aria-live="polite"></div>
             </div>
-
-            <div class="advanced-tool-panel" style="margin-top:16px;">
-                <div class="advanced-tool-title"><span aria-hidden="true">⚡</span><span>محلل نشاط البروفايل و AUX في CRM</span></div>
-                <p>يقرأ التايم لاين في صفحة البروفايل، ويحسب وقت الأونلاين الفعلي، أوقات الاستراحة (Break)، عدد التكتات، ومتوسط سرعة الإنجاز.</p>
-                <div class="advanced-bookmarklet-row">
-                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="crmAnalyticsBookmarklet">اسحبني إلى شريط المفضلة</a>
-                    <button type="button" class="advanced-copy-btn" id="copyCrmAnalyticsBookmarklet">نسخ الرابط</button>
-                </div>
-                <ol class="advanced-steps">
-                    <li>اسحب الزر إلى شريط المفضلة لإنشاء أداة «محلل الشفت».</li>
-                    <li>افتح صفحة بروفايلك في CRM واضغط على الأداة في المفضلة.</li>
-                    <li>ستظهر لوحة الإحصائيات مباشرة وتحسب أوقات الـ AUX والتكتات بدقة.</li>
-                </ol>
-                <div class="advanced-safety">قراءة فقط: تحليل محلي آمن داخل المتصفح دون إرسال أو تعديل أي بيانات.</div>
-                <div class="advanced-copy-status" id="crmAnalyticsCopyStatus" aria-live="polite"></div>
-            </div>
         </section>
     </div>
 
@@ -537,7 +521,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js?v=2.5.0"></script>
     <script src="crm-ticket-tracker.js?v=2.5.0"></script>
-    <script src="crm-profile-analytics.js?v=2.5.0"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const emailTxt = document.getElementById('userEmailTxt');
@@ -549,10 +532,6 @@
             const bookmarkletLink = document.getElementById('crmTrackerBookmarklet');
             const bookmarkletCopyBtn = document.getElementById('copyCrmTrackerBookmarklet');
             const bookmarkletCopyStatus = document.getElementById('crmTrackerCopyStatus');
-
-            const analyticsBmlLink = document.getElementById('crmAnalyticsBookmarklet');
-            const analyticsBmlCopyBtn = document.getElementById('copyCrmAnalyticsBookmarklet');
-            const analyticsBmlCopyStatus = document.getElementById('crmAnalyticsCopyStatus');
 
             const openAdvancedTools = () => {
                 if (!advancedToolsModal) return;
@@ -606,51 +585,6 @@
                             if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'تم نسخ كود «العداد» بنجاح ✅ يمكنك إضافته للمفضلة';
                         } catch (e) {
                             if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر الأخضر مباشرة إلى شريط المفضلة.';
-                        }
-                    });
-                }
-            }
-
-            if (window.FastToolkitCrmProfileAnalytics && analyticsBmlLink) {
-                const bml = window.FastToolkitCrmProfileAnalytics.buildBookmarklet();
-                const defaultLabel = 'اسحبني إلى شريط المفضلة';
-                const bookmarkTitle = 'محلل الشفت';
-
-                analyticsBmlLink.setAttribute('href', bml);
-                analyticsBmlLink.setAttribute('title', 'اسحب الزر إلى شريط المفضلة لإنشاء أداة «محلل الشفت»');
-                analyticsBmlLink.textContent = defaultLabel;
-
-                const setDragTitle = () => {
-                    analyticsBmlLink.textContent = bookmarkTitle;
-                };
-                const resetDefaultTitle = () => {
-                    analyticsBmlLink.textContent = defaultLabel;
-                };
-
-                analyticsBmlLink.addEventListener('pointerdown', setDragTitle);
-                analyticsBmlLink.addEventListener('mousedown', setDragTitle);
-                analyticsBmlLink.addEventListener('dragstart', setDragTitle);
-
-                analyticsBmlLink.addEventListener('dragend', resetDefaultTitle);
-                analyticsBmlLink.addEventListener('pointerup', resetDefaultTitle);
-                analyticsBmlLink.addEventListener('mouseup', resetDefaultTitle);
-                analyticsBmlLink.addEventListener('mouseleave', resetDefaultTitle);
-                window.addEventListener('mouseup', resetDefaultTitle);
-
-                analyticsBmlLink.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    if (window.FastToolkitCrmProfileAnalytics && typeof window.FastToolkitCrmProfileAnalytics.install === 'function') {
-                        window.FastToolkitCrmProfileAnalytics.install();
-                    }
-                });
-
-                if (analyticsBmlCopyBtn) {
-                    analyticsBmlCopyBtn.addEventListener('click', async () => {
-                        try {
-                            await navigator.clipboard.writeText(bml);
-                            if (analyticsBmlCopyStatus) analyticsBmlCopyStatus.textContent = 'تم نسخ كود «محلل الشفت» بنجاح ✅ يمكنك إضافته للمفضلة';
-                        } catch (e) {
-                            if (analyticsBmlCopyStatus) analyticsBmlCopyStatus.textContent = 'اسحب الزر مباشرة إلى شريط المفضلة.';
                         }
                     });
                 }

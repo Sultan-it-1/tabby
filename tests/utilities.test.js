@@ -105,5 +105,4 @@ test('CRM ticket tracker is exposed from home only and cached for offline loadin
 
     const serviceWorker = fs.readFileSync(path.join(firebaseRoot, 'sw.js'), 'utf8');
     assert.match(serviceWorker, /\.\/crm-ticket-tracker\.js/);
-    assert.match(serviceWorker, /\.\/crm-profile-analytics\.js/);
 });
