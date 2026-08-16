@@ -80,7 +80,10 @@
 
         function saveHistory(history) {
             try {
-                localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.slice(-60)));
+                localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.slice(-90)));
+            } catch (e) {}
+            try {
+                saveHistoryToIDB(history);
             } catch (e) {}
         }
 
@@ -213,6 +216,18 @@
             });
         }
 
+        function saveHistoryToIDB(historyData) {
+            if (typeof indexedDB === 'undefined' || !Array.isArray(historyData)) return;
+            openIDB().then(db => {
+                if (!db) return;
+                try {
+                    const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(IDB_STORE_NAME);
+                    store.put({ id: 'shift_history', history: historyData.slice(-90), savedAt: Date.now() });
+                } catch (e) {}
+            });
+        }
+
         function checkAndRestoreFromIDB(timestamp, onRestored) {
             if (typeof indexedDB === 'undefined') return;
             openIDB().then(db => {
@@ -220,18 +235,63 @@
                 try {
                     const tx = db.transaction(IDB_STORE_NAME, 'readonly');
                     const store = tx.objectStore(IDB_STORE_NAME);
-                    const req = store.get('current_state');
-                    req.onsuccess = function () {
-                        if (req.result && req.result.state) {
-                            const idbState = req.result.state;
-                            const currentSessions = state ? Object.keys(state.tickets || {}).length : 0;
-                            const idbSessions = Object.keys(idbState.tickets || {}).length;
-                            if (currentSessions === 0 && idbSessions > 0 && idbState.day === localDayKey(timestamp)) {
-                                state = normalizeState(idbState, timestamp);
-                                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
-                                if (typeof onRestored === 'function') onRestored();
+                    const stateReq = store.get('current_state');
+                    const histReq = store.get('shift_history');
+
+                    let idbHistoryLoaded = false;
+                    let idbStateLoaded = false;
+
+                    const finalizeIDBSync = () => {
+                        if (!idbHistoryLoaded || !idbStateLoaded) return;
+                        if (typeof onRestored === 'function') onRestored();
+                    };
+
+                    histReq.onsuccess = function () {
+                        idbHistoryLoaded = true;
+                        try {
+                            const localHist = loadHistory();
+                            const idbHist = (histReq.result && Array.isArray(histReq.result.history)) ? histReq.result.history : [];
+                            if (idbHist.length > 0 || localHist.length > 0) {
+                                const map = new Map();
+                                localHist.forEach(item => { if (item && item.day) map.set(item.day, item); });
+                                idbHist.forEach(item => {
+                                    if (item && item.day) {
+                                        const existing = map.get(item.day);
+                                        if (!existing || (Number(item.sessions || 0) > Number(existing.sessions || 0))) {
+                                            map.set(item.day, item);
+                                        }
+                                    }
+                                });
+                                const merged = Array.from(map.values()).sort((a, b) => (a.day || '').localeCompare(b.day || ''));
+                                try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(merged.slice(-90))); } catch (e) {}
+                                saveHistoryToIDB(merged);
                             }
-                        }
+                        } catch (e) {}
+                        finalizeIDBSync();
+                    };
+                    histReq.onerror = function () {
+                        idbHistoryLoaded = true;
+                        finalizeIDBSync();
+                    };
+
+                    stateReq.onsuccess = function () {
+                        idbStateLoaded = true;
+                        try {
+                            if (stateReq.result && stateReq.result.state) {
+                                const idbState = stateReq.result.state;
+                                const currentSessions = state ? Object.keys(state.tickets || {}).length : 0;
+                                const idbSessions = Object.keys(idbState.tickets || {}).length;
+                                if (currentSessions === 0 && idbSessions > 0 && idbState.day === localDayKey(timestamp)) {
+                                    state = normalizeState(idbState, timestamp);
+                                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+                                }
+                            }
+                        } catch (e) {}
+                        finalizeIDBSync();
+                    };
+                    stateReq.onerror = function () {
+                        idbStateLoaded = true;
+                        finalizeIDBSync();
                     };
                 } catch (e) {}
             });
