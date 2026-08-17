@@ -8,16 +8,24 @@
 
         function extractTicketId(input) {
             try {
-                const currentOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : `https://${EXPECTED_HOST}`;
+                const currentOrigin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null') ? window.location.origin : `https://${EXPECTED_HOST}`;
                 const url = new URL(input, currentOrigin);
                 const host = url.hostname.toLowerCase();
-                if (host !== EXPECTED_HOST && host !== 'crm.tabby.ai' && !host.endsWith('.tabby.sa') && !host.endsWith('.tabby.ai') && host !== 'localhost' && host !== '127.0.0.1') {
+                const isLocalFile = url.protocol === 'file:';
+                if (!isLocalFile && host !== EXPECTED_HOST && host !== 'crm.tabby.ai' && !host.endsWith('.tabby.sa') && !host.endsWith('.tabby.ai') && host !== 'localhost' && host !== '127.0.0.1') {
                     return '';
                 }
-                const match = url.pathname.match(/(?:^|\/)(?:queue|object)\/ticket\/([^/]+)/i);
-                if (!match || !match[1]) return '';
-                try { return decodeURIComponent(match[1]); }
-                catch (e) { return match[1]; }
+                const match = url.pathname.match(/(?:^|\/)(?:queue|object)\/ticket\/([^/]+)/i) || (url.hash ? url.hash.match(/(?:^|#\/|\/)(?:queue|object)\/ticket\/([^/?#]+)/i) : null);
+                if (match && match[1]) {
+                    try { return decodeURIComponent(match[1]); }
+                    catch (e) { return match[1]; }
+                }
+                const queryTicket = url.searchParams ? url.searchParams.get('ticket') : '';
+                if (queryTicket) {
+                    try { return decodeURIComponent(queryTicket); }
+                    catch (e) { return queryTicket; }
+                }
+                return '';
             } catch (e) {
                 return '';
             }
@@ -40,10 +48,33 @@
                 : `${pad(totalMinutes)}:${pad(seconds)}`;
         }
 
+        function formatCompactNumber(number) {
+            const num = Math.max(0, Number(number) || 0);
+            if (num < 1000) return String(num);
+            if (num < 1000000) {
+                const k = num / 1000;
+                return (k >= 100 ? Math.round(k) : (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1).replace(/\.0$/, ''))) + 'K';
+            }
+            const m = num / 1000000;
+            return (m >= 100 ? Math.round(m) : (m % 1 === 0 ? m.toFixed(0) : m.toFixed(1).replace(/\.0$/, ''))) + 'M';
+        }
+
         if (request.action === 'extract') return extractTicketId(request.url);
         if (request.action === 'ticketUrl') return buildTicketUrl(request.ticketId);
         if (request.action === 'format') return formatDuration(request.milliseconds);
+        if (request.action === 'formatCompact') return formatCompactNumber(request.number);
         if (request.action !== 'install' || typeof window === 'undefined' || typeof document === 'undefined') return null;
+
+        const currentHost = String(window.location && window.location.hostname || '').toLowerCase();
+        const currentProtocol = String(window.location && window.location.protocol || '').toLowerCase();
+        const isCrmHost = currentProtocol === 'https:' && (currentHost === EXPECTED_HOST || currentHost === 'crm.tabby.ai');
+        const isLocalTest = currentProtocol === 'file:' || currentHost === 'localhost' || currentHost === '127.0.0.1';
+        if (!isCrmHost && !isLocalTest) {
+            if (typeof window.alert === 'function') {
+                window.alert('افتح CRM أولًا ثم شغّل عداد التكتات من المفضلة.');
+            }
+            return null;
+        }
 
         const existing = window.__FAST_TOOLKIT_CRM_TICKET_TRACKER__;
         if (existing && typeof existing.show === 'function') {
@@ -94,10 +125,12 @@
             const sessions = Object.values(tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.visits)) || 0), 0);
             const chars = Math.max(0, Number(candidate.totalChars) || 0);
             const words = Math.max(0, Number(candidate.totalWords) || Number(candidate.totalSentences) || 0);
+            const typedChars = Math.max(0, Number(candidate.typedChars) || 0);
+            const typedWords = Math.max(0, Number(candidate.typedWords) || 0);
             const totalMs = Object.values(tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.totalMs)) || 0), 0);
             const abstMs = ticketCount > 0 ? Math.round(totalMs / ticketCount) : 0;
 
-            if (sessions === 0 && ticketCount === 0 && chars === 0 && words === 0) return;
+            if (sessions === 0 && ticketCount === 0 && chars === 0 && words === 0 && typedChars === 0 && typedWords === 0) return;
 
             let history = loadHistory();
             const dayKey = candidate.day || localDayKey(Number(candidate.shiftStartedAt) || Date.now());
@@ -109,11 +142,13 @@
                 abstMs,
                 totalMs,
                 chars,
-                words
+                words,
+                typedChars,
+                typedWords
             };
             if (idx >= 0) history[idx] = entry;
             else history.push(entry);
-            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0));
+            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0 || h.typedChars > 0 || h.typedWords > 0));
             saveHistory(history);
         }
 
@@ -126,7 +161,9 @@
                 tickets: {},
                 active: null,
                 totalChars: 0,
-                totalWords: 0
+                totalWords: 0,
+                typedChars: 0,
+                typedWords: 0
             };
         }
 
@@ -137,6 +174,8 @@
                     visits: 0,
                     chars: 0,
                     words: 0,
+                    typedChars: 0,
+                    typedWords: 0,
                     firstOpenedAt: timestamp,
                     lastOpenedAt: timestamp,
                     lastLeftAt: null
@@ -145,6 +184,8 @@
             const ticket = state.tickets[ticketId];
             if (typeof ticket.chars !== 'number') ticket.chars = 0;
             if (typeof ticket.words !== 'number') ticket.words = typeof ticket.sentences === 'number' ? ticket.sentences : 0;
+            if (typeof ticket.typedChars !== 'number') ticket.typedChars = 0;
+            if (typeof ticket.typedWords !== 'number') ticket.typedWords = 0;
             return ticket;
         }
 
@@ -162,8 +203,20 @@
             normalized.shiftStartedAt = Number(candidate.shiftStartedAt) || timestamp;
             normalized.lastActivityAt = timestamp;
             normalized.tickets = candidate.tickets && typeof candidate.tickets === 'object' ? candidate.tickets : {};
-            normalized.totalChars = Math.max(0, Number(candidate.totalChars) || 0);
-            normalized.totalSentences = Math.max(0, Number(candidate.totalSentences) || 0);
+
+            const sumTicketsChars = Object.values(normalized.tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.chars) || 0)), 0);
+            const sumTicketsWords = Object.values(normalized.tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.words) || Number(t.sentences) || 0)), 0);
+            const sumTicketsTypedChars = Object.values(normalized.tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.typedChars) || 0)), 0);
+            const sumTicketsTypedWords = Object.values(normalized.tickets).reduce((sum, t) => sum + (Math.max(0, Number(t.typedWords) || 0)), 0);
+
+            normalized.totalChars = Math.max(0, Number(candidate.totalChars) || sumTicketsChars || 0);
+            normalized.totalWords = Math.max(0, Number(candidate.totalWords) || Number(candidate.totalSentences) || sumTicketsWords || 0);
+            normalized.typedChars = Math.max(0, Number(candidate.typedChars) || sumTicketsTypedChars || 0);
+            normalized.typedWords = Math.max(0, Number(candidate.typedWords) || sumTicketsTypedWords || 0);
+
+            if (normalized.totalChars < normalized.typedChars) normalized.totalChars = normalized.typedChars;
+            if (normalized.totalWords < normalized.typedWords) normalized.totalWords = normalized.typedWords;
+
             normalized.active = candidate.active && typeof candidate.active.id === 'string'
                 ? {
                     id: candidate.active.id,
@@ -281,8 +334,25 @@
                                 const idbState = stateReq.result.state;
                                 const currentSessions = state ? Object.keys(state.tickets || {}).length : 0;
                                 const idbSessions = Object.keys(idbState.tickets || {}).length;
-                                if (currentSessions === 0 && idbSessions > 0 && idbState.day === localDayKey(timestamp)) {
-                                    state = normalizeState(idbState, timestamp);
+                                if (idbState.day === localDayKey(timestamp)) {
+                                    const currentWords = state ? (Math.max(0, Number(state.totalWords) || 0)) : 0;
+                                    const currentChars = state ? (Math.max(0, Number(state.totalChars) || 0)) : 0;
+                                    if (currentSessions === 0 && idbSessions > 0) {
+                                        state = normalizeState(idbState, timestamp);
+                                    } else if (state) {
+                                        if ((Number(idbState.totalWords) || 0) > currentWords) {
+                                            state.totalWords = Math.max(state.totalWords, Number(idbState.totalWords) || 0);
+                                        }
+                                        if ((Number(idbState.totalChars) || 0) > currentChars) {
+                                            state.totalChars = Math.max(state.totalChars, Number(idbState.totalChars) || 0);
+                                        }
+                                        if ((Number(idbState.typedWords) || 0) > (Number(state.typedWords) || 0)) {
+                                            state.typedWords = Math.max(state.typedWords, Number(idbState.typedWords) || 0);
+                                        }
+                                        if ((Number(idbState.typedChars) || 0) > (Number(state.typedChars) || 0)) {
+                                            state.typedChars = Math.max(state.typedChars, Number(idbState.typedChars) || 0);
+                                        }
+                                    }
                                     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
                                 }
                             }
@@ -324,6 +394,7 @@
             ticket.totalMs = Math.max(0, Number(ticket.totalMs) || 0) + Math.max(0, timestamp - state.active.startedAt);
             ticket.lastLeftAt = timestamp;
             state.active = null;
+            state.lastActivityAt = timestamp;
         }
 
         function startTicket(ticketId, timestamp) {
@@ -332,13 +403,27 @@
             ticket.visits = Math.max(0, Number(ticket.visits) || 0) + 1;
             ticket.lastOpenedAt = timestamp;
             state.active = { id: ticketId, startedAt: timestamp, lastHeartbeatAt: timestamp };
+            state.lastActivityAt = timestamp;
+        }
+
+        function resetInactiveShift(timestamp) {
+            if (state.active) return false;
+            const lastActivityAt = Number(state.lastActivityAt) || Number(state.shiftStartedAt) || 0;
+            if (!lastActivityAt || timestamp - lastActivityAt <= INACTIVITY_TIMEOUT_MS) return false;
+
+            const hasTrackedActivity = Object.keys(state.tickets || {}).length > 0 ||
+                Math.max(0, Number(state.totalChars) || 0) > 0 ||
+                Math.max(0, Number(state.totalWords) || 0) > 0;
+            if (!hasTrackedActivity) return false;
+
+            recordCompletedStateToHistory(state);
+            state = createEmptyState(timestamp);
+            saveState();
+            return true;
         }
 
         function syncCurrentTicket(timestamp) {
-            if (state.day !== localDayKey(timestamp)) {
-                finalizeActive(timestamp);
-                state = createEmptyState(timestamp);
-            }
+            resetInactiveShift(timestamp);
             const ticketId = extractTicketId(window.location.href);
             const activeId = state.active ? state.active.id : '';
             if (ticketId === activeId) return;
@@ -394,8 +479,8 @@
                 `عدد السيشن: ${sessionsCount}`,
                 `إجمالي الوقت: ${formatDuration(total)}`,
                 `ABST: ${formatDuration(average)}`,
-                `إجمالي الحروف: ${Math.max(0, Number(state.totalChars) || 0)}`,
-                `إجمالي الكلمات: ${Math.max(0, Number(state.totalWords) || 0)}`
+                `إجمالي الحروف: ${Math.max(0, Number(state.totalChars) || 0)} (يدوي: ${Math.max(0, Number(state.typedChars) || 0)})`,
+                `إجمالي الكلمات: ${Math.max(0, Number(state.totalWords) || 0)} (يدوي: ${Math.max(0, Number(state.typedWords) || 0)})`
             ];
             if (state.active) {
                 const activeTicket = state.tickets[state.active.id];
@@ -442,7 +527,12 @@
         }
 
         let compactPos = loadSavedPosition();
-        let panelPos = null;
+
+        function rememberPosition(pos) {
+            if (!pos || !Number.isFinite(pos.left) || !Number.isFinite(pos.top)) return;
+            compactPos = { left: pos.left, top: pos.top };
+            savePosition(compactPos);
+        }
 
         function applyPosition(elem, pos) {
             if (!pos || !elem) return;
@@ -533,10 +623,10 @@
                     --compact-time:rgb(5,150,105);
                 }
                 .panel,.compact{position:fixed;z-index:2147483647;left:20px;bottom:20px;direction:rtl;font-family:'Segoe UI',Tahoma,sans-serif;color:var(--text-main);box-sizing:border-box;user-select:none;-webkit-user-select:none;touch-action:none}
-                .panel{width:295px;padding:15px 16px;background:var(--bg-panel);border:1px solid var(--border-panel);border-radius:18px;box-shadow:var(--shadow-panel);cursor:grab}
+                .panel{width:310px;padding:15px 16px;background:var(--bg-panel);border:1px solid var(--border-panel);border-radius:18px;box-shadow:var(--shadow-panel);cursor:grab}
                 .panel:active{cursor:grabbing}
                 .header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px;cursor:grab}
-                .brand{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--text-main)}
+                .brand{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--text-main)}
                 .live{width:9px;height:9px;border-radius:50%;background:rgb(52,211,153);box-shadow:0 0 10px rgb(52,211,153)}
                 .header-actions{display:flex;align-items:center;gap:5px}
                 button,a{font:inherit}
@@ -551,26 +641,27 @@
                 .recent-bo-link{color:rgb(56,189,248);font-size:9px;font-weight:800;text-decoration:none;padding:1px 5px;border-radius:4px;background:rgba(56,189,248,.14)}
                 .recent-bo-link:hover{background:rgba(56,189,248,.28)}
                 .times{display:grid;grid-template-columns:1fr;gap:8px}
-                .metric{background:var(--card-bg);border:1px solid var(--card-border);padding:9px 10px;border-radius:11px}
-                .metric span{display:block;color:var(--text-muted);font-size:10px;margin-bottom:4px;font-weight:600}
-                .metric strong{display:block;color:var(--text-main);font-size:19px;direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
-                .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px;color:var(--text-muted);font-size:9.5px;background:var(--card-bg);border:1px solid var(--card-border);padding:6px 4px;border-radius:9px;text-align:center}
+                .metric{background:var(--card-bg);border:1px solid var(--card-border);padding:8px 10px;border-radius:11px}
+                .metric span{display:block;color:var(--text-muted);font-size:10px;margin-bottom:3px;font-weight:600}
+                .metric strong{display:block;color:var(--text-main);font-size:19.5px;direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+                .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:9px;color:var(--text-muted);font-size:9.5px;background:var(--card-bg);border:1px solid var(--card-border);padding:6px 4px;border-radius:9px;text-align:center}
                 .stats span{display:flex;flex-direction:column;gap:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 .stats b{color:var(--text-main);font-variant-numeric:tabular-nums;font-size:11.5px}
-                .typing-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px;color:var(--text-muted);font-size:9px;background:var(--card-bg);border:1px solid var(--card-border);padding:5px 4px;border-radius:9px;text-align:center}
-                .typing-metric{display:flex;flex-direction:column;gap:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-                .typing-metric b{color:var(--text-main);font-variant-numeric:tabular-nums;font-size:11px}
-                .actions{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:12px}
+                .typing-line{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;background:var(--card-bg);border:1px solid var(--card-border);padding:5px 8px;border-radius:8px;font-size:10px;color:var(--text-muted);cursor:default}
+                .typing-line span{display:inline-flex;align-items:center;gap:3px}
+                .typing-line b{color:var(--text-main);font-variant-numeric:tabular-nums;font-size:11.5px}
+                .typing-dot{color:var(--text-sub);font-size:8px;opacity:0.6}
+                .actions{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:11px}
                 .copy,.reset{border-radius:10px;padding:8px 10px;cursor:pointer;font-size:10.5px;font-weight:700}
                 .copy{border:1px solid var(--copy-border);background:var(--copy-bg);color:var(--copy-color)}
                 .reset{border:1px solid var(--reset-border);background:var(--reset-bg);color:var(--reset-color)}
-                .hint{margin-top:9px;color:var(--text-sub);font-size:8.5px;text-align:center}
+                .hint{margin-top:8px;color:var(--text-sub);font-size:8.5px;text-align:center}
                 .compact{display:none;align-items:center;gap:8px;border:1px solid var(--border-panel);border-radius:999px;padding:8px 13px;background:var(--compact-bg);box-shadow:var(--shadow-panel);cursor:grab;font-size:11px}
                 .compact:active{cursor:grabbing}
                 .compact strong{color:var(--compact-time);direction:ltr;font-variant-numeric:tabular-nums;font-size:13px}
                 .toast{display:none;margin-top:8px;color:var(--copy-color);font-size:10px;text-align:center}
                 .recent-wrap{margin-top:10px;padding-top:9px;border-top:1px solid var(--card-border)}
-                .recent-title{color:var(--text-sub);font-size:9px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
+                .recent-title{color:var(--text-sub);font-size:9.5px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
                 .recent{display:grid;gap:4px;max-height:115px;overflow-y:auto;padding-left:3px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--card-border) transparent}
                 .recent::-webkit-scrollbar{width:4px}
                 .recent::-webkit-scrollbar-thumb{background:var(--card-border);border-radius:4px}
@@ -619,10 +710,11 @@
                         <span>ABST<b data-role="average">00:00</b></span>
                         <span data-role="visits-stat" style="display:none;">زرتها<b data-role="visits">0</b></span>
                     </div>
-                    <div class="typing-bar" data-role="typing-bar">
-                        <div class="typing-metric"><span>الحروف</span><b data-role="chars-count">0</b></div>
-                        <div class="typing-metric"><span>الكلمات</span><b data-role="words-count">0</b></div>
-                        <div class="typing-metric"><span>التكت الحالي</span><b data-role="ticket-chars">0</b></div>
+                    <div class="typing-line" data-role="typing-line" title="إجمالي الكلمات والحروف">
+                        <span>✍️</span>
+                        <span><b data-role="words-count">0</b> كلمة</span>
+                        <span class="typing-dot">•</span>
+                        <span><b data-role="chars-count">0</b> حرف</span>
                     </div>
                     <div class="recent-wrap"><div class="recent-title" data-role="recent-title">آخر التكتات</div><div class="recent" data-role="recent"></div></div>
                     <div class="actions"><button class="copy" data-action="copy">نسخ ملخص الشفت</button><button class="reset" data-action="reset" title="تصفير عداد اليوم">تصفير</button></div>
@@ -746,7 +838,6 @@
                 if (hasMoved) {
                     const rect = elem.getBoundingClientRect();
                     const newPos = { left: rect.left, top: rect.top };
-                    savePosition(newPos);
                     if (onDragEnd) onDragEnd(newPos);
                 }
             };
@@ -762,21 +853,15 @@
             applyPosition(panel, compactPos);
         }
 
-        const isCompactMoved = makeDraggable(compact, (pos) => {
-            compactPos = pos;
-            savePosition(pos);
-        });
-
-        makeDraggable(panel, (pos) => {
-            panelPos = pos;
-        });
+        const isCompactMoved = makeDraggable(compact, rememberPosition);
+        makeDraggable(panel, rememberPosition);
 
         window.addEventListener('resize', () => {
             if (compactPos) {
                 applyPosition(compact, compactPos);
             }
             if (panel.style.display !== 'none') {
-                applyPosition(panel, panelPos || compactPos);
+                applyPosition(panel, compactPos);
             }
         });
 
@@ -880,10 +965,18 @@
             if (statsWrap) {
                 statsWrap.style.gridTemplateColumns = isRepeated ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)';
             }
-            byRole('visits').textContent = String(ticket ? Math.max(0, Number(ticket.visits) || 0) : 0);
-            if (byRole('chars-count')) byRole('chars-count').textContent = String(Math.max(0, Number(state.totalChars) || 0));
-            if (byRole('words-count')) byRole('words-count').textContent = String(Math.max(0, Number(state.totalWords) || 0));
-            if (byRole('ticket-chars')) byRole('ticket-chars').textContent = String(ticket ? (Math.max(0, Number(ticket.chars) || 0)) : 0);
+            if (byRole('visits')) byRole('visits').textContent = String(ticket ? Math.max(0, Number(ticket.visits) || 0) : 0);
+            const typingLine = byRole('typing-line');
+            if (typingLine) {
+                typingLine.title = `الإجمالي (مع اللصق): ${state.totalWords || 0} كلمة • ${state.totalChars || 0} حرف\nالمكتوب يدوياً: ${state.typedWords || 0} كلمة • ${state.typedChars || 0} حرف`;
+            }
+            const totalWordsVal = Math.max(0, Number(state.totalWords) || Number(state.typedWords) || 0);
+            const totalCharsVal = Math.max(0, Number(state.totalChars) || Number(state.typedChars) || 0);
+
+            if (byRole('words-count')) byRole('words-count').textContent = String(totalWordsVal);
+            if (byRole('chars-count')) byRole('chars-count').textContent = String(totalCharsVal);
+            if (byRole('typed-chars-count')) byRole('typed-chars-count').textContent = String(totalCharsVal);
+            if (byRole('typed-words-count')) byRole('typed-words-count').textContent = String(totalWordsVal);
             byRole('compact-ticket').textContent = shortTicketId(ticketId);
 
             const compactTimeElem = byRole('compact-time');
@@ -956,11 +1049,14 @@
         }
 
         function show() {
+            if (compact.style.display === 'flex') {
+                const compactRect = compact.getBoundingClientRect();
+                rememberPosition({ left: compactRect.left, top: compactRect.top });
+            }
             panel.style.display = 'block';
             compact.style.display = 'none';
-            const targetPos = panelPos || compactPos;
-            if (targetPos) {
-                applyPosition(panel, targetPos);
+            if (compactPos) {
+                applyPosition(panel, compactPos);
             }
         }
 
@@ -1001,10 +1097,12 @@
             const sessions = totalSessionsCount();
             const chars = Math.max(0, Number(state.totalChars) || 0);
             const words = Math.max(0, Number(state.totalWords) || 0);
+            const typedChars = Math.max(0, Number(state.typedChars) || 0);
+            const typedWords = Math.max(0, Number(state.typedWords) || 0);
             const total = shiftTotalMs(timestamp);
             const abst = ticketCount > 0 ? Math.round(total / ticketCount) : 0;
 
-            if (sessions === 0 && ticketCount === 0 && chars === 0 && words === 0) return;
+            if (sessions === 0 && ticketCount === 0 && chars === 0 && words === 0 && typedChars === 0 && typedWords === 0) return;
 
             let history = loadHistory();
             const dayKey = state.day || localDayKey(timestamp);
@@ -1016,20 +1114,24 @@
                 abstMs: abst,
                 totalMs: total,
                 chars,
-                words
+                words,
+                typedChars,
+                typedWords
             };
             if (idx >= 0) history[idx] = entry;
             else history.push(entry);
-            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0));
+            history = history.filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0 || h.typedChars > 0 || h.typedWords > 0));
             saveHistory(history);
         }
 
         function renderAnalyticsView() {
             recordCurrentDayToHistory(Date.now());
-            const history = loadHistory().filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0));
+            const history = loadHistory().filter(h => (h.sessions > 0 || h.ticketsCount > 0 || h.chars > 0 || h.words > 0 || h.typedChars > 0 || h.typedWords > 0));
 
             let totalAllChars = 0;
             let totalAllWords = 0;
+            let totalAllTypedChars = 0;
+            let totalAllTypedWords = 0;
             let totalAllSessions = 0;
             let totalAllTickets = 0;
             let totalAllDurationMs = 0;
@@ -1037,6 +1139,8 @@
             history.forEach(h => {
                 totalAllChars += Number(h.chars) || 0;
                 totalAllWords += Number(h.words) || Number(h.sentences) || 0;
+                totalAllTypedChars += Number(h.typedChars) || 0;
+                totalAllTypedWords += Number(h.typedWords) || 0;
                 totalAllSessions += Number(h.sessions) || 0;
                 totalAllTickets += Number(h.ticketsCount) || 0;
                 totalAllDurationMs += Number(h.totalMs) || 0;
@@ -1050,9 +1154,18 @@
             const allAbstElem = byRole('all-abst');
             const activeDaysElem = byRole('active-days-count');
 
-            if (allCharsElem) allCharsElem.textContent = String(totalAllChars);
-            if (allWordsElem) allWordsElem.textContent = String(totalAllWords);
-            if (allSessionsElem) allSessionsElem.textContent = String(totalAllSessions);
+            if (allCharsElem) {
+                allCharsElem.textContent = totalAllTypedChars > 0 ? `${formatCompactNumber(totalAllChars)} (${formatCompactNumber(totalAllTypedChars)} يدوي)` : formatCompactNumber(totalAllChars);
+                allCharsElem.title = totalAllTypedChars > 0 ? `إجمالي الحروف: ${totalAllChars.toLocaleString('en-US')} (يدوي: ${totalAllTypedChars.toLocaleString('en-US')})` : `إجمالي الحروف: ${totalAllChars.toLocaleString('en-US')}`;
+            }
+            if (allWordsElem) {
+                allWordsElem.textContent = totalAllTypedWords > 0 ? `${formatCompactNumber(totalAllWords)} (${formatCompactNumber(totalAllTypedWords)} يدوي)` : formatCompactNumber(totalAllWords);
+                allWordsElem.title = totalAllTypedWords > 0 ? `إجمالي الكلمات: ${totalAllWords.toLocaleString('en-US')} (يدوي: ${totalAllTypedWords.toLocaleString('en-US')})` : `إجمالي الكلمات: ${totalAllWords.toLocaleString('en-US')}`;
+            }
+            if (allSessionsElem) {
+                allSessionsElem.textContent = formatCompactNumber(totalAllSessions);
+                allSessionsElem.title = `إجمالي السيشن: ${totalAllSessions.toLocaleString('en-US')}`;
+            }
             if (allAbstElem) allAbstElem.textContent = formatDuration(averageAllAbst);
             if (activeDaysElem) activeDaysElem.textContent = `${history.length} أيام عمل`;
 
@@ -1167,26 +1280,84 @@
 
         let wordTextBuffer = '';
 
-        function commitWordIfValid(timestamp) {
+        function commitWordIfValid(timestamp, isManual = false) {
             const clean = wordTextBuffer.trim();
             if (clean.length > 0 && /[\p{L}\p{N}]/u.test(clean)) {
                 state.totalWords = (Math.max(0, Number(state.totalWords) || 0)) + 1;
+                if (isManual) {
+                    state.typedWords = (Math.max(0, Number(state.typedWords) || 0)) + 1;
+                }
                 if (state.active) {
                     const ticket = ensureTicket(state.active.id, timestamp);
                     ticket.words = (Math.max(0, Number(ticket.words) || 0)) + 1;
+                    if (isManual) {
+                        ticket.typedWords = (Math.max(0, Number(ticket.typedWords) || 0)) + 1;
+                    }
                 }
             }
             wordTextBuffer = '';
         }
 
-        function onUserTyping(event) {
-            if (!event || !event.target) return;
+        function isEditableElement(target) {
+            if (!target) return false;
             try {
-                if (event.target.getRootNode && event.target.getRootNode() === shadow) return;
+                if (target.getRootNode && target.getRootNode() === shadow) return false;
             } catch (e) {}
-            const target = event.target;
-            const isEditable = Boolean(target.isContentEditable || target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.type !== 'password' && target.type !== 'hidden'));
-            if (!isEditable) return;
+            const elem = target.nodeType === 3 ? target.parentElement : target;
+            if (!elem) return false;
+            return Boolean(
+                elem.isContentEditable ||
+                elem.tagName === 'TEXTAREA' ||
+                (elem.tagName === 'INPUT' && elem.type !== 'password' && elem.type !== 'hidden') ||
+                (elem.closest && elem.closest('[contenteditable="true"], [contenteditable=""], [role="textbox"], textarea, input:not([type="password"]):not([type="hidden"])'))
+            );
+        }
+
+        function onUserPaste(event) {
+            if (!event || !state.active || !isEditableElement(event.target)) return;
+
+            let pastedText = '';
+            if (event.clipboardData && typeof event.clipboardData.getData === 'function') {
+                pastedText = event.clipboardData.getData('text/plain') || event.clipboardData.getData('text') || '';
+            } else if (typeof window !== 'undefined' && window.clipboardData && typeof window.clipboardData.getData === 'function') {
+                pastedText = window.clipboardData.getData('Text') || '';
+            }
+
+            if (!pastedText) return;
+
+            const now = Date.now();
+            state.lastActivityAt = now;
+
+            // Commit any word being typed prior to paste as manual
+            commitWordIfValid(now, true);
+
+            // 1. Count non-whitespace characters in pasted text
+            const meaningfulChars = pastedText.replace(/\s+/g, '').length;
+            if (meaningfulChars > 0) {
+                state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + meaningfulChars;
+                if (state.active) {
+                    const ticket = ensureTicket(state.active.id, now);
+                    ticket.chars = (Math.max(0, Number(ticket.chars) || 0)) + meaningfulChars;
+                }
+            }
+
+            // 2. Count words in pasted text
+            const wordsMatches = pastedText.match(/[\p{L}\p{N}]+/gu);
+            const wordsCount = wordsMatches ? wordsMatches.length : 0;
+            if (wordsCount > 0) {
+                state.totalWords = (Math.max(0, Number(state.totalWords) || 0)) + wordsCount;
+                if (state.active) {
+                    const ticket = ensureTicket(state.active.id, now);
+                    ticket.words = (Math.max(0, Number(ticket.words) || 0)) + wordsCount;
+                }
+            }
+
+            render(now);
+            saveState();
+        }
+
+        function onUserTyping(event) {
+            if (!event || !state.active || !isEditableElement(event.target)) return;
 
             const now = Date.now();
             state.lastActivityAt = now;
@@ -1195,54 +1366,66 @@
                 const inputType = event.inputType || '';
                 const data = typeof event.data === 'string' ? event.data : '';
 
-                // 1. Ignore all deletion actions (Backspace, Delete, Cut, etc.)
+                // 1. Ignore paste actions here (handled by onUserPaste with full clipboard text)
+                if (inputType.startsWith('insertFromPaste') || inputType === 'insertFromDrop') {
+                    render(now);
+                    return;
+                }
+
+                // 2. Ignore all deletion actions (Backspace, Delete, Cut, etc.)
                 if (inputType.startsWith('delete') || inputType === 'deleteContentBackward' || inputType === 'deleteContentForward' || inputType === 'deleteByCut') {
                     render(now);
                     return;
                 }
 
-                // 2. Count ONLY real characters (Excluding spaces, tabs, and newlines!)
+                // 3. Count ONLY real characters (Excluding spaces, tabs, and newlines!)
                 const meaningfulChars = data.replace(/\s+/g, '').length;
                 if (meaningfulChars > 0) {
                     state.totalChars = (Math.max(0, Number(state.totalChars) || 0)) + meaningfulChars;
+                    state.typedChars = (Math.max(0, Number(state.typedChars) || 0)) + meaningfulChars;
                     if (state.active) {
                         const ticket = ensureTicket(state.active.id, now);
                         ticket.chars = (Math.max(0, Number(ticket.chars) || 0)) + meaningfulChars;
+                        ticket.typedChars = (Math.max(0, Number(ticket.typedChars) || 0)) + meaningfulChars;
                     }
                 }
 
-                // 3. Real-time word boundary detection (whitespace & punctuation)
+                // 4. Real-time word boundary detection (whitespace & punctuation)
                 if (data.length > 0) {
                     for (let i = 0; i < data.length; i++) {
                         const ch = data[i];
                         if (/[\s\n\r,.!؟?،;:؛]/.test(ch)) {
-                            commitWordIfValid(now);
+                            commitWordIfValid(now, true);
                         } else {
                             wordTextBuffer += ch;
                         }
                     }
                 } else if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') {
-                    commitWordIfValid(now);
+                    commitWordIfValid(now, true);
                 }
             } else if (event.type === 'keydown' && event.key === 'Enter') {
-                commitWordIfValid(now);
+                commitWordIfValid(now, true);
             } else if (event.type === 'blur' || event.type === 'change') {
-                commitWordIfValid(now);
+                commitWordIfValid(now, true);
             }
             render(now);
+            saveState();
         }
 
         document.addEventListener('input', onUserTyping, true);
         document.addEventListener('keydown', onUserTyping, true);
         document.addEventListener('change', onUserTyping, true);
         document.addEventListener('blur', onUserTyping, true);
+        document.addEventListener('paste', onUserPaste, true);
 
         let lastSavedAt = 0;
         const interval = window.setInterval(() => {
             const timestamp = Date.now();
             syncCurrentTicket(timestamp);
-            state.lastActivityAt = timestamp;
-            if (state.active) state.active.lastHeartbeatAt = timestamp;
+            if (state.active) {
+                state.lastActivityAt = timestamp;
+                state.active.lastHeartbeatAt = timestamp;
+            }
             if (timestamp - lastSavedAt >= SAVE_INTERVAL) {
                 saveState();
                 lastSavedAt = timestamp;
@@ -1250,19 +1433,40 @@
             render(timestamp);
         }, HEARTBEAT_INTERVAL);
 
-        window.addEventListener('pagehide', () => {
-            finalizeActive(Date.now());
+        window.addEventListener('pagehide', (event) => {
+            const timestamp = Date.now();
+            finalizeActive(timestamp);
             saveState();
+            if (event && event.persisted) return;
             document.removeEventListener('input', onUserTyping, true);
             document.removeEventListener('keydown', onUserTyping, true);
+            document.removeEventListener('change', onUserTyping, true);
+            document.removeEventListener('blur', onUserTyping, true);
+            document.removeEventListener('paste', onUserPaste, true);
             window.clearInterval(interval);
-        }, { once: true });
+        });
+
+        window.addEventListener('pageshow', (event) => {
+            if (!event || !event.persisted) return;
+            const timestamp = Date.now();
+            state = normalizeState(state, timestamp);
+            syncCurrentTicket(timestamp);
+            state.lastActivityAt = timestamp;
+            if (state.active) state.active.lastHeartbeatAt = timestamp;
+            saveState();
+            render(timestamp);
+        });
 
         const api = { show, minimize };
         window.__FAST_TOOLKIT_CRM_TICKET_TRACKER__ = api;
         render(Date.now());
         checkAndRestoreFromIDB(Date.now(), () => render(Date.now()));
         return api;
+    }
+
+    function buildInlineBookmarkletUrl() {
+        const source = `void((${fastToolkitCrmTicketTrackerRuntime.toString()})({action:'install'}));`;
+        return `javascript:${encodeURIComponent(source)}`;
     }
 
     return Object.freeze({
@@ -1275,14 +1479,17 @@
         formatDuration(milliseconds) {
             return fastToolkitCrmTicketTrackerRuntime({ action: 'format', milliseconds });
         },
+        formatCompactNumber(number) {
+            return fastToolkitCrmTicketTrackerRuntime({ action: 'formatCompact', number });
+        },
         install() {
             return fastToolkitCrmTicketTrackerRuntime({ action: 'install' });
         },
         buildBookmarklet() {
-            return `javascript:(function(){var existing=window.__FAST_TOOLKIT_CRM_TICKET_TRACKER__;if(existing&&typeof existing.show==='function'){existing.show();return;}var s=document.createElement('script');s.src='https://tabby.sultanops.com/crm-ticket-tracker.js?v='+Date.now();s.onload=function(){if(window.FastToolkitCrmTicketTracker)window.FastToolkitCrmTicketTracker.install();};document.head.appendChild(s);})();`;
+            return buildInlineBookmarkletUrl();
         },
         buildInlineBookmarklet() {
-            return `javascript:void((${fastToolkitCrmTicketTrackerRuntime.toString()})({action:'install'}));`;
+            return buildInlineBookmarkletUrl();
         },
         getRuntimeSource() {
             return fastToolkitCrmTicketTrackerRuntime.toString();
