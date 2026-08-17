@@ -90,19 +90,22 @@ test('note experience no longer tracks or displays the legacy manual-backup coun
     assert.doesNotMatch(productionSources, /backupDot|backup-dot|unbackedUpCountV6|unbackedUpCount/);
 });
 
-test('CRM ticket tracker is exposed from home only and cached for offline loading', () => {
+test('CRM bookmarklet tools are exposed from home only and cached for offline loading', () => {
     const firebaseRoot = path.join(__dirname, '..');
     const index = fs.readFileSync(path.join(firebaseRoot, 'index.html'), 'utf8');
     assert.match(index, /id="advancedToolsBtn"/);
     assert.match(index, /crm-ticket-tracker\.js/);
+    assert.match(index, /crm-profile-analytics\.js/);
+    assert.match(index, /id="crmProfileAnalyticsBookmarklet"/);
 
     fs.readdirSync(firebaseRoot)
         .filter(file => file.endsWith('.html') && file !== 'index.html')
         .forEach(file => {
             const html = fs.readFileSync(path.join(firebaseRoot, file), 'utf8');
-            assert.doesNotMatch(html, /advancedToolsBtn|crm-ticket-tracker\.js/, file);
+            assert.doesNotMatch(html, /advancedToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js/, file);
         });
 
     const serviceWorker = fs.readFileSync(path.join(firebaseRoot, 'sw.js'), 'utf8');
     assert.match(serviceWorker, /\.\/crm-ticket-tracker\.js/);
+    assert.match(serviceWorker, /\.\/crm-profile-analytics\.js/);
 });

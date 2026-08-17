@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <title>CRM Profile Analytics Fixture</title>
+    <style>
+        body { margin: 30px; font-family: Arial, sans-serif; background: #eef2f7; }
+        #activity-log { height: 260px; overflow-y: auto; border: 1px solid #999; background: #fff; padding: 8px; }
+        [role="group"] { min-height: 72px; margin-bottom: 8px; padding: 8px; border: 1px solid #ddd; white-space: pre-line; }
+        #bookmarkletHarness { display: inline-block; margin-bottom: 12px; padding: 8px 12px; background: #166534; color: white; }
+    </style>
+</head>
+<body>
+    <a id="bookmarkletHarness" href="#">تشغيل إحصائيات الشفت</a>
+    <aside data-testid="object-aside">
+        <div id="activity-log" aria-label="Activity timeline"></div>
+    </aside>
+    <script src="../../crm-profile-analytics.js"></script>
+    <script>
+        const log = document.getElementById('activity-log');
+        const stages = [
+            [
+                `22:01 sultan.alkharmani@tabby.sa\nThis User unlinked from Ticket (f845e4c5)`,
+                `22:01 sultan.alkharmani@tabby.sa\nStatus: Online Offline\nStatus Changed At: 15/08/2026 21:40\n15/08/2026 22:01`,
+                `21:59 sultan.alkharmani@tabby.sa\nThis User linked with Ticket (f845e4c5)`,
+                `21:59 sultan.alkharmani@tabby.sa\nThis User unlinked from Ticket (17bfd86d)`
+            ],
+            [
+                `21:50 sultan.alkharmani@tabby.sa\nThis User linked with Ticket (17bfd86d)`,
+                `21:50 sultan.alkharmani@tabby.sa\nThis User unlinked from Ticket (0fb6bf79)`,
+                `21:40 sultan.alkharmani@tabby.sa\nThis User linked with Ticket (0fb6bf79)`,
+                `21:40 sultan.alkharmani@tabby.sa\nStatus: Break Online\nStatus Changed At: 15/08/2026 21:25\n15/08/2026 21:40`
+            ],
+            [
+                `21:25 sultan.alkharmani@tabby.sa\nStatus: Online Break\nStatus Changed At: 15/08/2026 19:05\n15/08/2026 21:25`,
+                `19:05 sultan.alkharmani@tabby.sa\nStatus: Offline Online\nStatus Changed At: 15/08/2026 14:00\n15/08/2026 19:05`
+            ]
+        ];
+        let loadedStage = 0;
+        function appendStage() {
+            const rows = stages[loadedStage++] || [];
+            rows.forEach((text, index) => {
+                const row = document.createElement('article');
+                row.setAttribute('role', 'group');
+                row.setAttribute('data-id', `stage-${loadedStage}-row-${index}`);
+                row.textContent = text;
+                log.appendChild(row);
+            });
+        }
+        appendStage();
+        log.addEventListener('scroll', () => {
+            if (loadedStage >= stages.length) return;
+            if (log.scrollTop + log.clientHeight < log.scrollHeight - 8) return;
+            setTimeout(appendStage, 180);
+        });
+        document.getElementById('bookmarkletHarness').href = window.FastToolkitCrmProfileAnalytics.buildBookmarklet();
+    </script>
+</body>
+</html>

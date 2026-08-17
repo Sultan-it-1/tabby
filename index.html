@@ -513,6 +513,22 @@
                 <div class="advanced-safety">قراءة فقط: لا يكتب ملاحظات، لا يضغط أزرارًا، ولا يرسل أي بيانات.</div>
                 <div class="advanced-copy-status" id="crmTrackerCopyStatus" aria-live="polite"></div>
             </div>
+
+            <div class="advanced-tool-panel">
+                <div class="advanced-tool-title"><span aria-hidden="true">📊</span><span>إحصائيات الشفت من سجل CRM</span></div>
+                <p>يسحب سجل النشاط من المربع الذي تحدده، ويحسب وقت العمل وBreak مرتين × 15 دقيقة وLunch لمدة 30 دقيقة، مع جلسات link/unlink.</p>
+                <div class="advanced-bookmarklet-row">
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="crmProfileAnalyticsBookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyCrmProfileAnalyticsBookmarklet">نسخ الرابط</button>
+                </div>
+                <ol class="advanced-steps">
+                    <li>افتح صفحة بروفايلك في CRM وانتظر ظهور مربع سجل النشاط.</li>
+                    <li>شغّل «إحصائيات الشفت» ثم انقر داخل مربع السجل لتحديده.</li>
+                    <li>ستمرّر الأداة داخل المربع حتى تصل إلى انتقال <b>Offline → Online</b> وتعرض التقرير.</li>
+                </ol>
+                <div class="advanced-safety">قراءة فقط: تمرّر داخل المربع المحدد ولا تضغط أزرار CRM، ولا تحفظ أو ترسل نص السجل.</div>
+                <div class="advanced-copy-status" id="crmProfileAnalyticsCopyStatus" aria-live="polite"></div>
+            </div>
         </section>
     </div>
 
@@ -522,6 +538,7 @@
     <script src="firebase-config.js?v=2.5.0"></script>
     <script>
         document.write('<script src="crm-ticket-tracker.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+        document.write('<script src="crm-profile-analytics.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -534,6 +551,9 @@
             const bookmarkletLink = document.getElementById('crmTrackerBookmarklet');
             const bookmarkletCopyBtn = document.getElementById('copyCrmTrackerBookmarklet');
             const bookmarkletCopyStatus = document.getElementById('crmTrackerCopyStatus');
+            const analyticsBookmarkletLink = document.getElementById('crmProfileAnalyticsBookmarklet');
+            const analyticsBookmarkletCopyBtn = document.getElementById('copyCrmProfileAnalyticsBookmarklet');
+            const analyticsBookmarkletCopyStatus = document.getElementById('crmProfileAnalyticsCopyStatus');
 
             const openAdvancedTools = () => {
                 if (!advancedToolsModal) return;
@@ -587,6 +607,50 @@
                             if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'تم نسخ كود «العداد» بنجاح ✅ يمكنك إضافته للمفضلة';
                         } catch (e) {
                             if (bookmarkletCopyStatus) bookmarkletCopyStatus.textContent = 'اسحب الزر الأخضر مباشرة إلى شريط المفضلة.';
+                        }
+                    });
+                }
+            }
+
+            if (window.FastToolkitCrmProfileAnalytics && analyticsBookmarkletLink) {
+                const analyticsBookmarklet = window.FastToolkitCrmProfileAnalytics.buildBookmarklet();
+                const analyticsDefaultLabel = 'اسحبني إلى شريط المفضلة';
+                const analyticsBookmarkTitle = 'إحصائيات الشفت';
+
+                analyticsBookmarkletLink.setAttribute('href', analyticsBookmarklet);
+                analyticsBookmarkletLink.setAttribute('title', 'اسحب الزر إلى شريط المفضلة لإنشاء أداة «إحصائيات الشفت»');
+                analyticsBookmarkletLink.textContent = analyticsDefaultLabel;
+
+                const setAnalyticsDragTitle = () => {
+                    analyticsBookmarkletLink.textContent = analyticsBookmarkTitle;
+                };
+                const resetAnalyticsDefaultTitle = () => {
+                    analyticsBookmarkletLink.textContent = analyticsDefaultLabel;
+                };
+
+                analyticsBookmarkletLink.addEventListener('pointerdown', setAnalyticsDragTitle);
+                analyticsBookmarkletLink.addEventListener('mousedown', setAnalyticsDragTitle);
+                analyticsBookmarkletLink.addEventListener('dragstart', setAnalyticsDragTitle);
+                analyticsBookmarkletLink.addEventListener('dragend', resetAnalyticsDefaultTitle);
+                analyticsBookmarkletLink.addEventListener('pointerup', resetAnalyticsDefaultTitle);
+                analyticsBookmarkletLink.addEventListener('mouseup', resetAnalyticsDefaultTitle);
+                analyticsBookmarkletLink.addEventListener('mouseleave', resetAnalyticsDefaultTitle);
+                window.addEventListener('mouseup', resetAnalyticsDefaultTitle);
+
+                analyticsBookmarkletLink.addEventListener('click', event => {
+                    event.preventDefault();
+                    if (analyticsBookmarkletCopyStatus) {
+                        analyticsBookmarkletCopyStatus.textContent = 'اسحب الزر إلى المفضلة أو اضغط «نسخ الرابط»، ثم شغّله داخل CRM.';
+                    }
+                });
+
+                if (analyticsBookmarkletCopyBtn) {
+                    analyticsBookmarkletCopyBtn.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(analyticsBookmarklet);
+                            if (analyticsBookmarkletCopyStatus) analyticsBookmarkletCopyStatus.textContent = 'تم نسخ كود «إحصائيات الشفت» بنجاح ✅';
+                        } catch (e) {
+                            if (analyticsBookmarkletCopyStatus) analyticsBookmarkletCopyStatus.textContent = 'اسحب الزر مباشرة إلى شريط المفضلة.';
                         }
                     });
                 }
