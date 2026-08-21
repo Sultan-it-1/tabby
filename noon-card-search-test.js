@@ -434,20 +434,29 @@
 
             const selectedValue = engine.normalizeText(dateInput.value);
             if (!selectedValue.includes(target.iso)) throw new Error('التقويم لم يعتمد التاريخ المختار.');
-            if (selectedValue !== target.range) setInputValue(dateInput, target.range);
-            await delay(120);
-            if (engine.normalizeText(dateInput.value) !== target.range) throw new Error('قيمة Date Range غير مطابقة.');
+            if (selectedValue !== target.range) throw new Error('قيمة Date Range غير مطابقة.');
             return true;
         }
 
         function findSearchButton(dateInput, cardInput, amountInput) {
-            const nearestForm = cardInput?.closest?.('form') || amountInput?.closest?.('form') || dateInput?.closest?.('form');
-            const candidates = Array.from((nearestForm || document).querySelectorAll('button, [role="button"], input[type="submit"]'));
+            const searchRoot = dateInput?.closest?.('np-common-search') ||
+                dateInput?.closest?.('mat-card.search_card, .search_card');
+            if (!searchRoot) return null;
+
+            const transactionSearchButton = searchRoot.querySelector('#add-search-button');
+            if (isVisible(transactionSearchButton) && transactionSearchButton.getAttribute?.('aria-disabled') !== 'true') {
+                return transactionSearchButton;
+            }
+
+            const candidates = Array.from(searchRoot.querySelectorAll('button, [role="button"], input[type="submit"]'));
             return candidates
-                .filter(isVisible)
+                .filter(element => isVisible(element) &&
+                    element.id !== 'quick-search-btn' &&
+                    !element.closest?.('np-quick-search-criteria, header, nav'))
                 .map(element => {
                     const text = engine.normalizeText(element.textContent || element.value || element.getAttribute?.('aria-label')).toLowerCase();
                     let score = 0;
+                    if (element.id === 'add-search-button') score += 1000;
                     if (/^(search|بحث)$/.test(text)) score += 100;
                     else if (/search|بحث/.test(text)) score += 50;
                     if (element.type === 'submit') score += 10;
@@ -465,16 +474,10 @@
                 return candidate;
             }, 5000);
             if (!button) throw new Error('SEARCH_NOT_READY');
-            await delay(350);
+            await Promise.resolve();
+            await delay(180);
             button.focus?.();
-            if (typeof PointerEvent === 'function') {
-                button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'mouse' }));
-                button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerType: 'mouse' }));
-            }
-            if (typeof MouseEvent === 'function') {
-                button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
-                button.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0 }));
-            }
+            await delay(120);
             button.click();
             return button;
         }

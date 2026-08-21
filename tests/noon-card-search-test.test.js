@@ -74,6 +74,9 @@ test('builds a self-contained URL-safe test2 bookmarklet with Custom range handl
     assert.doesNotMatch(source, /<script|https?:\/\//i);
     assert.doesNotThrow(() => new Function(source));
     assert.match(source, /calendar-input/);
+    assert.match(source, /add-search-button/);
+    assert.match(source, /quick-search-btn/);
+    assert.match(source, /np-common-search/);
     assert.match(source, /custom\\s\*range/);
     assert.match(source, /23:59/);
     assert.doesNotMatch(source, /const notify|function notify/);
