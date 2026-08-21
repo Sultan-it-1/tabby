@@ -474,7 +474,7 @@
                 <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="15" r="3"/><path d="M18 10v2m0 6v2m-5-5h2m6 0h2"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Extra Tools</div>
-                    <div class="desc">ملخص الشفت وChecking Note وtest2 لنون.</div>
+                    <div class="desc">ملخص الشفت وChecking Note وتجارب بحث نون.</div>
                 </div>
             </button>
 
@@ -530,7 +530,7 @@
             <header>
                 <div>
                     <h2 id="extraToolsTitle">Extra Tools — أدوات إضافية</h2>
-                    <p>ملخص الشفت وChecking Note وتجربة بحث نون، داخل نافذة مستقلة في الهوم.</p>
+                    <p>ملخص الشفت وChecking Note وتجارب بحث نون، داخل نافذة مستقلة في الهوم.</p>
                 </div>
                 <button type="button" class="advanced-tools-close" id="extraToolsClose" aria-label="إغلاق">×</button>
             </header>
@@ -581,6 +581,22 @@
                 </ol>
                 <div class="advanced-safety">تجريبية: تعبئ فلاتر البحث وتضغط Search فقط، ولا تنفذ أي عملية مالية.</div>
                 <div class="advanced-copy-status" id="noonCardSearchTest2CopyStatus" aria-live="polite"></div>
+            </div>
+
+            <div class="advanced-tool-panel">
+                <div class="advanced-tool-title"><span aria-hidden="true">🧪</span><span>test3 — بحث نون بدون بطاقة</span></div>
+                <p>يمسح أي رقم موجود في حقل البطاقة، ويعبئ المبلغ في Amount From وAmount To، ويحدد اليوم كاملًا ثم يضغط Search.</p>
+                <div class="advanced-bookmarklet-row">
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="noonCardSearchTest3Bookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyNoonCardSearchTest3Bookmarklet">نسخ الرابط</button>
+                </div>
+                <ol class="advanced-steps">
+                    <li>انسخ النتيجة كاملة؛ ستستخدم الأداة المبلغ والوقت والتاريخ وتتجاهل البطاقة.</li>
+                    <li>افتح صفحة Search Transaction في Noon Payments.</li>
+                    <li>شغّل «test3»؛ ستمسح الأداة حقل البطاقة وتنفذ البحث بدونها.</li>
+                </ol>
+                <div class="advanced-safety">تجريبية: تعبئ فلاتر البحث وتضغط Search فقط، ولا تنفذ أي عملية مالية.</div>
+                <div class="advanced-copy-status" id="noonCardSearchTest3CopyStatus" aria-live="polite"></div>
             </div>
         </section>
     </div>
@@ -738,6 +754,16 @@
                 title: 'test2',
                 readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم شغّله داخل صفحة بحث Noon Payments.',
                 copiedMessage: 'تم نسخ كود «test2» بنجاح ✅'
+            });
+
+            bindExtraBookmarklet({
+                api: window.FastToolkitNoonCardSearchTest3,
+                linkId: 'noonCardSearchTest3Bookmarklet',
+                copyId: 'copyNoonCardSearchTest3Bookmarklet',
+                statusId: 'noonCardSearchTest3CopyStatus',
+                title: 'test3',
+                readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم شغّله داخل صفحة بحث Noon Payments.',
+                copiedMessage: 'تم نسخ كود «test3» بنجاح ✅'
             });
 
             if (advancedToolsBtn) advancedToolsBtn.addEventListener('click', openAdvancedTools);
