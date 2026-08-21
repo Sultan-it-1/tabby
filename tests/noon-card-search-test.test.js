@@ -75,6 +75,7 @@ test('builds a self-contained URL-safe test2 bookmarklet with Custom range handl
     assert.doesNotThrow(() => new Function(source));
     assert.match(source, /calendar-input/);
     assert.match(source, /add-search-button/);
+    assert.match(source, /clear-search-button|reset-search-button|activateResetButtonIfPresent/);
     assert.match(source, /quick-search-btn/);
     assert.match(source, /np-common-search/);
     assert.match(source, /custom\\s\*range/);

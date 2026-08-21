@@ -40,6 +40,7 @@
                         class="mat-mdc-input-element date-time-custom-ranges_input" placeholder="Date" required="">
                 </mat-form-field>
                 <button id="add-search-button" type="button"><mat-icon>search</mat-icon> Search</button>
+                <button id="clear-search-button" type="button">Reset</button>
             </div>
         </mat-card>
     </np-common-search>
@@ -172,6 +173,10 @@
             }
             picker.style.display = 'none';
         });
+        let resetClicks = 0;
+        document.getElementById('clear-search-button')?.addEventListener('click', () => {
+            resetClicks += 1;
+        });
         document.getElementById('quick-search-btn').addEventListener('click', () => {
             globalSearchClicks += 1;
             document.getElementById('global-search-error').textContent = 'Please enter search text';
@@ -198,6 +203,7 @@
                     document.getElementById('amount-to').value === '1288' &&
                     dateInput.value === '2026-06-08 00:00 - 2026-06-08 23:59' && dateClicks >= 2 &&
                     customRangeClicks === 1 && quickRangeClicks === 0 && transactionSearchClicks === 1 &&
+                    resetClicks === 1 &&
                     globalSearchClicks === 0 && !document.getElementById('global-search-error').textContent &&
                     !document.getElementById('fast-toolkit-noon-test-status') &&
                     currencyPassed && greenMatch && yellowMatch && falseRowsClear;

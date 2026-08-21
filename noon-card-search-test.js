@@ -530,6 +530,51 @@
             return true;
         }
 
+        function findResetButton(dateInput) {
+            const searchRoot = dateInput?.closest?.('np-common-search') ||
+                dateInput?.closest?.('mat-card.search_card, .search_card') ||
+                document.querySelector('np-common-search, mat-card.search_card, .search_card');
+            if (!searchRoot) return null;
+
+            const direct = searchRoot.querySelector('#clear-search-button, #reset-search-button, #reset-button, #clear-button, button[type="reset"]');
+            if (direct && isVisible(direct) && !direct.disabled && direct.getAttribute?.('aria-disabled') !== 'true') {
+                return direct;
+            }
+
+            const candidates = Array.from(searchRoot.querySelectorAll('button, [role="button"], input[type="reset"], input[type="button"]'));
+            return candidates
+                .filter(element => isVisible(element) &&
+                    !element.disabled &&
+                    element.getAttribute?.('aria-disabled') !== 'true' &&
+                    element.id !== 'quick-search-btn' &&
+                    element.id !== 'add-search-button' &&
+                    !element.closest?.('np-quick-search-criteria, header, nav, .md-drppicker, ngx-daterangepicker-material'))
+                .map(element => {
+                    const text = engine.normalizeText(element.textContent || element.value || element.getAttribute?.('aria-label') || element.title || '').toLowerCase();
+                    const id = String(element.id || '').toLowerCase();
+                    let score = 0;
+                    if (id === 'clear-search-button' || id === 'reset-search-button') score += 1000;
+                    else if (/reset|clear/.test(id)) score += 500;
+                    if (/^(reset|clear|إعادة ضبط|اعادة ضبط|مسح|تفريغ)$/i.test(text)) score += 200;
+                    else if (/reset|clear|إعادة ضبط|اعادة ضبط|مسح|تفريغ/i.test(text)) score += 80;
+                    if (element.type === 'reset') score += 50;
+                    return { element, score };
+                })
+                .sort((left, right) => right.score - left.score)
+                .find(item => item.score > 0)?.element || null;
+        }
+
+        async function activateResetButtonIfPresent(dateInput) {
+            const button = findResetButton(dateInput);
+            if (button) {
+                button.focus?.();
+                button.click();
+                await delay(180);
+                return true;
+            }
+            return false;
+        }
+
         function findSearchButton(dateInput, cardInput, amountInput) {
             const searchRoot = dateInput?.closest?.('np-common-search') ||
                 dateInput?.closest?.('mat-card.search_card, .search_card');
@@ -661,7 +706,10 @@
             if (!withoutCard && !data.card) throw new Error('لم أجد آخر 4 أرقام للبطاقة في الحافظة.');
             if (!data.date) throw new Error('لم أجد التاريخ. انسخ النتيجة كاملة: المبلغ // البطاقة // الوقت // التاريخ.');
 
-            const dateInput = findDateInput();
+            const initialDateInput = findDateInput();
+            await activateResetButtonIfPresent(initialDateInput);
+
+            const dateInput = await waitFor(findDateInput, 3000) || findDateInput();
             if (!dateInput) throw new Error('لم أجد حقل Date في صفحة نون.');
             const cardInputs = findFields('card', dateInput);
             const cardInput = cardInputs[0] || null;
