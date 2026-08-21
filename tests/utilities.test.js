@@ -133,6 +133,7 @@ test('note experience no longer tracks or displays the legacy manual-backup coun
 test('CRM bookmarklet tools are exposed in two separate home modals only', () => {
     const firebaseRoot = path.join(__dirname, '..');
     const index = fs.readFileSync(path.join(firebaseRoot, 'index.html'), 'utf8');
+    const card = fs.readFileSync(path.join(firebaseRoot, 'card.html'), 'utf8');
     assert.match(index, /id="advancedToolsBtn"/);
     assert.match(index, /id="extraToolsBtn"/);
     assert.match(index, /id="advancedToolsModal"/);
@@ -147,12 +148,19 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
     assert.match(index, /id="noonCardSearchTest2Bookmarklet"/);
     assert.match(index, /id="noonCardSearchTest3Bookmarklet"/);
     assert.match(index, /id="payFortSearchTest4Bookmarklet"/);
+    assert.match(card, /noon-card-search-test\.js/);
+    assert.match(card, /id="noonCardSearchBookmarklet"/);
+    assert.match(card, /id="noonWithoutCardSearchBookmarklet"/);
+    assert.match(card, /'بحث نون 💛'/);
+    assert.match(card, /'بدون بطاقة نون 💛'/);
+    assert.doesNotMatch(card, /href="javascript:\(async function\(\)/);
 
     fs.readdirSync(firebaseRoot)
         .filter(file => file.endsWith('.html') && file !== 'index.html')
         .forEach(file => {
             const html = fs.readFileSync(path.join(firebaseRoot, file), 'utf8');
-            assert.doesNotMatch(html, /advancedToolsBtn|extraToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js|crm-internal-note-timer\.js|noon-card-search-test\.js|payfort-search-test\.js/, file);
+            assert.doesNotMatch(html, /advancedToolsBtn|extraToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js|crm-internal-note-timer\.js|payfort-search-test\.js/, file);
+            if (file !== 'card.html') assert.doesNotMatch(html, /noon-card-search-test\.js/, file);
         });
 
     const serviceWorker = fs.readFileSync(path.join(firebaseRoot, 'sw.js'), 'utf8');
