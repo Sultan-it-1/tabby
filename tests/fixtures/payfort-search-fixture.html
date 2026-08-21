@@ -8,12 +8,12 @@
     </style>
 </head>
 <body data-test-result="pending">
-    <form id="transactions-form">
+    <form id="transactions-form" class="report-search-form">
         <div class="form-group">
             <label>Date Range</label>
             <input id="transaction-date-range" class="form-control daterange" placeholder="Date Range" readonly>
         </div>
-        <button id="filter-button" type="button">Filter</button>
+        <button id="filter-button" class="btn-a-s-filter" type="button">Filter</button>
         <div class="advanced-report-filter">
             <table id="transactions-form_advancedFilterFieldsGrid"><tbody></tbody></table>
             <button class="add-row-button" type="button">Add Another Field</button>
@@ -21,15 +21,18 @@
     </form>
 
     <div class="daterangepicker">
-        <div class="drp-calendar left">
-            <table><thead><tr><th class="prev available">Previous</th><th class="month">August 2026</th></tr></thead>
-                <tbody><tr><td class="available">8</td></tr></tbody></table>
+        <ul class="ranges"><li data-range-key="Custom Range">Custom Range</li></ul>
+        <div id="calendar-zone" style="display:none">
+            <div class="drp-calendar left">
+                <table><thead><tr><th class="prev available">Previous</th><th class="month">August 2026</th></tr></thead>
+                    <tbody><tr><td class="available">8</td></tr></tbody></table>
+            </div>
+            <div class="drp-calendar right">
+                <table><thead><tr><th class="month">September 2026</th><th class="next available">Next</th></tr></thead>
+                    <tbody><tr><td class="available">8</td></tr></tbody></table>
+            </div>
+            <button class="applyBtn" type="button">Apply</button>
         </div>
-        <div class="drp-calendar right">
-            <table><thead><tr><th class="month">September 2026</th><th class="next available">Next</th></tr></thead>
-                <tbody><tr><td class="available">8</td></tr></tbody></table>
-        </div>
-        <button class="applyBtn" type="button">Apply</button>
     </div>
 
     <script>
@@ -41,6 +44,7 @@
         let leftYear = 2026;
         let dateClicks = 0;
         let filterClicks = 0;
+        let customRangeClicks = 0;
 
         function renderMonths() {
             const right = new Date(leftYear, leftMonth + 1, 1);
@@ -53,7 +57,7 @@
             gridBody.insertAdjacentHTML('beforeend', `
                 <tr id="AFRow-0" data-id="0">
                     <td><select name="AdvancedFilterFieldsForm[0][fieldName]">
-                        <option value="">Field Name</option><option value="amount">Amount</option><option value="card_number">Card Number</option>
+                        <option value="">Field Name</option><option value="refunded_amount">Refunded Amount</option><option value="amount">Amount</option><option value="card_number">Card Number</option>
                     </select></td>
                     <td><select name="AdvancedFilterFieldsForm[0][operation]" disabled><option value="">Operation</option></select></td>
                     <td class="AF-value-controls-container"></td>
@@ -63,16 +67,21 @@
                 window.setTimeout(() => {
                     const operation = document.querySelector('select[name="AdvancedFilterFieldsForm[0][operation]"]');
                     operation.disabled = false;
-                    operation.insertAdjacentHTML('beforeend', '<option value="=">=</option><option value="!=">!=</option>');
+                    operation.insertAdjacentHTML('beforeend', '<option value="neq">Not Equal</option><option value="eq">Equal</option>');
+                    document.querySelector('#AFRow-0 .AF-value-controls-container').innerHTML = `
+                        <input data-generation="field-response" name="AdvancedFilterFieldsForm[0][value]" placeholder="Value">
+                        <select data-generation="field-response" name="AdvancedFilterFieldsForm[0][currency]">
+                            <option value="">Currency</option><option value="USD">US Dollar</option><option value="SAR">SAR - Saudi Riyal</option>
+                        </select>`;
                     operation.addEventListener('change', () => {
                         window.setTimeout(() => {
                             document.querySelector('#AFRow-0 .AF-value-controls-container').innerHTML = `
-                                <input name="AdvancedFilterFieldsForm[0][value]" placeholder="Value">
-                                <select name="AdvancedFilterFieldsForm[0][currency]">
-                                    <option value="">Currency</option><option value="USD">US Dollar</option><option value="SAR">SAR - Saudi Riyal</option>
+                                <input data-generation="operation-response" name="AdvancedFilterFieldsForm[0][value]" placeholder="Value">
+                                <select data-generation="operation-response" name="AdvancedFilterFieldsForm[0][currency]">
+                                    <option value="">Currency</option><option value="QAR">Qatari Riyal</option><option value="USD">US Dollar</option><option value="SAR">SAR - Saudi Riyal</option>
                                 </select>`;
                             document.querySelector('select[name="AdvancedFilterFieldsForm[0][currency]"]').addEventListener('change', verify);
-                        }, 120);
+                        }, 350);
                     }, { once: true });
                 }, 120);
             }, { once: true });
@@ -84,13 +93,30 @@
                 const operation = document.querySelector('select[name="AdvancedFilterFieldsForm[0][operation]"]');
                 const value = document.querySelector('input[name="AdvancedFilterFieldsForm[0][value]"]');
                 const currency = document.querySelector('select[name="AdvancedFilterFieldsForm[0][currency]"]');
-                const passed = dateInput.value === '2026-06-08 - 2026-06-08' && dateClicks === 2 && filterClicks === 1 &&
-                    field?.value === 'amount' && operation?.value === '=' && value?.value === '1288' && currency?.value === 'SAR';
+                document.body.dataset.testDetails = JSON.stringify({
+                    date: dateInput.value,
+                    dateClicks,
+                    customRangeClicks,
+                    filterClicks,
+                    field: field?.value,
+                    operation: operation?.value,
+                    valueGeneration: value?.dataset.generation,
+                    currencyGeneration: currency?.dataset.generation,
+                    value: value?.value,
+                    currency: currency?.value
+                });
+                const passed = dateInput.value === '2026-06-08 00:00 To 2026-06-08 23:59' && dateClicks === 2 && customRangeClicks === 1 && filterClicks === 1 &&
+                    field?.value === 'amount' && operation?.value === 'eq' && value?.dataset.generation === 'operation-response' &&
+                    currency?.dataset.generation === 'operation-response' && value?.value === '1288' && currency?.value === 'SAR';
                 document.body.dataset.testResult = passed ? 'passed' : 'failed';
             }, 100);
         }
 
         dateInput.addEventListener('click', () => { picker.style.display = 'block'; });
+        document.querySelector('[data-range-key="Custom Range"]').addEventListener('click', () => {
+            customRangeClicks += 1;
+            document.getElementById('calendar-zone').style.display = 'block';
+        });
         document.querySelector('.drp-calendar.left .prev').addEventListener('click', () => {
             leftMonth -= 1;
             if (leftMonth < 0) { leftMonth = 11; leftYear -= 1; }
@@ -105,7 +131,7 @@
             if (leftMonth === 5) dateClicks += 1;
         }));
         document.querySelector('.applyBtn').addEventListener('click', () => {
-            if (dateClicks === 2) dateInput.value = '2026-06-08 - 2026-06-08';
+            if (dateClicks === 2) dateInput.value = '2026-06-08 00:00 To 2026-06-08 23:59';
             picker.style.display = 'none';
         });
         document.getElementById('filter-button').addEventListener('click', () => {
@@ -113,14 +139,17 @@
             window.setTimeout(addFilterRow, 100);
         });
         document.querySelector('.add-row-button').addEventListener('click', addFilterRow);
+        window.setInterval(verify, 250);
     </script>
     <script src="../../payfort-search-test.js"></script>
     <script>
         window.addEventListener('load', () => {
-            FastToolkitPayFortSearchTest4.install({
-                clipboardText: '1,288 // 4321 // 18:34 // 08-06',
-                now: new Date(2026, 7, 21)
+            Object.defineProperty(navigator, 'clipboard', {
+                configurable: true,
+                value: { readText: async () => '1,288 // 4321 // 18:34 // 08-06-2026' }
             });
+            const bookmarklet = FastToolkitPayFortSearchTest4.buildBookmarklet();
+            window.eval(decodeURIComponent(bookmarklet.slice('javascript:'.length)));
         });
     </script>
 </body>
