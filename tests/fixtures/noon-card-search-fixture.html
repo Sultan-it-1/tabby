@@ -29,6 +29,11 @@
                     </select>
                 </label>
                 <span id="currency-filter-slot"></span>
+                <mat-form-field id="material-currency-field" style="display:none">
+                    <mat-label>Currencies</mat-label>
+                    <mat-select id="Currencies" role="combobox" aria-haspopup="listbox" aria-expanded="false"
+                        multiple class="mat-mdc-select mat-mdc-select-multiple"></mat-select>
+                </mat-form-field>
                 <mat-form-field>Date
                     <input _ngcontent-ng-c3638087624="" matinput="" id="calendar-input" autocomplete="off" type="text"
                         readonly="true" ngxdaterangepickermd="" opens="right" drops="bottom"
@@ -82,10 +87,39 @@
         let globalSearchClicks = 0;
         const withoutCard = window.location.hash === '#test3';
         const withoutCurrencyFilter = window.location.hash === '#no-currency';
+        const materialCurrencyFilter = window.location.hash === '#mat-currency';
         const picker = document.querySelector('.md-drppicker');
         const dateInput = document.getElementById('calendar-input');
 
-        if (withoutCurrencyFilter) document.querySelector('#filter-field option[value="currency"]').remove();
+        if (withoutCurrencyFilter || materialCurrencyFilter) document.querySelector('#filter-field option[value="currency"]').remove();
+        const materialCurrency = document.getElementById('Currencies');
+        if (materialCurrencyFilter) document.getElementById('material-currency-field').style.display = 'block';
+        materialCurrency.addEventListener('click', () => {
+            if (!materialCurrencyFilter || document.querySelector('.currency-overlay')) return;
+            materialCurrency.setAttribute('aria-expanded', 'true');
+            const overlay = document.createElement('div');
+            overlay.className = 'currency-overlay cdk-overlay-pane';
+            overlay.setAttribute('role', 'listbox');
+            overlay.setAttribute('aria-multiselectable', 'true');
+            [['QAR', 'Qatari Riyal'], ['SAR', 'SAR']].forEach(([value, label]) => {
+                const option = document.createElement('mat-option');
+                option.setAttribute('role', 'option');
+                option.setAttribute('value', value);
+                option.setAttribute('aria-selected', 'false');
+                option.textContent = label;
+                option.addEventListener('click', () => {
+                    option.setAttribute('aria-selected', 'true');
+                    materialCurrency.dataset.selectedCurrency = value;
+                });
+                overlay.appendChild(option);
+            });
+            document.body.appendChild(overlay);
+        });
+        materialCurrency.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            document.querySelector('.currency-overlay')?.remove();
+            materialCurrency.setAttribute('aria-expanded', 'false');
+        });
         document.getElementById('filter-field').addEventListener('change', event => {
             const slot = document.getElementById('currency-filter-slot');
             slot.replaceChildren();
@@ -156,7 +190,9 @@
                 const expectedCard = withoutCard ? '' : '4321';
                 const currencyPassed = withoutCurrencyFilter
                     ? !document.getElementById('currency-value')
-                    : document.getElementById('filter-field').value === 'currency' && document.getElementById('currency-value')?.value === 'SAR';
+                    : materialCurrencyFilter
+                        ? materialCurrency.dataset.selectedCurrency === 'SAR' && materialCurrency.getAttribute('aria-expanded') === 'false' && !document.querySelector('.currency-overlay')
+                        : document.getElementById('filter-field').value === 'currency' && document.getElementById('currency-value')?.value === 'SAR';
                 const passed = document.getElementById('card-last-4').value === expectedCard &&
                     document.getElementById('amount-from').value === '1288' &&
                     document.getElementById('amount-to').value === '1288' &&
