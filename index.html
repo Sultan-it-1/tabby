@@ -474,7 +474,7 @@
                 <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="15" r="3"/><path d="M18 10v2m0 6v2m-5-5h2m6 0h2"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Extra Tools</div>
-                    <div class="desc">ملخص الشفت وChecking Note وtest لنون.</div>
+                    <div class="desc">ملخص الشفت وChecking Note وtest2 لنون.</div>
                 </div>
             </button>
 
@@ -568,19 +568,19 @@
             </div>
 
             <div class="advanced-tool-panel">
-                <div class="advanced-tool-title"><span aria-hidden="true">🧪</span><span>test — بحث البطاقة في نون مع التاريخ</span></div>
+                <div class="advanced-tool-title"><span aria-hidden="true">🧪</span><span>test2 — بحث البطاقة في نون مع التاريخ</span></div>
                 <p>نسخة تجريبية من بحث نون تقرأ المبلغ والبطاقة والوقت والتاريخ، وتحدد اليوم كاملًا من <b>00:00</b> إلى <b>23:59</b> قبل الضغط على Search.</p>
                 <div class="advanced-bookmarklet-row">
-                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="noonCardSearchTestBookmarklet">اسحبني إلى شريط المفضلة</a>
-                    <button type="button" class="advanced-copy-btn" id="copyNoonCardSearchTestBookmarklet">نسخ الرابط</button>
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="noonCardSearchTest2Bookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyNoonCardSearchTest2Bookmarklet">نسخ الرابط</button>
                 </div>
                 <ol class="advanced-steps">
                     <li>انسخ النتيجة كاملة بصيغة: <b>المبلغ // البطاقة // الوقت // التاريخ</b>.</li>
                     <li>افتح صفحة Search Transaction في Noon Payments.</li>
-                    <li>شغّل «test»؛ ستختار الأداة التاريخ من التقويم ثم تنفذ البحث.</li>
+                    <li>شغّل «test2»؛ ستختار الأداة <b>Custom range</b> ثم التاريخ من التقويم وتنفذ البحث.</li>
                 </ol>
                 <div class="advanced-safety">تجريبية: تعبئ فلاتر البحث وتضغط Search فقط، ولا تنفذ أي عملية مالية.</div>
-                <div class="advanced-copy-status" id="noonCardSearchTestCopyStatus" aria-live="polite"></div>
+                <div class="advanced-copy-status" id="noonCardSearchTest2CopyStatus" aria-live="polite"></div>
             </div>
         </section>
     </div>
@@ -731,13 +731,13 @@
             });
 
             bindExtraBookmarklet({
-                api: window.FastToolkitNoonCardSearchTest,
-                linkId: 'noonCardSearchTestBookmarklet',
-                copyId: 'copyNoonCardSearchTestBookmarklet',
-                statusId: 'noonCardSearchTestCopyStatus',
-                title: 'test',
+                api: window.FastToolkitNoonCardSearchTest2,
+                linkId: 'noonCardSearchTest2Bookmarklet',
+                copyId: 'copyNoonCardSearchTest2Bookmarklet',
+                statusId: 'noonCardSearchTest2CopyStatus',
+                title: 'test2',
                 readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم شغّله داخل صفحة بحث Noon Payments.',
-                copiedMessage: 'تم نسخ كود «test» بنجاح ✅'
+                copiedMessage: 'تم نسخ كود «test2» بنجاح ✅'
             });
 
             if (advancedToolsBtn) advancedToolsBtn.addEventListener('click', openAdvancedTools);

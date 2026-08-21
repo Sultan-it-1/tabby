@@ -65,7 +65,7 @@ test('limits execution to Noon Payments portals', () => {
     assert.equal(noonSearch.isAllowedLocation({ protocol: 'https:', hostname: 'evil.example' }), false);
 });
 
-test('builds a self-contained URL-safe bookmarklet named by the home wiring', () => {
+test('builds a self-contained URL-safe test2 bookmarklet with Custom range handling', () => {
     const bookmarklet = noonSearch.buildBookmarklet();
     const source = decodeBookmarklet(bookmarklet);
     assert.match(bookmarklet, /^javascript:/);
@@ -74,5 +74,6 @@ test('builds a self-contained URL-safe bookmarklet named by the home wiring', ()
     assert.doesNotMatch(source, /<script|https?:\/\//i);
     assert.doesNotThrow(() => new Function(source));
     assert.match(source, /calendar-input/);
+    assert.match(source, /custom\\s\*range/);
     assert.match(source, /23:59/);
 });

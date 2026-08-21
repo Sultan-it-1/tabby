@@ -141,7 +141,7 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
     assert.match(index, /noon-card-search-test\.js/);
     assert.match(index, /id="crmProfileAnalyticsBookmarklet"/);
     assert.match(index, /id="crmInternalNoteBookmarklet"/);
-    assert.match(index, /id="noonCardSearchTestBookmarklet"/);
+    assert.match(index, /id="noonCardSearchTest2Bookmarklet"/);
 
     fs.readdirSync(firebaseRoot)
         .filter(file => file.endsWith('.html') && file !== 'index.html')

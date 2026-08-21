@@ -2,7 +2,9 @@
     if (typeof module === 'object' && module.exports) {
         module.exports = factory();
     } else {
-        root.FastToolkitNoonCardSearchTest = factory();
+        const api = factory();
+        root.FastToolkitNoonCardSearchTest2 = api;
+        root.FastToolkitNoonCardSearchTest = api;
     }
 }(typeof self !== 'undefined' ? self : this, function () {
     'use strict';
@@ -305,14 +307,20 @@
 
         function findPicker() {
             const candidates = Array.from(document.querySelectorAll('.md-drppicker, ngx-daterangepicker-material, .daterangepicker, [class*="daterangepicker"]'));
-            return candidates.find(element => isVisible(element) && element.querySelector('.calendar-table, .calendar')) || null;
+            return candidates.find(element => isVisible(element) && element.querySelector('.calendar-table, .calendar, .ranges, button, li')) || null;
         }
 
         async function revealCalendars(picker) {
-            if (picker.querySelector('.calendar-table')) return true;
-            const customButton = Array.from(picker.querySelectorAll('button, li')).find(element => /custom\s*range|custom|مخصص|تخصيص/i.test(engine.normalizeText(element.textContent)) && isVisible(element));
-            if (customButton) customButton.click();
-            return Boolean(await waitFor(() => picker.querySelector('.calendar-table'), 1800));
+            if (visibleCalendars(picker).length) return true;
+            const customOptions = Array.from(picker.querySelectorAll('.ranges li button, .ranges li, li button, button, li'))
+                .filter(element => /custom\s*range|custom|نطاق\s*مخصص|مخصص|تخصيص/i.test(engine.normalizeText(element.textContent)) && isVisible(element));
+            const customOption = customOptions[customOptions.length - 1];
+            if (!customOption) return false;
+            const clickable = customOption.matches?.('li')
+                ? (customOption.querySelector('button, [role="button"]') || customOption)
+                : customOption;
+            clickable.click();
+            return Boolean(await waitFor(() => visibleCalendars(picker).length ? true : null, 2500));
         }
 
         function calendarMonth(calendar) {
@@ -533,7 +541,7 @@
         }
 
         try {
-            notify('test: جاري قراءة البيانات وضبط تاريخ نون…');
+            notify('test2: جاري قراءة البيانات وضبط تاريخ نون…');
             const clipboardText = request.clipboardText != null
                 ? String(request.clipboardText)
                 : await navigator.clipboard.readText();
@@ -560,7 +568,7 @@
             notify(`تم البحث: ${data.card} — ${data.date.range} ✅`, 'success');
             return Object.freeze({ card: data.card, amount: data.amount, dateRange: data.date.range });
         } catch (error) {
-            notify(`test: ${error && error.message ? error.message : 'تعذر تنفيذ البحث.'}`, 'error');
+            notify(`test2: ${error && error.message ? error.message : 'تعذر تنفيذ البحث.'}`, 'error');
             return null;
         }
     }

@@ -5,7 +5,7 @@
     <title>Noon card search test fixture</title>
     <style>
         .md-drppicker { display: none; }
-        .calendar { display: inline-block; }
+        .calendar, .buttons { display: none; }
     </style>
 </head>
 <body data-test-result="pending">
@@ -28,6 +28,11 @@
     </tbody></table>
 
     <div class="md-drppicker">
+        <div class="ranges"><ul>
+            <li><button class="quick-range" type="button">Today</button></li>
+            <li><button class="quick-range" type="button">Yesterday</button></li>
+            <li><button id="custom-range" type="button">Custom range</button></li>
+        </ul></div>
         <div class="calendar left">
             <div class="calendar-table"><table><thead><tr><th class="prev available">Previous</th><th class="month">August 2026</th></tr></thead><tbody><tr><td class="available"><span>8</span></td></tr></tbody></table></div>
             <div class="calendar-time">
@@ -52,6 +57,8 @@
         let leftMonth = 7;
         let leftYear = 2026;
         let dateClicks = 0;
+        let customRangeClicks = 0;
+        let quickRangeClicks = 0;
         const picker = document.querySelector('.md-drppicker');
         const dateInput = document.getElementById('calendar-input');
 
@@ -62,6 +69,12 @@
         }
 
         dateInput.addEventListener('click', () => { picker.style.display = 'block'; });
+        document.querySelectorAll('.quick-range').forEach(button => button.addEventListener('click', () => { quickRangeClicks += 1; }));
+        document.getElementById('custom-range').addEventListener('click', () => {
+            customRangeClicks += 1;
+            document.querySelectorAll('.calendar').forEach(calendar => { calendar.style.display = 'inline-block'; });
+            document.querySelector('.buttons').style.display = 'block';
+        });
         document.querySelector('.calendar.left .prev').addEventListener('click', () => {
             leftMonth -= 1;
             if (leftMonth < 0) { leftMonth = 11; leftYear -= 1; }
@@ -98,7 +111,7 @@
                 const passed = document.getElementById('card-last-4').value === '4321' &&
                     document.getElementById('amount').value === '1288' &&
                     dateInput.value === '2026-06-08 00:00 - 2026-06-08 23:59' && dateClicks >= 2 &&
-                    greenMatch && yellowMatch && falseRowsClear;
+                    customRangeClicks === 1 && quickRangeClicks === 0 && greenMatch && yellowMatch && falseRowsClear;
                 document.body.dataset.testResult = passed ? 'passed' : 'failed';
             }, 1900);
         });
@@ -106,7 +119,7 @@
     <script src="../../noon-card-search-test.js"></script>
     <script>
         window.addEventListener('load', () => {
-            FastToolkitNoonCardSearchTest.install({
+            FastToolkitNoonCardSearchTest2.install({
                 clipboardText: '1,288 // 4321 // 18:34 // 08-06',
                 now: new Date(2026, 7, 21)
             });
