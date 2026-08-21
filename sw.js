@@ -26,6 +26,7 @@ const ASSETS_TO_CACHE = [
   "./crm-profile-analytics.js",
   "./crm-internal-note-timer.js",
   "./noon-card-search-test.js",
+  "./payfort-search-test.js",
   "./version.js",
   "./note.js",
   "./card-utils.js",
