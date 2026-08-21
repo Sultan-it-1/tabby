@@ -21,6 +21,14 @@
                 <mat-form-field>Card last 4<input id="card-last-4" placeholder="Card last 4"></mat-form-field>
                 <mat-form-field>Amount From<input id="amount-from" placeholder="Amount From"></mat-form-field>
                 <mat-form-field>Amount To<input id="amount-to" placeholder="Amount To"></mat-form-field>
+                <label>Filter Field
+                    <select id="filter-field" aria-label="Filter Field">
+                        <option value="">Choose filter</option>
+                        <option value="status">Status</option>
+                        <option value="currency">Currency</option>
+                    </select>
+                </label>
+                <span id="currency-filter-slot"></span>
                 <mat-form-field>Date
                     <input _ngcontent-ng-c3638087624="" matinput="" id="calendar-input" autocomplete="off" type="text"
                         readonly="true" ngxdaterangepickermd="" opens="right" drops="bottom"
@@ -73,8 +81,26 @@
         let transactionSearchClicks = 0;
         let globalSearchClicks = 0;
         const withoutCard = window.location.hash === '#test3';
+        const withoutCurrencyFilter = window.location.hash === '#no-currency';
         const picker = document.querySelector('.md-drppicker');
         const dateInput = document.getElementById('calendar-input');
+
+        if (withoutCurrencyFilter) document.querySelector('#filter-field option[value="currency"]').remove();
+        document.getElementById('filter-field').addEventListener('change', event => {
+            const slot = document.getElementById('currency-filter-slot');
+            slot.replaceChildren();
+            if (event.target.value !== 'currency') return;
+            const select = document.createElement('select');
+            select.id = 'currency-value';
+            select.setAttribute('aria-label', 'Currency');
+            [['', 'Choose currency'], ['QAR', 'Qatari Riyal'], ['SAR', 'Saudi Riyal']].forEach(([value, label]) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                select.appendChild(option);
+            });
+            slot.appendChild(select);
+        });
 
         function renderMonths() {
             const rightDate = new Date(leftYear, leftMonth + 1, 1);
@@ -128,6 +154,9 @@
                 const falseRowsClear = ['green-wrong-time', 'false-card-substring', 'yellow-wrong-amount']
                     .every(id => !document.getElementById(id).dataset.fastToolkitNoonTest);
                 const expectedCard = withoutCard ? '' : '4321';
+                const currencyPassed = withoutCurrencyFilter
+                    ? !document.getElementById('currency-value')
+                    : document.getElementById('filter-field').value === 'currency' && document.getElementById('currency-value')?.value === 'SAR';
                 const passed = document.getElementById('card-last-4').value === expectedCard &&
                     document.getElementById('amount-from').value === '1288' &&
                     document.getElementById('amount-to').value === '1288' &&
@@ -135,7 +164,7 @@
                     customRangeClicks === 1 && quickRangeClicks === 0 && transactionSearchClicks === 1 &&
                     globalSearchClicks === 0 && !document.getElementById('global-search-error').textContent &&
                     !document.getElementById('fast-toolkit-noon-test-status') &&
-                    greenMatch && yellowMatch && falseRowsClear;
+                    currencyPassed && greenMatch && yellowMatch && falseRowsClear;
                 document.body.dataset.testResult = passed ? 'passed' : 'failed';
             }, 1900);
         });
