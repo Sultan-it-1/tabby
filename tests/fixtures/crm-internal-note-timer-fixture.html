@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>CRM Internal Note Timer Fixture</title>
+    <style>
+        body { margin: 0; padding: 30px; background: #eef2f7; color: #172033; font-family: Arial, sans-serif; }
+        main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 980px; margin: 0 auto; }
+        section { background: #fff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 18px; }
+        textarea { width: 100%; min-height: 130px; margin: 12px 0; padding: 10px; }
+        button { padding: 9px 13px; border: 0; border-radius: 8px; cursor: pointer; }
+        #launch { position: fixed; left: 20px; bottom: 20px; background: #0f766e; color: #fff; }
+        #advance { position: fixed; left: 175px; bottom: 20px; background: #1d4ed8; color: #fff; }
+        .tab { display: inline-block; padding: 6px 9px; background: #dcfce7; border-radius: 7px; font-weight: 700; }
+        #noteLog { margin-top: 14px; }
+    </style>
+</head>
+<body>
+    <main>
+        <section data-testid="customer-reply-composer">
+            <h2>Customer Reply</h2>
+            <label for="customerDraft">Customer message</label>
+            <textarea id="customerDraft" aria-label="Customer message">مسودة العميل لا تتغير</textarea>
+            <button type="button" aria-label="Send customer reply">Send customer reply</button>
+        </section>
+
+        <form id="internalNoteForm" data-testid="internal-note-composer">
+            <section>
+                <div class="tab" role="tab" aria-selected="true" data-testid="internal-note-tab">Internal Note</div>
+                <h2>Private Internal Note</h2>
+                <label for="internalNote">Internal note</label>
+                <textarea id="internalNote" data-testid="internal-note-editor" aria-label="Internal note"></textarea>
+                <button id="sendInternalNote" type="submit" data-testid="internal-note-submit" aria-label="Add internal note" disabled>Send note</button>
+                <ol id="noteLog" aria-label="Sent internal notes"></ol>
+            </section>
+        </form>
+    </main>
+
+    <button id="launch" type="button">Launch Checking Tool</button>
+    <button id="advance" type="button">Advance Two Minutes</button>
+    <script>
+        window.__fixtureNow = Date.now();
+        Date.now = () => window.__fixtureNow;
+
+        document.getElementById('internalNoteForm').addEventListener('submit', event => {
+            event.preventDefault();
+            const editor = document.getElementById('internalNote');
+            const item = document.createElement('li');
+            item.textContent = editor.value;
+            document.getElementById('noteLog').appendChild(item);
+            editor.value = '';
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        document.getElementById('internalNote').addEventListener('input', event => {
+            document.getElementById('sendInternalNote').disabled = !event.currentTarget.value.trim();
+        });
+        document.getElementById('advance').addEventListener('click', () => {
+            window.__fixtureNow += 120001;
+        });
+        document.getElementById('launch').addEventListener('click', () => {
+            window.FastToolkitCrmInternalNoteTimer.install();
+        });
+    </script>
+    <script src="../../crm-internal-note-timer.js"></script>
+</body>
+</html>

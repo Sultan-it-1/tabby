@@ -695,6 +695,7 @@
     }
 
     let pipOverlayReturnFocus = null;
+    let pipLaunchInProgress = false;
 
     function showOpenerOverlay() {
         let overlay = document.getElementById("pipOpenerOverlay");
@@ -794,6 +795,11 @@
                 window.activePipWindow = null;
             }
         }
+
+        // A paste/upload path can notify several parts of the page almost at
+        // once. requestWindow must never run concurrently for the same event.
+        if (pipLaunchInProgress) return;
+        pipLaunchInProgress = true;
 
         try {
             const width = 320;
@@ -1277,6 +1283,8 @@
 
         } catch (error) {
             console.error("Failed to open Picture-in-Picture window:", error);
+        } finally {
+            pipLaunchInProgress = false;
         }
     }
 

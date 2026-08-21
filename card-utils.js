@@ -161,7 +161,7 @@
 
     function normalizeNetwork(value) {
         const text = normalizeDigits(value).toLowerCase();
-        if (includesAny(text, ['apple pay', 'applepay', 'apple', 'ابل باي', 'أبل باي', 'ابل باى', 'أبل باى', 'ابل', 'أبل'])) return 'apple pay';
+        if (includesAny(text, ['apple pay', 'applepay', 'ابل باي', 'أبل باي', 'ابل باى', 'أبل باى'])) return 'apple pay';
         if (includesAny(text, ['mada', 'مدى'])) return 'mada';
         if (includesAny(text, ['mastercard', 'master card', 'master', 'ماستركارد'])) return 'mastercard';
         if (includesAny(text, ['visa', 'فيزا'])) return 'visa';

@@ -466,7 +466,15 @@
                 <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Advanced Tools</div>
-                    <div class="desc">أدوات متقدمة للعمل، متاحة من الصفحة الرئيسية فقط.</div>
+                    <div class="desc">عداد وقت تكتات CRM.</div>
+                </div>
+            </button>
+
+            <button type="button" class="menu-item advanced-tools-trigger extra-tools-trigger" id="extraToolsBtn">
+                <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="15" r="3"/><path d="M18 10v2m0 6v2m-5-5h2m6 0h2"/></svg></span>
+                <div class="text-wrapper">
+                    <div class="title">Extra Tools</div>
+                    <div class="desc">ملخص الشفت وChecking Note — أدوات إضافية.</div>
                 </div>
             </button>
 
@@ -493,7 +501,7 @@
             <header>
                 <div>
                     <h2 id="advancedToolsTitle">Advanced Tools</h2>
-                    <p>أدوات مساعدة مستقلة لا تعدّل بيانات المواقع.</p>
+                    <p>أداة العداد المستقلة للعمل داخل CRM.</p>
                 </div>
                 <button type="button" class="advanced-tools-close" id="advancedToolsClose" aria-label="إغلاق">×</button>
             </header>
@@ -514,7 +522,20 @@
                 <div class="advanced-copy-status" id="crmTrackerCopyStatus" aria-live="polite"></div>
             </div>
 
-           <div class="advanced-tool-panel" style="display: none;">
+        </section>
+    </div>
+
+    <div class="advanced-tools-modal" id="extraToolsModal" aria-hidden="true">
+        <section class="advanced-tools-dialog" role="dialog" aria-modal="true" aria-labelledby="extraToolsTitle">
+            <header>
+                <div>
+                    <h2 id="extraToolsTitle">Extra Tools — أدوات إضافية</h2>
+                    <p>ملخص الشفت وChecking Note، داخل نافذة مستقلة في الهوم.</p>
+                </div>
+                <button type="button" class="advanced-tools-close" id="extraToolsClose" aria-label="إغلاق">×</button>
+            </header>
+
+            <div class="advanced-tool-panel">
                 <div class="advanced-tool-title"><span aria-hidden="true">📊</span><span>إحصائيات الشفت من سجل CRM</span></div>
                 <p>يسحب سجل النشاط من المربع الذي تحدده، ويحسب وقت العمل وBreak مرتين × 15 دقيقة وLunch لمدة 30 دقيقة، مع جلسات link/unlink.</p>
                 <div class="advanced-bookmarklet-row">
@@ -526,8 +547,24 @@
                     <li>شغّل «إحصائيات الشفت» ثم انقر داخل مربع السجل لتحديده.</li>
                     <li>ستمرّر الأداة داخل المربع حتى تصل إلى انتقال <b>Offline → Online</b> وتعرض التقرير.</li>
                 </ol>
-                <div class="advanced-safety">قراءة فقط: تمرّر داخل المربع المحدد ولا تضغط أزرار CRM، ولا تحفظ أو ترسل نص السجل.</div>
+                <div class="advanced-safety">قراءة فقط: لا تضغط أزرار CRM، ولا تحفظ أو ترسل نص السجل.</div>
                 <div class="advanced-copy-status" id="crmProfileAnalyticsCopyStatus" aria-live="polite"></div>
+            </div>
+
+            <div class="advanced-tool-panel">
+                <div class="advanced-tool-title"><span aria-hidden="true">📝</span><span>Checking داخل Internal Note</span></div>
+                <p>يرسل كل دقيقتين بالتتابع: <b>checking</b> ثم <b>checking.</b> ثم <b>checking..</b> ثم <b>checking...</b>، ويعيد الدورة.</p>
+                <div class="advanced-bookmarklet-row">
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="crmInternalNoteBookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyCrmInternalNoteBookmarklet">نسخ الرابط</button>
+                </div>
+                <ol class="advanced-steps">
+                    <li>افتح تكت في CRM وشغّل «Checking Note» من المفضلة.</li>
+                    <li>حدد خانة <b>Internal Note</b> ثم زرها.</li>
+                    <li>اضغط «ابدأ»؛ وتتوقف الأداة عند الإيقاف أو تغيّر التكت.</li>
+                </ol>
+                <div class="advanced-safety">أداة كتابة: ترسل Internal Note فعلية، وترفض المحرر المشترك أو أي حقل لا يحمل تعريف Internal Note صريحًا.</div>
+                <div class="advanced-copy-status" id="crmInternalNoteCopyStatus" aria-live="polite"></div>
             </div>
         </section>
     </div>
@@ -539,6 +576,7 @@
     <script>
         document.write('<script src="crm-ticket-tracker.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
         document.write('<script src="crm-profile-analytics.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+        document.write('<script src="crm-internal-note-timer.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -548,12 +586,12 @@
             const advancedToolsBtn = document.getElementById('advancedToolsBtn');
             const advancedToolsModal = document.getElementById('advancedToolsModal');
             const advancedToolsClose = document.getElementById('advancedToolsClose');
+            const extraToolsBtn = document.getElementById('extraToolsBtn');
+            const extraToolsModal = document.getElementById('extraToolsModal');
+            const extraToolsClose = document.getElementById('extraToolsClose');
             const bookmarkletLink = document.getElementById('crmTrackerBookmarklet');
             const bookmarkletCopyBtn = document.getElementById('copyCrmTrackerBookmarklet');
             const bookmarkletCopyStatus = document.getElementById('crmTrackerCopyStatus');
-            const analyticsBookmarkletLink = document.getElementById('crmProfileAnalyticsBookmarklet');
-            const analyticsBookmarkletCopyBtn = document.getElementById('copyCrmProfileAnalyticsBookmarklet');
-            const analyticsBookmarkletCopyStatus = document.getElementById('crmProfileAnalyticsCopyStatus');
 
             const openAdvancedTools = () => {
                 if (!advancedToolsModal) return;
@@ -565,6 +603,17 @@
                 if (!advancedToolsModal) return;
                 advancedToolsModal.classList.remove('open');
                 advancedToolsModal.setAttribute('aria-hidden', 'true');
+            };
+            const openExtraTools = () => {
+                if (!extraToolsModal) return;
+                extraToolsModal.classList.add('open');
+                extraToolsModal.setAttribute('aria-hidden', 'false');
+                if (extraToolsClose) extraToolsClose.focus();
+            };
+            const closeExtraTools = () => {
+                if (!extraToolsModal) return;
+                extraToolsModal.classList.remove('open');
+                extraToolsModal.setAttribute('aria-hidden', 'true');
             };
 
             if (window.FastToolkitCrmTicketTracker && bookmarkletLink) {
@@ -612,63 +661,82 @@
                 }
             }
 
-            if (window.FastToolkitCrmProfileAnalytics && analyticsBookmarkletLink) {
-                const analyticsBookmarklet = window.FastToolkitCrmProfileAnalytics.buildBookmarklet();
-                const analyticsDefaultLabel = 'اسحبني إلى شريط المفضلة';
-                const analyticsBookmarkTitle = 'إحصائيات الشفت';
+            const bindExtraBookmarklet = ({ api, linkId, copyId, statusId, title, readyMessage, copiedMessage }) => {
+                const link = document.getElementById(linkId);
+                const copyButton = document.getElementById(copyId);
+                const copyStatus = document.getElementById(statusId);
+                if (!api || !link) return;
 
-                analyticsBookmarkletLink.setAttribute('href', analyticsBookmarklet);
-                analyticsBookmarkletLink.setAttribute('title', 'اسحب الزر إلى شريط المفضلة لإنشاء أداة «إحصائيات الشفت»');
-                analyticsBookmarkletLink.textContent = analyticsDefaultLabel;
+                const bookmarklet = api.buildBookmarklet();
+                const defaultLabel = 'اسحبني إلى شريط المفضلة';
+                link.href = bookmarklet;
+                link.title = `اسحب الزر إلى شريط المفضلة لإنشاء أداة «${title}»`;
 
-                const setAnalyticsDragTitle = () => {
-                    analyticsBookmarkletLink.textContent = analyticsBookmarkTitle;
-                };
-                const resetAnalyticsDefaultTitle = () => {
-                    analyticsBookmarkletLink.textContent = analyticsDefaultLabel;
-                };
+                const showTitle = () => { link.textContent = title; };
+                const showDefault = () => { link.textContent = defaultLabel; };
+                ['pointerdown', 'mousedown', 'dragstart'].forEach(eventName => link.addEventListener(eventName, showTitle));
+                ['dragend', 'pointerup', 'mouseup', 'mouseleave'].forEach(eventName => link.addEventListener(eventName, showDefault));
+                window.addEventListener('mouseup', showDefault);
 
-                analyticsBookmarkletLink.addEventListener('pointerdown', setAnalyticsDragTitle);
-                analyticsBookmarkletLink.addEventListener('mousedown', setAnalyticsDragTitle);
-                analyticsBookmarkletLink.addEventListener('dragstart', setAnalyticsDragTitle);
-                analyticsBookmarkletLink.addEventListener('dragend', resetAnalyticsDefaultTitle);
-                analyticsBookmarkletLink.addEventListener('pointerup', resetAnalyticsDefaultTitle);
-                analyticsBookmarkletLink.addEventListener('mouseup', resetAnalyticsDefaultTitle);
-                analyticsBookmarkletLink.addEventListener('mouseleave', resetAnalyticsDefaultTitle);
-                window.addEventListener('mouseup', resetAnalyticsDefaultTitle);
-
-                analyticsBookmarkletLink.addEventListener('click', event => {
+                link.addEventListener('click', event => {
                     event.preventDefault();
-                    if (analyticsBookmarkletCopyStatus) {
-                        analyticsBookmarkletCopyStatus.textContent = 'اسحب الزر إلى المفضلة أو اضغط «نسخ الرابط»، ثم شغّله داخل CRM.';
-                    }
+                    if (copyStatus) copyStatus.textContent = readyMessage;
                 });
 
-                if (analyticsBookmarkletCopyBtn) {
-                    analyticsBookmarkletCopyBtn.addEventListener('click', async () => {
-                        try {
-                            await navigator.clipboard.writeText(analyticsBookmarklet);
-                            if (analyticsBookmarkletCopyStatus) analyticsBookmarkletCopyStatus.textContent = 'تم نسخ كود «إحصائيات الشفت» بنجاح ✅';
-                        } catch (e) {
-                            if (analyticsBookmarkletCopyStatus) analyticsBookmarkletCopyStatus.textContent = 'اسحب الزر مباشرة إلى شريط المفضلة.';
-                        }
-                    });
-                }
-            }
+                copyButton?.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(bookmarklet);
+                        if (copyStatus) copyStatus.textContent = copiedMessage;
+                    } catch (error) {
+                        if (copyStatus) copyStatus.textContent = 'اسحب الزر الأخضر مباشرة إلى شريط المفضلة.';
+                    }
+                });
+            };
+
+            bindExtraBookmarklet({
+                api: window.FastToolkitCrmProfileAnalytics,
+                linkId: 'crmProfileAnalyticsBookmarklet',
+                copyId: 'copyCrmProfileAnalyticsBookmarklet',
+                statusId: 'crmProfileAnalyticsCopyStatus',
+                title: 'إحصائيات الشفت',
+                readyMessage: 'اسحب الزر إلى المفضلة أو اضغط «نسخ الرابط»، ثم شغّله داخل CRM.',
+                copiedMessage: 'تم نسخ كود «إحصائيات الشفت» بنجاح ✅'
+            });
+
+            bindExtraBookmarklet({
+                api: window.FastToolkitCrmInternalNoteTimer,
+                linkId: 'crmInternalNoteBookmarklet',
+                copyId: 'copyCrmInternalNoteBookmarklet',
+                statusId: 'crmInternalNoteCopyStatus',
+                title: 'Checking Note',
+                readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم شغّله داخل تكت CRM.',
+                copiedMessage: 'تم نسخ كود «Checking Note» بنجاح ✅'
+            });
 
             if (advancedToolsBtn) advancedToolsBtn.addEventListener('click', openAdvancedTools);
             if (advancedToolsClose) advancedToolsClose.addEventListener('click', closeAdvancedTools);
+            if (extraToolsBtn) extraToolsBtn.addEventListener('click', openExtraTools);
+            if (extraToolsClose) extraToolsClose.addEventListener('click', closeExtraTools);
             if (advancedToolsModal) {
                 advancedToolsModal.addEventListener('click', event => {
                     if (event.target === advancedToolsModal) closeAdvancedTools();
+                });
+            }
+            if (extraToolsModal) {
+                extraToolsModal.addEventListener('click', event => {
+                    if (event.target === extraToolsModal) closeExtraTools();
                 });
             }
             document.addEventListener('keydown', event => {
                 if (event.key === 'Escape' && advancedToolsModal && advancedToolsModal.classList.contains('open')) {
                     closeAdvancedTools();
                 }
+                if (event.key === 'Escape' && extraToolsModal && extraToolsModal.classList.contains('open')) {
+                    closeExtraTools();
+                }
             });
             if (window.location.hash === '#advanced-tools') openAdvancedTools();
+            if (window.location.hash === '#extra-tools') openExtraTools();
 
             if (window.FastToolkitFirebase) {
                 window.FastToolkitFirebase.onUserChange((user) => {

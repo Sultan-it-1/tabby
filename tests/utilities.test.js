@@ -11,8 +11,46 @@ const themes = require('../theme-utils.js');
 test('card utilities normalize Arabic digits and reject incomplete AI output', () => {
     assert.equal(cardUtils.normalizeDigits('١٢٣٤'), '1234');
     assert.equal(cardUtils.normalizeCard('**** ١٢٣٤'), '1234');
-    const parsed = cardUtils.parseAIResultText('المبلغ 10 فقط', new Date('2026-08-11T12:00:00'));
-    assert.equal(parsed.valid, false);
+    const now = new Date('2026-08-11T12:00:00');
+    assert.equal(cardUtils.normalizeDate('26-08-22', now), '22-08');
+    assert.equal(cardUtils.normalizeNetwork('APPLE.COM/BILL'), 'unknown');
+    assert.equal(cardUtils.normalizeNetwork('Apple Pay VISA'), 'apple pay');
+    assert.equal(cardUtils.normalizeNetwork('ومدى'), 'mada');
+    assert.equal(cardUtils.parseAIResultText('المبلغ 10 فقط', now).valid, false);
+    assert.equal(cardUtils.parseAIResultText('0000 // 0.00 // 00:00 // 00-00 // unknown // success', now).valid, false);
+
+    const parsed = cardUtils.parseAIResultText('تحليل مختصر\n4321 // 125.00 // 18:34 // 11-08 // mada // success', now);
+    assert.equal(parsed.valid, true);
+    assert.equal(parsed.result.fullText, '125 // 4321 // 18:34 // 11-08');
+});
+
+test('Groq integrations use the active replacement models', () => {
+    const projectRoot = path.join(__dirname, '..');
+    ['card.js', 'simah.js'].forEach(file => {
+        const source = fs.readFileSync(path.join(projectRoot, file), 'utf8');
+        assert.match(source, /openai\/gpt-oss-120b/, file);
+        assert.match(source, /openai\/gpt-oss-20b/, file);
+        assert.doesNotMatch(source, /llama-3\.3-70b-versatile|llama-3\.1-8b-instant/, file);
+    });
+
+    const cardSource = fs.readFileSync(path.join(projectRoot, 'card.js'), 'utf8');
+    const simahSource = fs.readFileSync(path.join(projectRoot, 'simah.js'), 'utf8');
+    assert.match(cardSource, /qwen\/qwen3\.6-27b/);
+    assert.match(cardSource, /type:\s*'image_url'/);
+    assert.match(cardSource, /getTesseractOptions\(\)/);
+    assert.match(cardSource, /include_reasoning:\s*false/);
+    assert.match(cardSource, /reasoning_content/);
+    assert.match(cardSource, /APPLE\.COM\/BILL/);
+    assert.match(cardSource, /response\.status !== 429/);
+    assert.equal((cardSource.match(/activateCardScanPopup\(\);/g) || []).length, 1);
+    assert.doesNotMatch(cardSource, /parseAIResult\(['"]0000\s*\/\//);
+    assert.match(simahSource, /qwen\/qwen3\.6-27b/);
+    assert.match(simahSource, /type:\s*'image_url'/);
+    assert.match(simahSource, /findAccountIdentifiers/);
+    assert.match(simahSource, /response\.status !== 429/);
+
+    const settingsSource = fs.readFileSync(path.join(projectRoot, 'settings.js'), 'utf8');
+    assert.match(settingsSource, /pipLaunchInProgress/);
 });
 
 test('theme settings always resolve to a valid preset or custom theme', () => {
@@ -90,22 +128,28 @@ test('note experience no longer tracks or displays the legacy manual-backup coun
     assert.doesNotMatch(productionSources, /backupDot|backup-dot|unbackedUpCountV6|unbackedUpCount/);
 });
 
-test('CRM bookmarklet tools are exposed from home only and cached for offline loading', () => {
+test('CRM bookmarklet tools are exposed in two separate home modals only', () => {
     const firebaseRoot = path.join(__dirname, '..');
     const index = fs.readFileSync(path.join(firebaseRoot, 'index.html'), 'utf8');
     assert.match(index, /id="advancedToolsBtn"/);
+    assert.match(index, /id="extraToolsBtn"/);
+    assert.match(index, /id="advancedToolsModal"/);
+    assert.match(index, /id="extraToolsModal"/);
     assert.match(index, /crm-ticket-tracker\.js/);
     assert.match(index, /crm-profile-analytics\.js/);
+    assert.match(index, /crm-internal-note-timer\.js/);
     assert.match(index, /id="crmProfileAnalyticsBookmarklet"/);
+    assert.match(index, /id="crmInternalNoteBookmarklet"/);
 
     fs.readdirSync(firebaseRoot)
         .filter(file => file.endsWith('.html') && file !== 'index.html')
         .forEach(file => {
             const html = fs.readFileSync(path.join(firebaseRoot, file), 'utf8');
-            assert.doesNotMatch(html, /advancedToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js/, file);
+            assert.doesNotMatch(html, /advancedToolsBtn|extraToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js|crm-internal-note-timer\.js/, file);
         });
 
     const serviceWorker = fs.readFileSync(path.join(firebaseRoot, 'sw.js'), 'utf8');
     assert.match(serviceWorker, /\.\/crm-ticket-tracker\.js/);
     assert.match(serviceWorker, /\.\/crm-profile-analytics\.js/);
+    assert.match(serviceWorker, /\.\/crm-internal-note-timer\.js/);
 });

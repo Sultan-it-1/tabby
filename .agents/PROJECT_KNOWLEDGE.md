@@ -5,7 +5,7 @@
 > **UI Stack**: HTML5, ES6+ Vanilla JavaScript, Vanilla CSS (Custom HSL System & Tokens)  
 > **State Storage**: `localStorage`, `sessionStorage`, `chrome.storage.local`  
 > **Cloud API Integration**: Google Drive API v3 (OAuth2 GIS Token Client)  
-> **AI Services**: Groq API (`llama-3.3-70b-versatile`) & Google Gemini API (`gemini-2.5-flash` / `gemini-1.5-flash`)  
+> **AI Services**: Groq API (`qwen/qwen3.6-27b` vision with GPT-OSS text fallback) & Google Gemini API (`gemini-2.5-flash` / `gemini-1.5-flash`)
 
 ---
 
@@ -66,13 +66,14 @@ tabby-main/
 
 ### 2.4 🧠 SIMAH AI Account Extractor (`simah.html`, `simah.js`)
 - **AI Integrations**:
-  - **Groq API**: `llama-3.3-70b-versatile` model endpoint.
+  - **Groq API**: `openai/gpt-oss-120b` with `openai/gpt-oss-20b` fallback over locally extracted OCR text.
   - **Gemini API**: Google Generative AI REST endpoint.
 - **State Keys**: `simahApprovedAccounts`, `simahAccountsHistory`, `simah_ai_provider`, `simah_ai_key`, `simah_groq_key`, `simah_usage`.
 - **Parsing Engine**: Extracts active, approved, and defaulted credit accounts from raw SIMAH text reports, formatting output into clean tables with instant copy buttons.
 
 ### 2.5 📇 Card Scanner & Parser (`card.html`, `card.js`, `card-utils.js`)
 - **Architecture**: Separated into UI controller (`card.js`) and universal UMD utility module (`card-utils.js`).
+- **Groq Vision**: `qwen/qwen3.6-27b` reads images directly, with bundled Tesseract OCR plus GPT-OSS text models as fallback.
 - **State Keys**: `cardScannerData`, `cardScannerHistory`, `tabbyInput_saved`, `card_popup_enabled`.
 - **Normalization Utilities in `card-utils.js`**:
   - `normalizeDigits(value)`: Converts Arabic-Indic numerals (`٠-٩`, `۰-۹`) to standard ASCII digits (`0-9`) and strips control characters (`\u200e`, `\u200f`).

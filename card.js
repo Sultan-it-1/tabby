@@ -36,6 +36,126 @@ function setAiSecret(key, val) {
     }
 }
 
+function getTesseractOptions() {
+    return {
+        workerBlobURL: false,
+        workerPath: './vendor/tesseract/worker.min.js',
+        corePath: './vendor/tesseract/core',
+        langPath: './vendor/tesseract/lang'
+    };
+}
+
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function requestGroqCompletion(groqKey, model, content, options = {}) {
+    const payload = {
+        model,
+        messages: [{ role: 'user', content }],
+        temperature: options.temperature ?? 0.1,
+        max_completion_tokens: options.maxCompletionTokens ?? 512,
+        stream: false,
+        include_reasoning: false
+    };
+    if (options.reasoningEffort) payload.reasoning_effort = options.reasoningEffort;
+    if (options.topP !== undefined) payload.top_p = options.topP;
+
+    let response;
+    let data;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+        response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        data = null;
+        try {
+            data = await response.json();
+        } catch (e) { }
+
+        if (response.status !== 429 || attempt > 0) break;
+
+        const retryMessage = data?.error?.message || '';
+        const retryMatch = retryMessage.match(/try again in ([\d.]+)\s*(ms|s)/i);
+        const retryAfterHeader = Number(response.headers.get('retry-after'));
+        const retryDelay = retryMatch
+            ? Number(retryMatch[1]) * (retryMatch[2].toLowerCase() === 's' ? 1000 : 1)
+            : Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+                ? retryAfterHeader * 1000
+                : 0;
+
+        // A short TPM pause is recoverable. Daily quota errors can request a
+        // very long wait, so surface those immediately instead of freezing UI.
+        if (!Number.isFinite(retryDelay) || retryDelay <= 0 || retryDelay > 30000) break;
+        await new Promise(resolve => setTimeout(resolve, retryDelay + 750));
+    }
+
+    if (!response.ok) {
+        const error = new Error(data?.error?.message || `Groq API Error (${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+
+    const choice = data?.choices?.[0];
+    if (choice?.finish_reason === 'length') {
+        throw new Error(`رد ${model} توقف قبل اكتمال البيانات`);
+    }
+
+    const messageContent = choice?.message?.content;
+    let responseText = typeof messageContent === 'string'
+        ? messageContent
+        : Array.isArray(messageContent)
+            ? messageContent.map(part => part?.text || part?.content || '').join('\n')
+            : messageContent?.text || '';
+    if (!responseText.trim()) {
+        responseText = choice?.message?.reasoning || choice?.message?.reasoning_content || '';
+    }
+    if (!responseText.trim()) {
+        throw new Error(`رد ${model} فارغ (finish: ${choice?.finish_reason || 'unknown'})`);
+    }
+    return responseText.trim();
+}
+
+async function recognizeCardText(file) {
+    if (typeof Tesseract === 'undefined') {
+        throw new Error('قارئ النص غير متاح');
+    }
+
+    const processedFile = await preprocessImage(file);
+    const inputs = [processedFile, file].filter(Boolean);
+    let bestText = '';
+    let lastError = null;
+
+    for (const input of inputs) {
+        try {
+            const result = await Tesseract.recognize(input, 'eng+ara', getTesseractOptions());
+            const text = (result?.data?.text || '').trim();
+            if (text.length > bestText.length) bestText = text;
+
+            const localResult = typeof CardScannerUtils !== 'undefined'
+                ? CardScannerUtils.parseLocalOcrText(text)
+                : null;
+            if (localResult?.valid) return text;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    if (bestText) return bestText;
+    throw lastError || new Error('تعذر قراءة أي نص من الصورة');
+}
+
 function isInsidePipFrame() {
     return Boolean(
         (window.documentPictureInPicture && window.documentPictureInPicture.window) ||
@@ -247,7 +367,6 @@ document.addEventListener('paste', async (e) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image') !== -1) {
-            activateCardScanPopup();
             processImage(items[i].getAsFile());
             break;
         }
@@ -329,9 +448,8 @@ async function processImage(file) {
     } else {
         loadingToast = showToast("جاري معالجة الصورة... 🔧", false, 0);
         try {
-            const processedFile = await preprocessImage(file);
             loadingToast.update("جاري القراءة... ⏳");
-            const { data: { text } } = await Tesseract.recognize(processedFile, 'eng+ara');
+            const text = await recognizeCardText(file);
             loadingToast.remove();
             parseData(text);
         } catch (err) {
@@ -548,7 +666,6 @@ function parseData(rawText) {
         window.clearTabbyInput();
     }
 
-    activateCardScanPopup();
 }
 
 function updateUI(fullText, card, amount, time, date) {
@@ -1047,10 +1164,15 @@ function refreshUsageModal() {
 }
 
 function buildAiPrompt(rawText = '') {
-    const currentYear = new Date().getFullYear();
-    const currentYearShort = String(currentYear).slice(-2);
-    
-    const basePrompt = `Extract the payment/transaction details from this ${rawText ? 'text' : 'image'}. CRITICAL TABBY RULE: If the ${rawText ? 'text' : 'image'} contains multiple transaction messages or SMS, you MUST ONLY extract the details for the transaction that explicitly mentions 'Tabby', 'تابي', or 'tabby'. Completely ignore all other transactions. You MUST find: 1. Last 4 digits of the card number (e.g. 1234 or 9876). CARD NUMBER RULES: Rule A: The word 'عبر' or 'by' ALWAYS indicates the card — the digits immediately after 'عبر' or 'by' are the card digits. Rule B: If 'عبر' (or 'by') and 'من' (or 'from') appear on the same line, the digits after 'عبر' (or 'by') are the card, and the digits after 'من' (or 'from') are an account number — ignore those. Rule C: If 'من' (or 'from') appears WITHOUT 'عبر' (or 'by') AND without the word 'حساب' (account), then the digits after 'من' (or 'from') ARE the card number. Rule D: If 'من' (or 'from') appears with 'حساب' (account), those digits are an account number — ignore them. If no card number found by any rule, return 0000. 2. The amount of the transaction (e.g. 100.00 or 49.50). 3. The time of the transaction in HH:MM format. 4. The date of the transaction. CRITICAL YEAR/DATE RULE: The current year is ${currentYear}. In Saudi/Arabian alerts, the date is often in YY-MM-DD format where 'YY' is the year (e.g. '${currentYearShort}' for ${currentYear}) and 'DD' is the day (e.g. '22'). Example: '${currentYearShort}-08-22' means August 22, ${currentYear}. A 2-digit year of '${currentYearShort}' is ALWAYS the current year. If the transaction year is the current year (${currentYear} or '${currentYearShort}'), return strictly in DD-MM format (Day-Month, e.g. 22-08). If the transaction year is NOT the current year, return in DD-MM-YYYY format. 5. The card network (e.g. mada, visa, mastercard, apple pay, or unknown). CRITICAL NETWORK RULE: If both Apple Pay (or apple pay, apple, ابل باي, أبل باي, ابل, أبل) and another network (like visa, mada, mastercard) are mentioned or present, the network MUST be 'apple pay'. 6. The status of the transaction (e.g. declined or success). CRITICAL STATUS RULE: If the text mentions 'مرفوض', 'مرفوضة', 'مرفوضه', 'الرصيد غير كافي', 'insufficient', 'failed', 'فشل', 'فشلت', or any declination/failure term, the status MUST be 'declined'. Return ONLY in this exact format: CARD // AMOUNT // TIME // DATE // NETWORK // STATUS. Do not write any markdown code blocks, explanation, or notes. Example output: 4321 // 125.00 // 18:34 // 18-05 // mada // success`;
+    const basePrompt = `OCR this Saudi bank alert carefully from the ${rawText ? 'OCR text' : 'image'}, then output only: CARD // AMOUNT // TIME // RAW_DATE // NETWORK // STATUS. If there are multiple alerts, use only the one explicitly mentioning Tabby/تابي.
+
+CARD is the last 4 digits beside بطاقة, البطاقة, بطاقة ائتمانية, card, عبر, or by. Never use digits beside من/from, حساب/account, balance/رصيد. Examples: بطاقة:8337 means 8337; بطاقة ائتمانية:*9131 means 9131; بطاقة:*0551 means 0551; بطاقة:*9451 ... من:*7096 means 9451. If no card digits are visible, return 0000.
+
+AMOUNT is مبلغ/amount and NEVER balance/رصيد. TIME is HH:MM. RAW_DATE must be copied exactly in the same numeric order visible in the alert; do not interpret, reorder, expand, or shorten it. For example, if the image shows 26-08-22, return exactly 26-08-22. The application will normalize it.
+
+The exact phrase فيزا-أبل باي, Apple Pay, ابل باي, أبل باي, ابل باى, or أبل باى means apple pay even if Visa also appears. APPLE.COM/BILL is only a merchant and never means Apple Pay. مدى/ومدى means mada; VISA/فيزا means visa; Mastercard/ماستركارد means mastercard; otherwise unknown.
+
+مرفوض/مرفوضة/مرفوضه/الرصيد غير كافي/غير كاف/declined/insufficient/failed means declined; otherwise success. Return one line only, with no labels, markdown, transcript, or explanation.`;
 
     return rawText ? `${basePrompt}\n\nRAW TEXT:\n${rawText}` : basePrompt;
 }
@@ -1084,15 +1206,15 @@ async function extractCardWithAI(file, apiKey, loadingToast) {
                 const data = await response.json();
                 if (loadingToast) loadingToast.remove();
                 if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
-                    parseAIResult(data.candidates[0].content.parts[0].text.trim());
+                    if (!parseAIResult(data.candidates[0].content.parts[0].text.trim())) {
+                        showToast("لم أتمكن من استخراج بيانات صحيحة من الصورة ❌", true, 5000);
+                    }
                 } else if (data.candidates && data.candidates[0].finishReason) {
                     showToast("حظر AI: " + data.candidates[0].finishReason, true, 4000);
-                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // declined');
                 } else if (data.error) {
                     showToast("خطأ API: " + data.error.message, true, 4000);
-                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // declined');
                 } else {
-                    parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // declined');
+                    showToast("رد AI فارغ ❌", true, 4000);
                 }
                 resolve();
             } catch (err) {
@@ -1110,85 +1232,90 @@ async function extractCardWithAI(file, apiKey, loadingToast) {
 }
 
 async function extractCardWithGroq(file, groqKey, loadingToast) {
-    return new Promise(async (resolve) => {
+    let lastError = null;
+
+    try {
+        // Qwen is Groq's current vision model, so it can inspect the image
+        // directly instead of depending on a separate browser OCR pass.
         try {
-            let rawOcrText = "";
-            if (typeof Tesseract !== 'undefined') {
-                try {
-                    const result = await Tesseract.recognize(file, 'eng+ara');
-                    rawOcrText = result?.data?.text || "";
-                } catch(e) {}
+            const imageDataUrl = await readFileAsDataUrl(file);
+            const visionResult = await requestGroqCompletion(
+                groqKey,
+                'qwen/qwen3.6-27b',
+                [
+                    { type: 'text', text: buildAiPrompt() },
+                    { type: 'image_url', image_url: { url: imageDataUrl } }
+                ],
+                { reasoningEffort: 'none', temperature: 0.1, topP: 0.8, maxCompletionTokens: 128 }
+            );
+
+            if (parseAIResult(visionResult)) {
+                recordUsage('groq');
+                return;
             }
-
-            const promptText = buildAiPrompt(rawOcrText);
-
-            const payload = {
-                model: 'llama-3.3-70b-versatile',
-                messages: [{
-                    role: 'user',
-                    content: promptText
-                }]
-            };
-
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${groqKey}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error ? data.error.message : 'Unknown API Error');
-            }
-
-            recordUsage('groq');
-
-            if (loadingToast) loadingToast.remove();
-            if (data.choices && data.choices[0].message && data.choices[0].message.content) {
-                parseAIResult(data.choices[0].message.content.trim());
-            } else {
-                parseAIResult('0000 // 0.00 // 00:00 // 00-00 // unknown // success // yes');
-            }
-        } catch (err) {
-            if (loadingToast) loadingToast.remove();
-            showToast("خطأ Groq: " + err.message, true, 5000);
+            lastError = new Error('لم يستخرج النموذج البصري بيانات مكتملة');
+        } catch (error) {
+            if (error.status === 401) throw error;
+            lastError = error;
         }
-        resolve();
-    });
+
+        // If the vision model is unavailable for this key, fall back to the
+        // bundled OCR engine and Groq's active text models.
+        let rawOcrText = '';
+        try {
+            rawOcrText = await recognizeCardText(file);
+        } catch (error) {
+            lastError = error;
+        }
+
+        if (!rawOcrText.trim()) {
+            throw lastError || new Error('تعذر قراءة نص الصورة');
+        }
+
+        const promptText = buildAiPrompt(rawOcrText);
+        const textModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
+
+        for (const modelName of textModels) {
+            try {
+                const textResult = await requestGroqCompletion(
+                    groqKey,
+                    modelName,
+                    promptText,
+                    { reasoningEffort: 'low', maxCompletionTokens: 4096 }
+                );
+                if (parseAIResult(textResult)) {
+                    recordUsage('groq');
+                    return;
+                }
+                lastError = new Error(`رد ${modelName} لا يحتوي بيانات مكتملة`);
+            } catch (error) {
+                if (error.status === 401) throw error;
+                lastError = error;
+            }
+        }
+
+        throw lastError || new Error('تعذر استخراج بيانات صحيحة من الصورة');
+    } catch (err) {
+        showToast("خطأ Groq: " + err.message, true, 5000);
+    } finally {
+        if (loadingToast) loadingToast.remove();
+    }
 }
 
 function parseAIResult(aiText) {
-    const cleaned = aiText.replace(/```[a-z]*\n?/g, '').replace(/```/g, '').trim();
-    const parts = cleaned.split('//').map(p => p.trim());
-    const card = parts[0] || "0000";
-    const amount = parts[1] || "0.00";
-    const time = parts[2] || "00:00";
-    let date = parts[3] || "00-00";
+    if (typeof CardScannerUtils === 'undefined') return false;
+    const parsed = CardScannerUtils.parseAIResultText(aiText);
+    if (!parsed.valid || !parsed.result) return false;
 
-    // Fix for flipped MM-DD dates returned by AI or padding
-    if (date && date !== "00-00" && date !== "-") {
-        const dParts = date.split('-');
-        if (dParts.length >= 2) {
-            const p1 = parseInt(dParts[0]) || 0;
-            const p2 = parseInt(dParts[1]) || 0;
-            // If p1 is a valid month and p2 is clearly a day (>12), the AI flipped it to MM-DD
-            if (p1 <= 12 && p2 > 12 && p2 <= 31) {
-                dParts[0] = String(p2).padStart(2, '0');
-                dParts[1] = String(p1).padStart(2, '0');
-                date = dParts.join('-');
-            } else {
-                // Ensure double digit padding for DD-MM
-                dParts[0] = String(p1).padStart(2, '0');
-                dParts[1] = String(p2).padStart(2, '0');
-                date = dParts.join('-');
-            }
-        }
-    }
-    const network = parts[4] || "unknown";
-    const status = parts[5] || "success";
+    const {
+        card,
+        amount,
+        time,
+        date,
+        network,
+        status,
+        cleanText: cleaned
+    } = parsed.result;
 
     const formattedAmount = formatAmount(amount);
     const finalResult = `${formattedAmount} // ${card} // ${time} // ${date}`;
@@ -1283,7 +1410,7 @@ function parseAIResult(aiText) {
         window.clearTabbyInput();
     }
 
-    activateCardScanPopup();
+    return true;
 }
 
 

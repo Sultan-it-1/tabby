@@ -47,6 +47,80 @@ function getTesseractOptions() {
     };
 }
 
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function requestGroqCompletion(groqKey, model, content, options = {}) {
+    const payload = {
+        model,
+        messages: [{ role: 'user', content }],
+        temperature: options.temperature ?? 0.1,
+        max_completion_tokens: options.maxCompletionTokens ?? 128,
+        stream: false,
+        include_reasoning: false
+    };
+    if (options.reasoningEffort) payload.reasoning_effort = options.reasoningEffort;
+    if (options.topP !== undefined) payload.top_p = options.topP;
+
+    let response;
+    let data;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+        response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        data = null;
+        try {
+            data = await response.json();
+        } catch (e) { }
+
+        if (response.status !== 429 || attempt > 0) break;
+
+        const retryMessage = data?.error?.message || '';
+        const retryMatch = retryMessage.match(/try again in ([\d.]+)\s*(ms|s)/i);
+        const retryAfterHeader = Number(response.headers.get('retry-after'));
+        const retryDelay = retryMatch
+            ? Number(retryMatch[1]) * (retryMatch[2].toLowerCase() === 's' ? 1000 : 1)
+            : Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+                ? retryAfterHeader * 1000
+                : 0;
+
+        if (!Number.isFinite(retryDelay) || retryDelay <= 0 || retryDelay > 30000) break;
+        await new Promise(resolve => setTimeout(resolve, retryDelay + 750));
+    }
+
+    if (!response.ok) {
+        const error = new Error(data?.error?.message || `Groq API Error (${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+
+    const choice = data?.choices?.[0];
+    const messageContent = choice?.message?.content;
+    const responseText = typeof messageContent === 'string'
+        ? messageContent
+        : Array.isArray(messageContent)
+            ? messageContent.map(part => part?.text || part?.content || '').join('\n')
+            : messageContent?.text || '';
+
+    if (!responseText.trim()) {
+        throw new Error(`رد ${model} فارغ (finish: ${choice?.finish_reason || 'unknown'})`);
+    }
+    return responseText.trim();
+}
+
 function showToast(message, isError = false, duration = 2500) {
     const container = document.getElementById('toastContainer');
     if (!container) return { remove: () => {}, update: () => {} };
@@ -431,52 +505,71 @@ async function extractWithAI(file, apiKey) {
 }
 
 async function extractWithGroq(file, groqKey) {
-    return new Promise(async (resolve) => {
+    const accountPrompt = `Read the exact account identifier from this image. It is either a UUID in 8-4-4-4-12 format or one continuous 20-36 character uppercase alphanumeric identifier. Merge any wrapped lines. Carefully distinguish 0/O, 1/I, 5/S, and 8/B from their visible shapes. Return only the identifier or identifiers separated by newlines, with no label, markdown, or explanation.`;
+    let lastError = null;
+
+    try {
         try {
-            let rawOcrText = "";
-            if (typeof Tesseract !== 'undefined') {
-                try {
-                    const result = await Tesseract.recognize(file, 'eng+ara', getTesseractOptions());
-                    rawOcrText = result?.data?.text || "";
-                } catch(e) {}
+            const imageDataUrl = await readFileAsDataUrl(file);
+            const visionResult = await requestGroqCompletion(
+                groqKey,
+                'qwen/qwen3.6-27b',
+                [
+                    { type: 'text', text: accountPrompt },
+                    { type: 'image_url', image_url: { url: imageDataUrl } }
+                ],
+                { reasoningEffort: 'none', temperature: 0.1, topP: 0.8, maxCompletionTokens: 128 }
+            );
+
+            if (findAccountIdentifiers(visionResult).length > 0) {
+                extractAccounts(visionResult);
+                recordUsage('groq');
+                return;
             }
-
-            const promptText = `Extract account numbers (UUID format 8-4-4-4-12 or 20-36 continuous alphanumeric characters). Note that accounts might be wrapped/broken into multiple lines, so merge lines and clear whitespace first. Return only the extracted raw accounts separated by newlines, with NO extra text or markdown formatting.\n\nRAW TEXT:\n${rawOcrText}`;
-
-            const payload = {
-                model: 'llama-3.3-70b-versatile',
-                messages: [{
-                    role: 'user',
-                    content: promptText
-                }]
-            };
-
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${groqKey}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error ? data.error.message : 'Unknown API Error');
-            }
-
-            recordUsage('groq');
-
-            if (data.choices && data.choices[0].message && data.choices[0].message.content) {
-                extractAccounts(data.choices[0].message.content);
-            } else {
-                extractAccounts(rawOcrText);
-            }
-        } catch (err) {
-            showToast("خطأ Groq: " + err.message, true, 4000);
+            lastError = new Error('لم يستخرج النموذج البصري رقم حساب صالح');
+        } catch (error) {
+            if (error.status === 401) throw error;
+            lastError = error;
         }
-        resolve();
-    });
+
+        let rawOcrText = '';
+        if (typeof Tesseract !== 'undefined') {
+            try {
+                const processedFile = await preprocessImageForSimah(file);
+                const result = await Tesseract.recognize(processedFile, 'eng+ara', getTesseractOptions());
+                rawOcrText = result?.data?.text || '';
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        if (!rawOcrText.trim()) throw lastError || new Error('تعذر قراءة رقم الحساب من الصورة');
+
+        const promptText = `${accountPrompt}\n\nOCR TEXT:\n${rawOcrText}`;
+        for (const modelName of ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']) {
+            try {
+                const textResult = await requestGroqCompletion(
+                    groqKey,
+                    modelName,
+                    promptText,
+                    { reasoningEffort: 'low', maxCompletionTokens: 512 }
+                );
+                if (findAccountIdentifiers(textResult).length > 0) {
+                    extractAccounts(textResult);
+                    recordUsage('groq');
+                    return;
+                }
+                lastError = new Error(`رد ${modelName} لا يحتوي رقم حساب صالح`);
+            } catch (error) {
+                if (error.status === 401) throw error;
+                lastError = error;
+            }
+        }
+
+        throw lastError || new Error('تعذر استخراج رقم حساب صحيح');
+    } catch (err) {
+        showToast("خطأ Groq: " + err.message, true, 5000);
+    }
 }
 
 // === معالجة الصورة مسبقاً بـ Canvas لرفع دقة Tesseract (Grayscale + Threshold) ===
@@ -518,44 +611,36 @@ async function extractWithTesseract(file) {
     } catch (err) { showToast("فشل في القراءة ❌", true); }
 }
 
-function extractAccounts(rawText) {
-    resultsArea.innerHTML = '';
-    let found = [];
-
-    let cleanText = rawText.replace(/[ \t]+/g, '');
+function findAccountIdentifiers(rawText) {
+    const sourceText = String(rawText || '').toUpperCase();
+    const found = [];
+    let cleanText = sourceText.replace(/[ \t]+/g, '');
     const regex = /[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}|[A-Z0-9]{20,36}/g;
     let matches = cleanText.match(regex);
 
     if (matches) {
         matches.forEach(acc => {
-            if (!found.includes(acc)) {
-                found.push(acc);
-                addReviewCard(acc);
-            }
+            if (!found.includes(acc)) found.push(acc);
         });
     }
 
     if (found.length === 0) {
-        let ultraCleanText = rawText.replace(/[^A-Z0-9-]/g, '');
+        let ultraCleanText = sourceText.replace(/[^A-Z0-9-]/g, '');
         let ultraMatches = ultraCleanText.match(/[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}/g);
         if (ultraMatches) {
             ultraMatches.forEach(acc => {
-                if (!found.includes(acc)) {
-                    found.push(acc);
-                    addReviewCard(acc);
-                }
+                if (!found.includes(acc)) found.push(acc);
             });
         }
     }
 
     if (found.length === 0) {
-        let lines = rawText.split('\n').map(l => l.replace(/[^A-Z0-9-]/g, '')).filter(l => l.length > 0);
+        let lines = sourceText.split('\n').map(l => l.replace(/[^A-Z0-9-]/g, '')).filter(l => l.length > 0);
         for (let i = 0; i < lines.length - 1; i++) {
             let combined = lines[i] + lines[i + 1];
             if (combined.length >= 30 && combined.length <= 42) {
                 let cleanedCombined = combined.replace(/-+/g, '-').replace(/-$/, '');
                 if (cleanedCombined.length === 36 || cleanedCombined.length === 20) {
-                    addReviewCard(cleanedCombined);
                     found.push(cleanedCombined);
                     break;
                 }
@@ -563,11 +648,20 @@ function extractAccounts(rawText) {
         }
     }
 
+    return found;
+}
+
+function extractAccounts(rawText) {
+    resultsArea.innerHTML = '';
+    const found = findAccountIdentifiers(rawText);
+    found.forEach(addReviewCard);
+
     if (found.length > 0) {
         showToast(`وجد ${found.length} حسابات`, false);
     } else {
         showToast("لم يتم العثور على حسابات ❌", true);
     }
+    return found;
 }
 
 function escapeHtml(value) {
