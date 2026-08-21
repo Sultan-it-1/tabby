@@ -141,15 +141,18 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
     assert.match(index, /crm-profile-analytics\.js/);
     assert.match(index, /crm-internal-note-timer\.js/);
     assert.match(index, /noon-card-search-test\.js/);
+    assert.match(index, /payfort-search-test\.js/);
     assert.match(index, /id="crmProfileAnalyticsBookmarklet"/);
     assert.match(index, /id="crmInternalNoteBookmarklet"/);
     assert.match(index, /id="noonCardSearchTest2Bookmarklet"/);
+    assert.match(index, /id="noonCardSearchTest3Bookmarklet"/);
+    assert.match(index, /id="payFortSearchTest4Bookmarklet"/);
 
     fs.readdirSync(firebaseRoot)
         .filter(file => file.endsWith('.html') && file !== 'index.html')
         .forEach(file => {
             const html = fs.readFileSync(path.join(firebaseRoot, file), 'utf8');
-            assert.doesNotMatch(html, /advancedToolsBtn|extraToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js|crm-internal-note-timer\.js|noon-card-search-test\.js/, file);
+            assert.doesNotMatch(html, /advancedToolsBtn|extraToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js|crm-internal-note-timer\.js|noon-card-search-test\.js|payfort-search-test\.js/, file);
         });
 
     const serviceWorker = fs.readFileSync(path.join(firebaseRoot, 'sw.js'), 'utf8');
@@ -157,4 +160,5 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
     assert.match(serviceWorker, /\.\/crm-profile-analytics\.js/);
     assert.match(serviceWorker, /\.\/crm-internal-note-timer\.js/);
     assert.match(serviceWorker, /\.\/noon-card-search-test\.js/);
+    assert.match(serviceWorker, /\.\/payfort-search-test\.js/);
 });
