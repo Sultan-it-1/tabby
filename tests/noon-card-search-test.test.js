@@ -79,6 +79,9 @@ test('builds a self-contained URL-safe test2 bookmarklet with Custom range handl
     assert.match(source, /np-common-search/);
     assert.match(source, /custom\\s\*range/);
     assert.match(source, /23:59/);
+    assert.match(source, /selectOptionalSarCurrency/);
+    assert.match(source, /isSarChoice/);
+    assert.match(source, /return false/);
     assert.doesNotMatch(source, /const notify|function notify/);
 });
 

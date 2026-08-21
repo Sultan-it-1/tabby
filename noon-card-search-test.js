@@ -300,6 +300,88 @@
                 .map(item => item.element);
         }
 
+        const normalizedChoice = value => engine.normalizeText(value).toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        const isCurrencyChoice = (label, value) => {
+            const text = normalizedChoice(label);
+            const rawValue = normalizedChoice(value);
+            return text === 'currency' || text === 'العملة' || text === 'عمله' || rawValue === 'currency';
+        };
+        const isSarChoice = (label, value) => {
+            const text = normalizedChoice(label);
+            const rawValue = normalizedChoice(value);
+            return rawValue === 'sar' || text === 'sar' ||
+                /^(sar\s+)?saudi( arabian)? riyal(\s+sar)?$/.test(text) ||
+                /^(sar\s+)?ريال سعودي(\s+sar)?$/.test(text);
+        };
+        const chooseNativeOption = (select, matcher) => {
+            const option = Array.from(select?.options || []).find(item => !item.disabled && matcher(item.textContent, item.value));
+            return option ? setSelectValue(select, option.value) : false;
+        };
+        const visibleMaterialOptions = () => Array.from(document.querySelectorAll('mat-option, .mat-mdc-option, [role="option"]'))
+            .filter(isVisible);
+        const closeMaterialSelect = control => {
+            const target = control || document.activeElement || document.body;
+            target.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true
+            }));
+        };
+        const chooseMaterialOption = async (control, matcher) => {
+            if (!control || !isVisible(control)) return false;
+            control.click();
+            const options = await waitFor(() => {
+                const visible = visibleMaterialOptions();
+                return visible.length ? visible : null;
+            }, 1200);
+            if (!options) return false;
+            const option = options.find(item => matcher(item.textContent, item.getAttribute?.('value')));
+            if (!option) {
+                closeMaterialSelect(control);
+                await delay(80);
+                return false;
+            }
+            option.click();
+            await delay(180);
+            return true;
+        };
+
+        async function selectOptionalSarCurrency(dateInput) {
+            const searchRoot = dateInput?.closest?.('np-common-search') ||
+                dateInput?.closest?.('mat-card.search_card, .search_card');
+            if (!searchRoot) return false;
+            const nativeSelects = () => Array.from(searchRoot.querySelectorAll('select')).filter(isVisible);
+            const nativeSarSelect = () => nativeSelects().find(select =>
+                Array.from(select.options || []).some(option => isSarChoice(option.textContent, option.value)));
+            const chooseVisibleNativeSar = () => {
+                const select = nativeSarSelect();
+                return select ? chooseNativeOption(select, isSarChoice) : false;
+            };
+            if (chooseVisibleNativeSar()) return true;
+
+            const nativeCurrencyField = nativeSelects().find(select =>
+                Array.from(select.options || []).some(option => isCurrencyChoice(option.textContent, option.value)));
+            if (nativeCurrencyField && chooseNativeOption(nativeCurrencyField, isCurrencyChoice)) {
+                const selected = await waitFor(() => chooseVisibleNativeSar() ? true : null, 2500);
+                if (selected) return true;
+            }
+
+            const materialControls = () => Array.from(searchRoot.querySelectorAll('mat-select, [role="combobox"]'))
+                .filter(isVisible);
+            const directCurrencyControl = materialControls().find(control => /currency|العملة|عمله/.test(metadata(control)));
+            if (directCurrencyControl && await chooseMaterialOption(directCurrencyControl, isSarChoice)) return true;
+
+            const fieldControls = materialControls().filter(control => /field|filter|criteria|حقل|فلتر|معيار/.test(metadata(control)));
+            for (const fieldControl of fieldControls) {
+                if (!await chooseMaterialOption(fieldControl, isCurrencyChoice)) continue;
+                const selected = await waitFor(() => {
+                    if (chooseVisibleNativeSar()) return true;
+                    return materialControls().find(control => control !== fieldControl && /currency|العملة|عمله/.test(metadata(control))) || null;
+                }, 2500);
+                if (selected === true) return true;
+                if (selected && await chooseMaterialOption(selected, isSarChoice)) return true;
+            }
+            return false;
+        }
+
         function findPicker() {
             const candidates = Array.from(document.querySelectorAll('.md-drppicker, ngx-daterangepicker-material, .daterangepicker, [class*="daterangepicker"]'));
             return candidates.find(element => isVisible(element) && element.querySelector('.calendar-table, .calendar, .ranges, button, li')) || null;
@@ -592,10 +674,11 @@
                 }
             }
             await selectDateRange(dateInput, data.date);
+            const currencyApplied = await selectOptionalSarCurrency(dateInput);
 
             await activateSearchButton(dateInput, cardInput, amountInputs[0] || null);
             startResultHighlighting(data);
-            return Object.freeze({ card: withoutCard ? '' : data.card, amount: data.amount, dateRange: data.date.range, withoutCard });
+            return Object.freeze({ card: withoutCard ? '' : data.card, amount: data.amount, dateRange: data.date.range, currency: currencyApplied ? 'SAR' : '', withoutCard });
         } catch (error) {
             return null;
         }
