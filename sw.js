@@ -25,6 +25,7 @@ const ASSETS_TO_CACHE = [
   "./crm-ticket-tracker.js",
   "./crm-profile-analytics.js",
   "./crm-internal-note-timer.js",
+  "./noon-card-search-test.js",
   "./version.js",
   "./note.js",
   "./card-utils.js",

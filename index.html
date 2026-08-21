@@ -474,7 +474,7 @@
                 <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="15" r="3"/><path d="M18 10v2m0 6v2m-5-5h2m6 0h2"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Extra Tools</div>
-                    <div class="desc">ملخص الشفت وChecking Note — أدوات إضافية.</div>
+                    <div class="desc">ملخص الشفت وChecking Note وtest لنون.</div>
                 </div>
             </button>
 
@@ -530,7 +530,7 @@
             <header>
                 <div>
                     <h2 id="extraToolsTitle">Extra Tools — أدوات إضافية</h2>
-                    <p>ملخص الشفت وChecking Note، داخل نافذة مستقلة في الهوم.</p>
+                    <p>ملخص الشفت وChecking Note وتجربة بحث نون، داخل نافذة مستقلة في الهوم.</p>
                 </div>
                 <button type="button" class="advanced-tools-close" id="extraToolsClose" aria-label="إغلاق">×</button>
             </header>
@@ -566,6 +566,22 @@
                 <div class="advanced-safety">أداة كتابة: ترسل Internal Note فعلية، وترفض المحرر المشترك أو أي حقل لا يحمل تعريف Internal Note صريحًا.</div>
                 <div class="advanced-copy-status" id="crmInternalNoteCopyStatus" aria-live="polite"></div>
             </div>
+
+            <div class="advanced-tool-panel">
+                <div class="advanced-tool-title"><span aria-hidden="true">🧪</span><span>test — بحث البطاقة في نون مع التاريخ</span></div>
+                <p>نسخة تجريبية من بحث نون تقرأ المبلغ والبطاقة والوقت والتاريخ، وتحدد اليوم كاملًا من <b>00:00</b> إلى <b>23:59</b> قبل الضغط على Search.</p>
+                <div class="advanced-bookmarklet-row">
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="noonCardSearchTestBookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyNoonCardSearchTestBookmarklet">نسخ الرابط</button>
+                </div>
+                <ol class="advanced-steps">
+                    <li>انسخ النتيجة كاملة بصيغة: <b>المبلغ // البطاقة // الوقت // التاريخ</b>.</li>
+                    <li>افتح صفحة Search Transaction في Noon Payments.</li>
+                    <li>شغّل «test»؛ ستختار الأداة التاريخ من التقويم ثم تنفذ البحث.</li>
+                </ol>
+                <div class="advanced-safety">تجريبية: تعبئ فلاتر البحث وتضغط Search فقط، ولا تنفذ أي عملية مالية.</div>
+                <div class="advanced-copy-status" id="noonCardSearchTestCopyStatus" aria-live="polite"></div>
+            </div>
         </section>
     </div>
 
@@ -577,6 +593,7 @@
         document.write('<script src="crm-ticket-tracker.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
         document.write('<script src="crm-profile-analytics.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
         document.write('<script src="crm-internal-note-timer.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+        document.write('<script src="noon-card-search-test.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -711,6 +728,16 @@
                 title: 'Checking Note',
                 readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم شغّله داخل تكت CRM.',
                 copiedMessage: 'تم نسخ كود «Checking Note» بنجاح ✅'
+            });
+
+            bindExtraBookmarklet({
+                api: window.FastToolkitNoonCardSearchTest,
+                linkId: 'noonCardSearchTestBookmarklet',
+                copyId: 'copyNoonCardSearchTestBookmarklet',
+                statusId: 'noonCardSearchTestCopyStatus',
+                title: 'test',
+                readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم شغّله داخل صفحة بحث Noon Payments.',
+                copiedMessage: 'تم نسخ كود «test» بنجاح ✅'
             });
 
             if (advancedToolsBtn) advancedToolsBtn.addEventListener('click', openAdvancedTools);

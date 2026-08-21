@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Noon card search test fixture</title>
+    <style>
+        .md-drppicker { display: none; }
+        .calendar { display: inline-block; }
+    </style>
+</head>
+<body data-test-result="pending">
+    <form id="search-form">
+        <mat-form-field>Card last 4<input id="card-last-4" placeholder="Card last 4"></mat-form-field>
+        <mat-form-field>Amount<input id="amount" placeholder="Amount"></mat-form-field>
+        <mat-form-field>Date
+            <input _ngcontent-ng-c3638087624="" matinput="" id="calendar-input" autocomplete="off" type="text"
+                readonly="true" ngxdaterangepickermd="" opens="right" drops="bottom"
+                class="mat-mdc-input-element date-time-custom-ranges_input" placeholder="Date" required="">
+        </mat-form-field>
+        <button id="search" type="button">Search</button>
+    </form>
+
+    <table><tbody>
+        <tr id="green-wrong-time"><td>Mada card ****4321</td><td>SAR 1,288.00</td><td>2026-06-08 19:00</td></tr>
+        <tr id="false-card-substring"><td>Transaction 943219</td><td>SAR 1,288.00</td><td>2026-06-08 18:34</td></tr>
+        <tr id="yellow-match"><td>Apple Pay</td><td>SAR 1,288.00</td><td>2026-06-08 18:33</td></tr>
+        <tr id="yellow-wrong-amount"><td>Apple Pay</td><td>SAR 1,289.00</td><td>2026-06-08 18:34</td></tr>
+    </tbody></table>
+
+    <div class="md-drppicker">
+        <div class="calendar left">
+            <div class="calendar-table"><table><thead><tr><th class="prev available">Previous</th><th class="month">August 2026</th></tr></thead><tbody><tr><td class="available"><span>8</span></td></tr></tbody></table></div>
+            <div class="calendar-time">
+                <select class="hourselect"><option value="0">0</option><option value="23">23</option></select>
+                <select class="minuteselect"><option value="0">00</option><option value="59">59</option></select>
+                <select class="secondselect"><option value="0">00</option><option value="59">59</option></select>
+            </div>
+        </div>
+        <div class="calendar right">
+            <div class="calendar-table"><table><thead><tr><th class="month">September 2026</th><th class="next available">Next</th></tr></thead><tbody><tr><td class="available"><span>8</span></td></tr></tbody></table></div>
+            <div class="calendar-time">
+                <select class="hourselect"><option value="0">0</option><option value="23">23</option></select>
+                <select class="minuteselect"><option value="0">00</option><option value="59">59</option></select>
+                <select class="secondselect"><option value="0">00</option><option value="59">59</option></select>
+            </div>
+        </div>
+        <div class="buttons"><button class="btn" id="apply-date" type="button">Apply</button></div>
+    </div>
+
+    <script>
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        let leftMonth = 7;
+        let leftYear = 2026;
+        let dateClicks = 0;
+        const picker = document.querySelector('.md-drppicker');
+        const dateInput = document.getElementById('calendar-input');
+
+        function renderMonths() {
+            const rightDate = new Date(leftYear, leftMonth + 1, 1);
+            document.querySelector('.calendar.left .month').textContent = `${monthNames[leftMonth]} ${leftYear}`;
+            document.querySelector('.calendar.right .month').textContent = `${monthNames[rightDate.getMonth()]} ${rightDate.getFullYear()}`;
+        }
+
+        dateInput.addEventListener('click', () => { picker.style.display = 'block'; });
+        document.querySelector('.calendar.left .prev').addEventListener('click', () => {
+            leftMonth -= 1;
+            if (leftMonth < 0) { leftMonth = 11; leftYear -= 1; }
+            renderMonths();
+        });
+        document.querySelector('.calendar.right .next').addEventListener('click', () => {
+            leftMonth += 1;
+            if (leftMonth > 11) { leftMonth = 0; leftYear += 1; }
+            renderMonths();
+        });
+        document.querySelectorAll('.calendar td.available').forEach(cell => cell.addEventListener('click', () => {
+            if (leftMonth === 5) dateClicks += 1;
+        }));
+        document.getElementById('apply-date').addEventListener('click', () => {
+            const startHour = document.querySelector('.calendar.left .hourselect').value;
+            const startMinute = document.querySelector('.calendar.left .minuteselect').value;
+            const endHour = document.querySelector('.calendar.right .hourselect').value;
+            const endMinute = document.querySelector('.calendar.right .minuteselect').value;
+            if (dateClicks >= 2 && startHour === '0' && startMinute === '0' && endHour === '23' && endMinute === '59') {
+                dateInput.value = '2026-06-08 00:00 - 2026-06-08 23:59';
+            }
+            picker.style.display = 'none';
+        });
+        document.getElementById('search').addEventListener('click', () => {
+            window.setTimeout(() => {
+                document.querySelector('table tbody').insertAdjacentHTML('afterbegin',
+                    '<tr id="green-match"><td>Mada card ****4321</td><td>SAR 1,288.00</td><td>2026-06-08 18:34</td></tr>');
+            }, 200);
+            window.setTimeout(() => {
+                const greenMatch = document.getElementById('green-match').dataset.fastToolkitNoonTest === 'match';
+                const yellowMatch = document.getElementById('yellow-match').dataset.fastToolkitNoonTest === 'apple';
+                const falseRowsClear = ['green-wrong-time', 'false-card-substring', 'yellow-wrong-amount']
+                    .every(id => !document.getElementById(id).dataset.fastToolkitNoonTest);
+                const passed = document.getElementById('card-last-4').value === '4321' &&
+                    document.getElementById('amount').value === '1288' &&
+                    dateInput.value === '2026-06-08 00:00 - 2026-06-08 23:59' && dateClicks >= 2 &&
+                    greenMatch && yellowMatch && falseRowsClear;
+                document.body.dataset.testResult = passed ? 'passed' : 'failed';
+            }, 1900);
+        });
+    </script>
+    <script src="../../noon-card-search-test.js"></script>
+    <script>
+        window.addEventListener('load', () => {
+            FastToolkitNoonCardSearchTest.install({
+                clipboardText: '1,288 // 4321 // 18:34 // 08-06',
+                now: new Date(2026, 7, 21)
+            });
+        });
+    </script>
+</body>
+</html>
