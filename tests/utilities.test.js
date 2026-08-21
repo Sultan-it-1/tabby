@@ -141,13 +141,11 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
     assert.match(index, /crm-ticket-tracker\.js/);
     assert.match(index, /crm-profile-analytics\.js/);
     assert.match(index, /crm-internal-note-timer\.js/);
-    assert.match(index, /noon-card-search-test\.js/);
     assert.match(index, /payfort-search-test\.js/);
     assert.match(index, /id="crmProfileAnalyticsBookmarklet"/);
     assert.match(index, /id="crmInternalNoteBookmarklet"/);
-    assert.match(index, /id="noonCardSearchTest2Bookmarklet"/);
-    assert.match(index, /id="noonCardSearchTest3Bookmarklet"/);
     assert.match(index, /id="payFortSearchTest4Bookmarklet"/);
+    assert.doesNotMatch(index, /noon-card-search-test\.js|noonCardSearchTest2Bookmarklet|noonCardSearchTest3Bookmarklet|test2 —|test3 —/);
     assert.match(card, /noon-card-search-test\.js/);
     assert.match(card, /id="noonCardSearchBookmarklet"/);
     assert.match(card, /id="noonWithoutCardSearchBookmarklet"/);
