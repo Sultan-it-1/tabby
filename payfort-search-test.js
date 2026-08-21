@@ -272,7 +272,10 @@
                     return { input, score };
                 })
                 .sort((left, right) => right.score - left.score)
-                .find(item => item.score > 0)?.input || null;
+                /* Order Transaction Management has Date From/Date To inputs but no
+                   range picker. Never mistake either one for the Transactions Report
+                   Date Range control when Custom Range is required. */
+                .find(item => item.score >= 80 || pickerFor(item.input))?.input || null;
         }
 
         function visiblePicker(dateInput) {
@@ -562,7 +565,7 @@
             if (!data.date) fail('لم أجد التاريخ. انسخ: المبلغ // البطاقة // الوقت // التاريخ.');
 
             const dateInput = findDateInput();
-            if (!dateInput) fail('لم أجد حقل Date Range في صفحة تقارير PayFort.');
+            if (!dateInput) fail('افتح تبويب Transactions Report (وليس Order Transaction Management) ثم شغّل test4؛ التقويم لا يظهر في Date From/Date To.');
             await selectDateRange(dateInput, data.date);
             setStatus('فتح Filter…');
             let grid = findAdvancedGrid(dateInput.closest?.('form'));
