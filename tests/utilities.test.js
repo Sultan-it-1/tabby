@@ -13,6 +13,8 @@ test('card utilities normalize Arabic digits and reject incomplete AI output', (
     assert.equal(cardUtils.normalizeCard('**** ١٢٣٤'), '1234');
     const now = new Date('2026-08-11T12:00:00');
     assert.equal(cardUtils.normalizeDate('26-08-22', now), '22-08');
+    assert.equal(cardUtils.normalizeDate('21/8/26', now), '21-08');
+    assert.equal(cardUtils.normalizeDate('26/8/21', now), '21-08');
     assert.equal(cardUtils.normalizeNetwork('APPLE.COM/BILL'), 'unknown');
     assert.equal(cardUtils.normalizeNetwork('Apple Pay VISA'), 'apple pay');
     assert.equal(cardUtils.normalizeNetwork('ومدى'), 'mada');

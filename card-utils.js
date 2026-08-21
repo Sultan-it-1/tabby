@@ -135,10 +135,15 @@
                 year = third;
             } else {
                 const yearFromFirst = 2000 + first;
-                const looksLikeRecentYearFirst = first === currentYearShort ||
-                    (yearFromFirst >= currentYear - 5 && yearFromFirst <= currentYear + 1);
+                const looksLikeRecentYearFirst = yearFromFirst >= currentYear - 5 && yearFromFirst <= currentYear + 1;
 
-                if (looksLikeRecentYearFirst) {
+                // An exact match with the current two-digit year wins over
+                // the fuzzy recent-year heuristic on the opposite side.
+                if (third === currentYearShort) {
+                    day = first;
+                    month = second;
+                    year = 2000 + third;
+                } else if (first === currentYearShort || looksLikeRecentYearFirst) {
                     year = yearFromFirst;
                     month = second;
                     day = third;

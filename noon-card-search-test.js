@@ -5,6 +5,11 @@
         const api = factory();
         root.FastToolkitNoonCardSearchTest2 = api;
         root.FastToolkitNoonCardSearchTest = api;
+        root.FastToolkitNoonCardSearchTest3 = Object.freeze({
+            buildBookmarklet: api.buildWithoutCardBookmarklet,
+            buildInlineBookmarklet: api.buildWithoutCardBookmarklet,
+            install: api.installWithoutCard
+        });
     }
 }(typeof self !== 'undefined' ? self : this, function () {
     'use strict';
@@ -210,20 +215,9 @@
         const engine = createEngine();
         if (request.action !== 'run') return null;
         if (typeof window === 'undefined' || typeof document === 'undefined') return null;
-
-        const notify = (message, kind = 'info') => {
-            const old = document.getElementById('fast-toolkit-noon-test-status');
-            if (old) old.remove();
-            const element = document.createElement('div');
-            element.id = 'fast-toolkit-noon-test-status';
-            element.textContent = message;
-            element.style.cssText = `position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:2147483647;padding:11px 16px;border-radius:10px;font:700 13px Arial,sans-serif;color:#fff;background:${kind === 'error' ? '#b91c1c' : (kind === 'success' ? '#047857' : '#1f2937')};box-shadow:0 8px 25px rgba(0,0,0,.28);direction:rtl;max-width:90vw;text-align:center`;
-            (document.body || document.documentElement).appendChild(element);
-            if (kind !== 'info') window.setTimeout(() => element.remove(), kind === 'error' ? 7000 : 3500);
-        };
+        document.getElementById('fast-toolkit-noon-test-status')?.remove();
 
         if (!engine.isAllowedLocation(window.location)) {
-            notify('أداة test تعمل فقط داخل بوابة Noon Payments.', 'error');
             return null;
         }
 
@@ -464,6 +458,27 @@
                 .find(item => item.score > 0)?.element || null;
         }
 
+        async function activateSearchButton(dateInput, cardInput, amountInput) {
+            const button = await waitFor(() => {
+                const candidate = findSearchButton(dateInput, cardInput, amountInput);
+                if (!candidate || candidate.disabled || candidate.getAttribute?.('aria-disabled') === 'true') return null;
+                return candidate;
+            }, 5000);
+            if (!button) throw new Error('SEARCH_NOT_READY');
+            await delay(350);
+            button.focus?.();
+            if (typeof PointerEvent === 'function') {
+                button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'mouse' }));
+                button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerType: 'mouse' }));
+            }
+            if (typeof MouseEvent === 'function') {
+                button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+                button.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0 }));
+            }
+            button.click();
+            return button;
+        }
+
         function startResultHighlighting(data) {
             if (window.__FAST_TOOLKIT_NOON_TEST_HIGHLIGHT_TIMER__) {
                 window.clearInterval(window.__FAST_TOOLKIT_NOON_TEST_HIGHLIGHT_TIMER__);
@@ -542,22 +557,29 @@
         }
 
         try {
-            notify('test2: جاري قراءة البيانات وضبط تاريخ نون…');
+            const withoutCard = request.mode === 'without-card';
             const clipboardText = request.clipboardText != null
                 ? String(request.clipboardText)
                 : await navigator.clipboard.readText();
             if (!clipboardText.trim()) throw new Error('الحافظة فارغة.');
             const data = engine.parseClipboard(clipboardText, request.now);
-            if (!data.card) throw new Error('لم أجد آخر 4 أرقام للبطاقة في الحافظة.');
+            if (!withoutCard && !data.card) throw new Error('لم أجد آخر 4 أرقام للبطاقة في الحافظة.');
             if (!data.date) throw new Error('لم أجد التاريخ. انسخ النتيجة كاملة: المبلغ // البطاقة // الوقت // التاريخ.');
 
             const dateInput = findDateInput();
             if (!dateInput) throw new Error('لم أجد حقل Date في صفحة نون.');
-            const cardInput = findFields('card', dateInput)[0] || null;
+            const cardInputs = findFields('card', dateInput);
+            const cardInput = cardInputs[0] || null;
             const amountInputs = findFields('amount', dateInput);
-            if (!cardInput) throw new Error('لم أجد حقل البطاقة في صفحة نون.');
+            if (!withoutCard && !cardInput) throw new Error('لم أجد حقل البطاقة في صفحة نون.');
 
-            setInputValue(cardInput, data.card);
+            if (withoutCard) {
+                cardInputs.forEach(input => setInputValue(input, ''));
+                await delay(100);
+                if (cardInputs.some(input => engine.normalizeText(input.value) !== '')) throw new Error('CARD_NOT_CLEARED');
+            } else {
+                setInputValue(cardInput, data.card);
+            }
             if (data.amount) {
                 if (!amountInputs.length) throw new Error('لم أجد حقول Amount From وAmount To في صفحة نون.');
                 amountInputs.forEach(input => setInputValue(input, data.amount));
@@ -568,23 +590,18 @@
             }
             await selectDateRange(dateInput, data.date);
 
-            const searchButton = findSearchButton(dateInput, cardInput, amountInputs[0] || null);
-            if (!searchButton) throw new Error('تم ضبط الحقول لكن لم أجد زر Search.');
-            if (searchButton.disabled || searchButton.getAttribute?.('aria-disabled') === 'true') throw new Error('زر Search ما زال معطّلًا بعد تعبئة الحقول.');
-            searchButton.click();
+            await activateSearchButton(dateInput, cardInput, amountInputs[0] || null);
             startResultHighlighting(data);
-            notify(`تم البحث: ${data.card} — ${data.date.range} ✅`, 'success');
-            return Object.freeze({ card: data.card, amount: data.amount, dateRange: data.date.range });
+            return Object.freeze({ card: withoutCard ? '' : data.card, amount: data.amount, dateRange: data.date.range, withoutCard });
         } catch (error) {
-            notify(`test2: ${error && error.message ? error.message : 'تعذر تنفيذ البحث.'}`, 'error');
             return null;
         }
     }
 
     const engine = createNoonSearchEngine();
 
-    function getRuntimeSource() {
-        return `void((${noonCardSearchRuntime.toString()})(${createNoonSearchEngine.toString()},{action:'run'}));`;
+    function getRuntimeSource(mode = 'with-card') {
+        return `void((${noonCardSearchRuntime.toString()})(${createNoonSearchEngine.toString()},{action:'run',mode:${JSON.stringify(mode)}}));`;
     }
 
     function buildInlineBookmarklet() {
@@ -595,8 +612,16 @@
         return buildInlineBookmarklet();
     }
 
+    function buildWithoutCardBookmarklet() {
+        return `javascript:${encodeURIComponent(getRuntimeSource('without-card'))}`;
+    }
+
     function install(options) {
         return noonCardSearchRuntime(createNoonSearchEngine, Object.assign({ action: 'run' }, options || {}));
+    }
+
+    function installWithoutCard(options) {
+        return noonCardSearchRuntime(createNoonSearchEngine, Object.assign({ action: 'run', mode: 'without-card' }, options || {}));
     }
 
     return Object.freeze({
@@ -614,6 +639,8 @@
         getRuntimeSource,
         buildBookmarklet,
         buildInlineBookmarklet,
-        install
+        buildWithoutCardBookmarklet,
+        install,
+        installWithoutCard
     });
 }));

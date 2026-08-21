@@ -60,6 +60,8 @@
         let dateClicks = 0;
         let customRangeClicks = 0;
         let quickRangeClicks = 0;
+        let searchClicks = 0;
+        const withoutCard = window.location.hash === '#test3';
         const picker = document.querySelector('.md-drppicker');
         const dateInput = document.getElementById('calendar-input');
 
@@ -100,6 +102,7 @@
             picker.style.display = 'none';
         });
         document.getElementById('search').addEventListener('click', () => {
+            searchClicks += 1;
             window.setTimeout(() => {
                 document.querySelector('table tbody').insertAdjacentHTML('afterbegin',
                     '<tr id="green-match"><td>Mada card ****4321</td><td>SAR 1,288.00</td><td>2026-06-08 18:34</td></tr>');
@@ -109,11 +112,14 @@
                 const yellowMatch = document.getElementById('yellow-match').dataset.fastToolkitNoonTest === 'apple';
                 const falseRowsClear = ['green-wrong-time', 'false-card-substring', 'yellow-wrong-amount']
                     .every(id => !document.getElementById(id).dataset.fastToolkitNoonTest);
-                const passed = document.getElementById('card-last-4').value === '4321' &&
+                const expectedCard = withoutCard ? '' : '4321';
+                const passed = document.getElementById('card-last-4').value === expectedCard &&
                     document.getElementById('amount-from').value === '1288' &&
                     document.getElementById('amount-to').value === '1288' &&
                     dateInput.value === '2026-06-08 00:00 - 2026-06-08 23:59' && dateClicks >= 2 &&
-                    customRangeClicks === 1 && quickRangeClicks === 0 && greenMatch && yellowMatch && falseRowsClear;
+                    customRangeClicks === 1 && quickRangeClicks === 0 && searchClicks === 1 &&
+                    !document.getElementById('fast-toolkit-noon-test-status') &&
+                    greenMatch && yellowMatch && falseRowsClear;
                 document.body.dataset.testResult = passed ? 'passed' : 'failed';
             }, 1900);
         });
@@ -121,7 +127,9 @@
     <script src="../../noon-card-search-test.js"></script>
     <script>
         window.addEventListener('load', () => {
-            FastToolkitNoonCardSearchTest2.install({
+            if (withoutCard) document.getElementById('card-last-4').value = '9999';
+            const api = withoutCard ? FastToolkitNoonCardSearchTest3 : FastToolkitNoonCardSearchTest2;
+            api.install({
                 clipboardText: '1,288 // 4321 // 18:34 // 08-06',
                 now: new Date(2026, 7, 21)
             });

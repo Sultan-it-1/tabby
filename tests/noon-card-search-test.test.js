@@ -76,4 +76,16 @@ test('builds a self-contained URL-safe test2 bookmarklet with Custom range handl
     assert.match(source, /calendar-input/);
     assert.match(source, /custom\\s\*range/);
     assert.match(source, /23:59/);
+    assert.doesNotMatch(source, /const notify|function notify/);
+});
+
+test('builds test3 without a card filter or injected notifications', () => {
+    const bookmarklet = noonSearch.buildWithoutCardBookmarklet();
+    const source = decodeBookmarklet(bookmarklet);
+    assert.match(bookmarklet, /^javascript:/);
+    assert.doesNotMatch(bookmarklet, /[\r\n]/);
+    assert.doesNotThrow(() => new Function(source));
+    assert.match(source, /mode:\s*["']without-card["']/);
+    assert.match(source, /CARD_NOT_CLEARED/);
+    assert.doesNotMatch(source, /const notify|function notify/);
 });
