@@ -11,7 +11,8 @@
 <body data-test-result="pending">
     <form id="search-form">
         <mat-form-field>Card last 4<input id="card-last-4" placeholder="Card last 4"></mat-form-field>
-        <mat-form-field>Amount<input id="amount" placeholder="Amount"></mat-form-field>
+        <mat-form-field>Amount From<input id="amount-from" placeholder="Amount From"></mat-form-field>
+        <mat-form-field>Amount To<input id="amount-to" placeholder="Amount To"></mat-form-field>
         <mat-form-field>Date
             <input _ngcontent-ng-c3638087624="" matinput="" id="calendar-input" autocomplete="off" type="text"
                 readonly="true" ngxdaterangepickermd="" opens="right" drops="bottom"
@@ -109,7 +110,8 @@
                 const falseRowsClear = ['green-wrong-time', 'false-card-substring', 'yellow-wrong-amount']
                     .every(id => !document.getElementById(id).dataset.fastToolkitNoonTest);
                 const passed = document.getElementById('card-last-4').value === '4321' &&
-                    document.getElementById('amount').value === '1288' &&
+                    document.getElementById('amount-from').value === '1288' &&
+                    document.getElementById('amount-to').value === '1288' &&
                     dateInput.value === '2026-06-08 00:00 - 2026-06-08 23:59' && dateClicks >= 2 &&
                     customRangeClicks === 1 && quickRangeClicks === 0 && greenMatch && yellowMatch && falseRowsClear;
                 document.body.dataset.testResult = passed ? 'passed' : 'failed';

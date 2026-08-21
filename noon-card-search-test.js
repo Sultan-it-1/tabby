@@ -294,7 +294,7 @@
                 Array.from(document.querySelectorAll('input')).find(element => /calendar|date-time|date range|daterange|التاريخ/.test(metadata(element)));
         }
 
-        function findField(kind, dateInput) {
+        function findFields(kind, dateInput) {
             const inputs = Array.from(document.querySelectorAll('input')).filter(element => element !== dateInput && isVisible(element));
             const patterns = kind === 'card'
                 ? [/card/, /last\s*4/, /pan/, /payer/, /بطاق/]
@@ -302,7 +302,8 @@
             return inputs
                 .map(element => ({ element, score: patterns.reduce((score, pattern) => score + (pattern.test(metadata(element)) ? 10 : 0), 0) }))
                 .filter(item => item.score > 0)
-                .sort((left, right) => right.score - left.score)[0]?.element || null;
+                .sort((left, right) => right.score - left.score)
+                .map(item => item.element);
         }
 
         function findPicker() {
@@ -552,15 +553,22 @@
 
             const dateInput = findDateInput();
             if (!dateInput) throw new Error('لم أجد حقل Date في صفحة نون.');
-            const cardInput = findField('card', dateInput);
-            const amountInput = findField('amount', dateInput);
+            const cardInput = findFields('card', dateInput)[0] || null;
+            const amountInputs = findFields('amount', dateInput);
             if (!cardInput) throw new Error('لم أجد حقل البطاقة في صفحة نون.');
 
             setInputValue(cardInput, data.card);
-            if (data.amount && amountInput) setInputValue(amountInput, data.amount);
+            if (data.amount) {
+                if (!amountInputs.length) throw new Error('لم أجد حقول Amount From وAmount To في صفحة نون.');
+                amountInputs.forEach(input => setInputValue(input, data.amount));
+                await delay(100);
+                if (amountInputs.some(input => engine.normalizeText(input.value) !== data.amount)) {
+                    throw new Error('تعذر تعبئة جميع حقول المبلغ بالقيمة نفسها.');
+                }
+            }
             await selectDateRange(dateInput, data.date);
 
-            const searchButton = findSearchButton(dateInput, cardInput, amountInput);
+            const searchButton = findSearchButton(dateInput, cardInput, amountInputs[0] || null);
             if (!searchButton) throw new Error('تم ضبط الحقول لكن لم أجد زر Search.');
             if (searchButton.disabled || searchButton.getAttribute?.('aria-disabled') === 'true') throw new Error('زر Search ما زال معطّلًا بعد تعبئة الحقول.');
             searchButton.click();
