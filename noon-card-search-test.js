@@ -304,7 +304,8 @@
         const isCurrencyChoice = (label, value) => {
             const text = normalizedChoice(label);
             const rawValue = normalizedChoice(value);
-            return text === 'currency' || text === 'العملة' || text === 'عمله' || rawValue === 'currency';
+            return text === 'currency' || text === 'currencies' || text === 'العملة' || text === 'عمله' ||
+                rawValue === 'currency' || rawValue === 'currencies';
         };
         const isSarChoice = (label, value) => {
             const text = normalizedChoice(label);
@@ -339,8 +340,16 @@
                 await delay(80);
                 return false;
             }
+            const isMultiple = control.hasAttribute?.('multiple') ||
+                control.classList?.contains('mat-mdc-select-multiple') ||
+                option.closest?.('[aria-multiselectable="true"]');
             option.click();
-            await delay(180);
+            await delay(100);
+            if (isMultiple) {
+                closeMaterialSelect(control);
+                await waitFor(() => visibleMaterialOptions().length ? null : true, 1200);
+            }
+            await delay(80);
             return true;
         };
 
@@ -366,7 +375,8 @@
 
             const materialControls = () => Array.from(searchRoot.querySelectorAll('mat-select, [role="combobox"]'))
                 .filter(isVisible);
-            const directCurrencyControl = materialControls().find(control => /currency|العملة|عمله/.test(metadata(control)));
+            const isCurrencyControl = control => /currenc(?:y|ies)|العملة|عمله/.test(metadata(control));
+            const directCurrencyControl = materialControls().find(isCurrencyControl);
             if (directCurrencyControl && await chooseMaterialOption(directCurrencyControl, isSarChoice)) return true;
 
             const fieldControls = materialControls().filter(control => /field|filter|criteria|حقل|فلتر|معيار/.test(metadata(control)));
@@ -374,7 +384,7 @@
                 if (!await chooseMaterialOption(fieldControl, isCurrencyChoice)) continue;
                 const selected = await waitFor(() => {
                     if (chooseVisibleNativeSar()) return true;
-                    return materialControls().find(control => control !== fieldControl && /currency|العملة|عمله/.test(metadata(control))) || null;
+                    return materialControls().find(control => control !== fieldControl && isCurrencyControl(control)) || null;
                 }, 2500);
                 if (selected === true) return true;
                 if (selected && await chooseMaterialOption(selected, isSarChoice)) return true;
