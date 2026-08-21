@@ -37,4 +37,5 @@ test('builds a self-contained test4 bookmarklet with exact PayFort advanced filt
     assert.match(source, /fast-toolkit-payfort-test4-status/);
     assert.match(source, /report-search-form/);
     assert.match(source, /btn-a-s-filter/);
+    assert.match(source, /Transactions Report/);
 });
