@@ -9,17 +9,27 @@
     </style>
 </head>
 <body data-test-result="pending">
-    <form id="search-form">
-        <mat-form-field>Card last 4<input id="card-last-4" placeholder="Card last 4"></mat-form-field>
-        <mat-form-field>Amount From<input id="amount-from" placeholder="Amount From"></mat-form-field>
-        <mat-form-field>Amount To<input id="amount-to" placeholder="Amount To"></mat-form-field>
-        <mat-form-field>Date
-            <input _ngcontent-ng-c3638087624="" matinput="" id="calendar-input" autocomplete="off" type="text"
-                readonly="true" ngxdaterangepickermd="" opens="right" drops="bottom"
-                class="mat-mdc-input-element date-time-custom-ranges_input" placeholder="Date" required="">
-        </mat-form-field>
-        <button id="search" type="button">Search</button>
-    </form>
+    <np-quick-search-criteria>
+        <input id="global-search-text" class="search-input" placeholder="Search">
+        <button id="quick-search-btn" type="button"><mat-icon>search</mat-icon></button>
+        <div id="global-search-error"></div>
+    </np-quick-search-criteria>
+
+    <np-common-search>
+        <mat-card class="search_card">
+            <div id="search-form">
+                <mat-form-field>Card last 4<input id="card-last-4" placeholder="Card last 4"></mat-form-field>
+                <mat-form-field>Amount From<input id="amount-from" placeholder="Amount From"></mat-form-field>
+                <mat-form-field>Amount To<input id="amount-to" placeholder="Amount To"></mat-form-field>
+                <mat-form-field>Date
+                    <input _ngcontent-ng-c3638087624="" matinput="" id="calendar-input" autocomplete="off" type="text"
+                        readonly="true" ngxdaterangepickermd="" opens="right" drops="bottom"
+                        class="mat-mdc-input-element date-time-custom-ranges_input" placeholder="Date" required="">
+                </mat-form-field>
+                <button id="add-search-button" type="button"><mat-icon>search</mat-icon> Search</button>
+            </div>
+        </mat-card>
+    </np-common-search>
 
     <table><tbody>
         <tr id="green-wrong-time"><td>Mada card ****4321</td><td>SAR 1,288.00</td><td>2026-06-08 19:00</td></tr>
@@ -60,7 +70,8 @@
         let dateClicks = 0;
         let customRangeClicks = 0;
         let quickRangeClicks = 0;
-        let searchClicks = 0;
+        let transactionSearchClicks = 0;
+        let globalSearchClicks = 0;
         const withoutCard = window.location.hash === '#test3';
         const picker = document.querySelector('.md-drppicker');
         const dateInput = document.getElementById('calendar-input');
@@ -101,8 +112,12 @@
             }
             picker.style.display = 'none';
         });
-        document.getElementById('search').addEventListener('click', () => {
-            searchClicks += 1;
+        document.getElementById('quick-search-btn').addEventListener('click', () => {
+            globalSearchClicks += 1;
+            document.getElementById('global-search-error').textContent = 'Please enter search text';
+        });
+        document.getElementById('add-search-button').addEventListener('click', () => {
+            transactionSearchClicks += 1;
             window.setTimeout(() => {
                 document.querySelector('table tbody').insertAdjacentHTML('afterbegin',
                     '<tr id="green-match"><td>Mada card ****4321</td><td>SAR 1,288.00</td><td>2026-06-08 18:34</td></tr>');
@@ -117,7 +132,8 @@
                     document.getElementById('amount-from').value === '1288' &&
                     document.getElementById('amount-to').value === '1288' &&
                     dateInput.value === '2026-06-08 00:00 - 2026-06-08 23:59' && dateClicks >= 2 &&
-                    customRangeClicks === 1 && quickRangeClicks === 0 && searchClicks === 1 &&
+                    customRangeClicks === 1 && quickRangeClicks === 0 && transactionSearchClicks === 1 &&
+                    globalSearchClicks === 0 && !document.getElementById('global-search-error').textContent &&
                     !document.getElementById('fast-toolkit-noon-test-status') &&
                     greenMatch && yellowMatch && falseRowsClear;
                 document.body.dataset.testResult = passed ? 'passed' : 'failed';
