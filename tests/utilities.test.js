@@ -142,9 +142,12 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
     assert.match(index, /crm-profile-analytics\.js/);
     assert.match(index, /crm-internal-note-timer\.js/);
     assert.match(index, /payfort-search-test\.js/);
+    assert.match(index, /checkout-search-bookmarklet\.js/);
     assert.match(index, /id="crmProfileAnalyticsBookmarklet"/);
     assert.match(index, /id="crmInternalNoteBookmarklet"/);
     assert.match(index, /id="payFortSearchTest4Bookmarklet"/);
+    assert.match(index, /id="checkoutSearchWithCardBookmarklet"/);
+    assert.match(index, /id="checkoutSearchWithoutCardBookmarklet"/);
     assert.doesNotMatch(index, /noon-card-search-test\.js|noonCardSearchTest2Bookmarklet|noonCardSearchTest3Bookmarklet|test2 —|test3 —/);
     assert.match(card, /noon-card-search-test\.js/);
     assert.match(card, /id="noonCardSearchBookmarklet"/);
@@ -157,7 +160,7 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
         .filter(file => file.endsWith('.html') && file !== 'index.html')
         .forEach(file => {
             const html = fs.readFileSync(path.join(firebaseRoot, file), 'utf8');
-            assert.doesNotMatch(html, /advancedToolsBtn|extraToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js|crm-internal-note-timer\.js|payfort-search-test\.js/, file);
+            assert.doesNotMatch(html, /advancedToolsBtn|extraToolsBtn|crm-ticket-tracker\.js|crm-profile-analytics\.js|crm-internal-note-timer\.js|payfort-search-test\.js|checkout-search-bookmarklet\.js/, file);
             if (file !== 'card.html') assert.doesNotMatch(html, /noon-card-search-test\.js/, file);
         });
 
@@ -167,4 +170,5 @@ test('CRM bookmarklet tools are exposed in two separate home modals only', () =>
     assert.match(serviceWorker, /\.\/crm-internal-note-timer\.js/);
     assert.match(serviceWorker, /\.\/noon-card-search-test\.js/);
     assert.match(serviceWorker, /\.\/payfort-search-test\.js/);
+    assert.match(serviceWorker, /\.\/checkout-search-bookmarklet\.js/);
 });

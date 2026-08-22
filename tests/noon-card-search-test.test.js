@@ -16,6 +16,51 @@ test('reads the fourth clipboard part as the Noon date range', () => {
     assert.equal(result.date.range, '2026-06-08 00:00 - 2026-06-08 23:59');
 });
 
+test('supports flexible delimiters: //, \\\\, /, \\, - with or without spaces, and flexible time formats', () => {
+    const now = new Date(2026, 7, 21);
+
+    // Attached or unspaced //
+    const res1 = noonSearch.parseClipboard('125.50//4321//18:34 // 08-06', now);
+    assert.equal(res1.amount, '125.50');
+    assert.equal(res1.card, '4321');
+    assert.equal(res1.time, '18:34');
+    assert.equal(res1.date.iso, '2026-06-08');
+
+    // Double backslash \\
+    const res2 = noonSearch.parseClipboard('125.50 \\\\ 4321 \\\\ 6:34 pm \\\\ 08/06/2026', now);
+    assert.equal(res2.amount, '125.50');
+    assert.equal(res2.card, '4321');
+    assert.equal(res2.time, '18:34');
+    assert.equal(res2.date.iso, '2026-06-08');
+
+    // Single backslash \
+    const res3 = noonSearch.parseClipboard('125.50\\4321\\18.34\\08-06', now);
+    assert.equal(res3.amount, '125.50');
+    assert.equal(res3.card, '4321');
+    assert.equal(res3.time, '18:34');
+    assert.equal(res3.date.iso, '2026-06-08');
+
+    // Single slash /
+    const res4 = noonSearch.parseClipboard('125.50/4321/18:34/08-06', now);
+    assert.equal(res4.amount, '125.50');
+    assert.equal(res4.card, '4321');
+    assert.equal(res4.time, '18:34');
+    assert.equal(res4.date.iso, '2026-06-08');
+
+    // Hyphen / dash -
+    const res5 = noonSearch.parseClipboard('125.50 - 4321 - 18-34 - 08-06', now);
+    assert.equal(res5.amount, '125.50');
+    assert.equal(res5.card, '4321');
+    assert.equal(res5.time, '18:34');
+    assert.equal(res5.date.iso, '2026-06-08');
+
+    // Military time in 3rd slot e.g. 1834
+    const res6 = noonSearch.parseClipboard('125.50 // 4321 // 1834 // 08-06', now);
+    assert.equal(res6.amount, '125.50');
+    assert.equal(res6.card, '4321');
+    assert.equal(res6.time, '18:34');
+});
+
 test('normalizes thousands separators and compares amounts numerically', () => {
     assert.deepEqual(noonSearch.parseAmount('SAR 1,288.00'), { number: 1288, normalized: '1288.00' });
     assert.deepEqual(noonSearch.parseAmount('1,288'), { number: 1288, normalized: '1288' });

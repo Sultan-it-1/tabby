@@ -156,19 +156,92 @@
             });
         }
 
+        function splitClipboardParts(rawText) {
+            const text = normalizeText(rawText);
+            if (!text) return [];
+
+            if (text.includes('//')) {
+                return text.split(/\s*\/\/\s*/).map(p => p.trim());
+            }
+            if (text.includes('\\\\')) {
+                return text.split(/\s*\\\\\s*/).map(p => p.trim());
+            }
+            if (/\s+[\/\\|–—]\s+/.test(text) || /\s+-\s+/.test(text)) {
+                return text.split(/\s+[\/\\|–—-]\s+/).map(p => p.trim());
+            }
+            if (text.includes('\\')) {
+                return text.split(/\s*\\\s*/).map(p => p.trim());
+            }
+            if (text.includes('/')) {
+                const slashParts = text.split(/\s*\/\s*/).map(p => p.trim());
+                if (slashParts.length >= 4) {
+                    return [
+                        slashParts[0],
+                        slashParts[1],
+                        slashParts[2],
+                        slashParts.slice(3).join('-')
+                    ];
+                }
+            }
+            if (text.includes('-')) {
+                const dashParts = text.split(/\s*-\s*/).map(p => p.trim());
+                if (dashParts.length >= 4) {
+                    return [
+                        dashParts[0],
+                        dashParts[1],
+                        dashParts[2],
+                        dashParts.slice(3).join('-')
+                    ];
+                }
+            }
+            if (text.includes('|')) {
+                return text.split(/\s*\|\s*/).map(p => p.trim());
+            }
+            return [];
+        }
+
+        function parseTimeToken(value) {
+            if (!value) return '';
+            const text = normalizeText(value).toLowerCase();
+
+            let match = text.match(/(?:^|\D)([01]?\d|2[0-3])[:.]([0-5]\d)(?::[0-5]\d)?\s*(am|pm|ص|م)?(?!\d)/i);
+            if (match) {
+                let hour = Number(match[1]);
+                const minute = match[2];
+                const ampm = (match[3] || '').toLowerCase();
+                if ((ampm === 'pm' || ampm === 'م') && hour < 12) hour += 12;
+                if ((ampm === 'am' || ampm === 'ص') && hour === 12) hour = 0;
+                return `${String(hour).padStart(2, '0')}:${minute}`;
+            }
+
+            match = text.match(/(?:^|\D)([01]?\d|2[0-3])-([0-5]\d)(?!\d)/);
+            if (match) {
+                return `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
+            }
+
+            match = text.match(/(?:^|\D)([01]\d|2[0-3])([0-5]\d)(?!\d)/);
+            if (match) {
+                return `${match[1]}:${match[2]}`;
+            }
+
+            return '';
+        }
+
         function parseClipboard(value, nowValue) {
             const raw = normalizeText(value);
-            const parts = raw.includes('//') ? raw.split('//').map(part => part.trim()) : [];
+            const parts = splitClipboardParts(raw);
             const amount = parseAmount(parts[0] || raw);
             const cardMatch = String(parts[1] || raw).match(/(?:\D|^)(\d{4})(?!\d)/);
-            const timeMatch = String(parts[2] || raw).match(/(?:^|\D)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/);
-            const dateSource = parts.slice(3).join(' ') || raw;
+            const parsedTime = parts[2] ? parseTimeToken(parts[2]) : '';
+            const timeFallback = String(raw).match(/(?:^|\D)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/);
+            const time = parsedTime || (timeFallback ? `${String(Number(timeFallback[1])).padStart(2, '0')}:${timeFallback[2]}` : '');
+            const dateSource = (parts.length >= 4 ? parts.slice(3).join(' ') : '') || raw;
             const date = parseDate(dateSource, nowValue);
             return Object.freeze({
                 raw,
                 amount: amount ? amount.normalized : '',
                 card: cardMatch ? cardMatch[1] : '',
-                time: timeMatch ? `${String(Number(timeMatch[1])).padStart(2, '0')}:${timeMatch[2]}` : '',
+                time,
                 date
             });
         }

@@ -474,7 +474,7 @@
                 <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="15" r="3"/><path d="M18 10v2m0 6v2m-5-5h2m6 0h2"/></svg></span>
                 <div class="text-wrapper">
                     <div class="title">Extra Tools</div>
-                    <div class="desc">ملخص الشفت وChecking Note وتجربة بحث PayFort.</div>
+                    <div class="desc">ملخص الشفت وChecking Note وبحث PayFort وCheckout.</div>
                 </div>
             </button>
 
@@ -530,7 +530,7 @@
             <header>
                 <div>
                     <h2 id="extraToolsTitle">Extra Tools — أدوات إضافية</h2>
-                    <p>ملخص الشفت وChecking Note وتجربة بحث PayFort، داخل نافذة مستقلة في الهوم.</p>
+                    <p>ملخص الشفت وChecking Note وتجربة بحث PayFort وCheckout، داخل نافذة مستقلة في الهوم.</p>
                 </div>
                 <button type="button" class="advanced-tools-close" id="extraToolsClose" aria-label="إغلاق">×</button>
             </header>
@@ -582,6 +582,38 @@
                 <div class="advanced-safety">تجريبية: تجهز فلاتر البحث فقط ولا تضغط زر التنفيذ النهائي ولا تنفذ أي عملية مالية.</div>
                 <div class="advanced-copy-status" id="payFortSearchTest4CopyStatus" aria-live="polite"></div>
             </div>
+
+            <div class="advanced-tool-panel">
+                <div class="advanced-tool-title"><span aria-hidden="true">🛒</span><span>بحث Checkout ببطاقة 💳</span></div>
+                <p>يولد رابط بحث <b>Checkout</b> بالمبلغ، العملة (SAR)، آخر 4 أرقام من البطاقة، ونطاق التاريخ المنسوخ من النتيجة، ويفتحه تلقائياً.</p>
+                <div class="advanced-bookmarklet-row">
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="checkoutSearchWithCardBookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyCheckoutSearchWithCardBookmarklet">نسخ الرابط</button>
+                </div>
+                <ol class="advanced-steps">
+                    <li>انسخ النتيجة كاملة بصيغة: <b>المبلغ // البطاقة // الوقت // التاريخ</b>.</li>
+                    <li>اضغط على «بحث Checkout 💳» في شريط المفضلة من أي صفحة.</li>
+                    <li>يتم نسخ وتوليد رابط البحث المباشر وفتح صفحة <b>dashboard.checkout.com</b> في تبويب جديد.</li>
+                </ol>
+                <div class="advanced-safety">أداة مفضلة: تولد رابط البحث المباشر وتنسخه وتفتحه في تبويب جديد.</div>
+                <div class="advanced-copy-status" id="checkoutSearchWithCardCopyStatus" aria-live="polite"></div>
+            </div>
+
+            <div class="advanced-tool-panel">
+                <div class="advanced-tool-title"><span aria-hidden="true">🛒</span><span>بدون بطاقة Checkout 💳</span></div>
+                <p>يولد رابط بحث <b>Checkout</b> بدون فلتر رقم البطاقة (بالمبلغ والعملة SAR والتاريخ فقط)، مفيد لعمليات Apple Pay وغيرها.</p>
+                <div class="advanced-bookmarklet-row">
+                    <a href="javascript:void(0)" draggable="true" class="advanced-bookmarklet-link" id="checkoutSearchWithoutCardBookmarklet">اسحبني إلى شريط المفضلة</a>
+                    <button type="button" class="advanced-copy-btn" id="copyCheckoutSearchWithoutCardBookmarklet">نسخ الرابط</button>
+                </div>
+                <ol class="advanced-steps">
+                    <li>انسخ النتيجة كاملة بصيغة: <b>المبلغ // البطاقة // الوقت // التاريخ</b>.</li>
+                    <li>اضغط على «بدون بطاقة Checkout 💳» في شريط المفضلة من أي صفحة.</li>
+                    <li>يتم نسخ وتوليد رابط البحث المفلتر بالمبلغ والتاريخ وفتحه مباشرة.</li>
+                </ol>
+                <div class="advanced-safety">أداة مفضلة: تولد رابط البحث بدون رقم البطاقة وتفتحه في تبويب جديد.</div>
+                <div class="advanced-copy-status" id="checkoutSearchWithoutCardCopyStatus" aria-live="polite"></div>
+            </div>
         </section>
     </div>
 
@@ -594,6 +626,7 @@
         document.write('<script src="crm-profile-analytics.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
         document.write('<script src="crm-internal-note-timer.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
         document.write('<script src="payfort-search-test.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
+        document.write('<script src="checkout-search-bookmarklet.js?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.0.0') + '"><\/script>');
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -738,6 +771,26 @@
                 title: 'test4',
                 readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم شغّله داخل صفحة تقارير PayFort.',
                 copiedMessage: 'تم نسخ كود «test4» بنجاح ✅'
+            });
+
+            bindExtraBookmarklet({
+                api: window.FastToolkitCheckoutWithCardSearch || window.FastToolkitCheckoutSearch,
+                linkId: 'checkoutSearchWithCardBookmarklet',
+                copyId: 'copyCheckoutSearchWithCardBookmarklet',
+                statusId: 'checkoutSearchWithCardCopyStatus',
+                title: 'بحث Checkout 💳',
+                readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم اضغط عليه بعد نسخ تفاصيل العملية.',
+                copiedMessage: 'تم نسخ كود «بحث Checkout 💳» بنجاح ✅'
+            });
+
+            bindExtraBookmarklet({
+                api: window.FastToolkitCheckoutWithoutCardSearch,
+                linkId: 'checkoutSearchWithoutCardBookmarklet',
+                copyId: 'copyCheckoutSearchWithoutCardBookmarklet',
+                statusId: 'checkoutSearchWithoutCardCopyStatus',
+                title: 'بدون بطاقة Checkout 💳',
+                readyMessage: 'اسحب الزر إلى المفضلة أو انسخ الرابط، ثم اضغط عليه بعد نسخ تفاصيل العملية.',
+                copiedMessage: 'تم نسخ كود «بدون بطاقة Checkout 💳» بنجاح ✅'
             });
 
             if (advancedToolsBtn) advancedToolsBtn.addEventListener('click', openAdvancedTools);
