@@ -250,3 +250,36 @@ test('browser fixture keeps Customer Reply and Internal Note in separate forms',
     assert.match(fixture, /aria-label="Customer message">مسودة العميل لا تتغير/);
     assert.match(fixture, /data-testid="internal-note-submit"/);
 });
+
+test('accepts exact CRM Leave a note textarea and chat-reply button while strictly rejecting Just start typing customer textarea', () => {
+    const internalNoteResult = noteTimer.validateSemanticPair({
+        editorOwnText: 'textarea ticket-chat-textarea Leave a note... Itr-direction-171zyu9',
+        buttonOwnText: 'button tui-button chat-reply',
+        contextText: 'ticket chat Leave a note',
+        activeModeText: 'Internal note',
+        editorIsEditable: true,
+        buttonIsAction: true,
+        buttonIsSubmit: true,
+        isCrmReplyButton: true,
+        sameContainer: true,
+        multipleVisibleEditors: false,
+        multipleMatchingButtons: false
+    });
+    assert.equal(internalNoteResult.safe, true);
+
+    const customerChatResult = noteTimer.validateSemanticPair({
+        editorOwnText: 'textarea ticket-chat-textarea Just start typing.. Itr-direction-171zyu9',
+        buttonOwnText: 'button tui-button chat-reply',
+        contextText: 'ticket chat',
+        activeModeText: '',
+        editorIsEditable: true,
+        buttonIsAction: true,
+        buttonIsSubmit: true,
+        sameContainer: true,
+        multipleVisibleEditors: false,
+        multipleMatchingButtons: false
+    });
+    assert.equal(customerChatResult.safe, false);
+    assert.ok(customerChatResult.reasons.includes('customer-editor'));
+});
+

@@ -21,8 +21,8 @@
         <section data-testid="customer-reply-composer">
             <h2>Customer Reply</h2>
             <label for="customerDraft">Customer message</label>
-            <textarea id="customerDraft" aria-label="Customer message">مسودة العميل لا تتغير</textarea>
-            <button type="button" aria-label="Send customer reply">Send customer reply</button>
+            <textarea id="customerDraft" data-testid="ticket-chat-textarea" placeholder="Just start typing.." aria-label="Customer message">مسودة العميل لا تتغير</textarea>
+            <button type="button" class="tui-button" data-testid="chat-reply" aria-label="Send customer reply">Send customer reply</button>
         </section>
 
         <form id="internalNoteForm" data-testid="internal-note-composer">
@@ -30,8 +30,8 @@
                 <div class="tab" role="tab" aria-selected="true" data-testid="internal-note-tab">Internal Note</div>
                 <h2>Private Internal Note</h2>
                 <label for="internalNote">Internal note</label>
-                <textarea id="internalNote" data-testid="internal-note-editor" aria-label="Internal note"></textarea>
-                <button id="sendInternalNote" type="submit" data-testid="internal-note-submit" aria-label="Add internal note" disabled>Send note</button>
+                <textarea id="internalNote" data-testid="ticket-chat-textarea" placeholder="Leave a note..." aria-label="Internal note"></textarea>
+                <button id="sendInternalNote" type="submit" class="tui-button" data-testid="internal-note-submit" data-role="chat-reply" aria-label="Add internal note" disabled>Send note</button>
                 <ol id="noteLog" aria-label="Sent internal notes"></ol>
             </section>
         </form>

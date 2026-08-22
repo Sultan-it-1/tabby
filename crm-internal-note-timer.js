@@ -29,9 +29,9 @@
 
         function analyzeSemanticText(value) {
             const text = normalizeText(value);
-            const strongNote = /\b(?:internal|private)\s+(?:note|comment|memo)s?\b|\b(?:note|comment|memo)s?\s+(?:internal|privately)\b|ملاحظ(?:ة|ات)\s+داخلي(?:ة|ه)|تعليق\s+داخلي|نوت(?:ة)?\s+داخلي(?:ة|ه)/i.test(text);
+            const strongNote = /\b(?:internal|private)\s+(?:note|comment|memo)s?\b|\b(?:note|comment|memo)s?\s+(?:internal|privately)\b|\bleave\s+a\s+note\b|ملاحظ(?:ة|ات)\s+داخلي(?:ة|ه)|تعليق\s+داخلي|نوت(?:ة)?\s+داخلي(?:ة|ه)/i.test(text);
             const note = strongNote || /\b(?:note|notes|comment|comments|memo|memos)\b|ملاحظ(?:ة|ات)|تعليق|نوتة?/i.test(text);
-            const customer = /\b(?:customer|public|reply|chat|conversation|customer\s+message|send\s+message)\b|رسالة\s+العميل|رد\s+للعميل|محادثة\s+العميل|عام(?:ة)?/i.test(text);
+            const customer = /\b(?:customer|public|reply|conversation|customer\s+message|send\s+message|just\s+start\s+typing|start\s+typing)\b|رسالة\s+العميل|رد\s+للعميل|محادثة\s+العميل|عام(?:ة)?/i.test(text);
             const action = /\b(?:send|save|add|submit|post|create)\b|إرسال|ارسال|حفظ|إضافة|اضافة|نشر/i.test(text);
             return { text, strongNote, note, customer, action };
         }
@@ -68,23 +68,23 @@
 
             if (!data.editorIsEditable) reasons.push('not-editable');
             if (!data.buttonIsAction) reasons.push('not-action-button');
-            if (!data.sameContainer) reasons.push('different-container');
+            if (data.sameContainer === false) reasons.push('different-container');
             if (data.multipleVisibleEditors) reasons.push('shared-or-ambiguous-composer');
             if (data.multipleMatchingButtons) reasons.push('ambiguous-submit-button');
 
             const activeInternalNoteConfirmed = hasActiveMode && activeMode.strongNote && !activeMode.customer;
             if (!editorOwn.strongNote && !activeInternalNoteConfirmed) reasons.push('editor-not-explicitly-internal');
-            if (!buttonOwn.strongNote) reasons.push('button-not-explicitly-internal');
+            if (!buttonOwn.strongNote && !data.isCrmReplyButton) reasons.push('button-not-explicitly-internal');
 
             const mixedReplyAndNoteContext = context.note && context.customer;
-            if (mixedReplyAndNoteContext) reasons.push('shared-mode-not-confirmed');
+            if (mixedReplyAndNoteContext && !editorOwn.strongNote && !activeInternalNoteConfirmed) reasons.push('shared-mode-not-confirmed');
 
             if (editorOwn.customer) reasons.push('customer-editor');
-            if (buttonOwn.customer) reasons.push('customer-button');
-            if (context.customer) reasons.push('customer-context');
+            if (buttonOwn.customer && !data.isCrmReplyButton) reasons.push('customer-button');
+            if (context.customer && !editorOwn.strongNote && !activeInternalNoteConfirmed && !data.isCrmReplyButton) reasons.push('customer-context');
             if (hasActiveMode && activeMode.customer) reasons.push('customer-mode-active');
             if (hasActiveMode && !activeMode.strongNote) reasons.push('note-mode-not-confirmed');
-            if (!buttonOwn.action && !data.buttonIsSubmit && !context.action) reasons.push('button-action-not-confirmed');
+            if (!buttonOwn.action && !data.buttonIsSubmit && !context.action && !data.isCrmReplyButton) reasons.push('button-action-not-confirmed');
 
             return Object.freeze({
                 safe: reasons.length === 0,
@@ -129,7 +129,6 @@
     function fastToolkitCrmInternalNoteTimerRuntime(createSafety, request = {}) {
         const safety = createSafety();
         const HOST_ID = 'fast-toolkit-crm-internal-note-timer-host-v1';
-        const CONFIG_KEY = 'fastToolkit_crm_internal_note_timer_config_v1';
         const LEASE_PREFIX = 'fastToolkit_crm_internal_note_timer_lease_v1:';
         const LAST_SENT_PREFIX = 'fastToolkit_crm_internal_note_timer_last_sent_v1:';
         const INTERVAL_MS = safety.DEFAULT_INTERVAL_MS;
@@ -204,8 +203,6 @@
             ownerId: makeOwnerId(),
             editor: null,
             button: null,
-            editorLocator: null,
-            buttonLocator: null,
             injectedEditor: null,
             injectedText: '',
             configuredTicketId: '',
@@ -218,11 +215,10 @@
             userActivityGeneration: 0,
             attemptGeneration: 0,
             composing: false,
-            picker: null,
             minimized: false,
             destroyed: false,
             leaseRenewedAt: 0,
-            message: 'حدد خانة Internal Note وزر الإرسال.',
+            message: 'جاري فحص الصفحة والتعرف على خانة Internal Note...',
             tone: 'neutral'
         };
 
@@ -232,7 +228,7 @@
         const shadow = host.attachShadow({ mode: 'open' });
         const style = document.createElement('style');
         style.textContent = `
-            :host{all:initial}*{box-sizing:border-box}.panel{position:fixed;z-index:2147483646;right:18px;bottom:18px;width:330px;background:#101826;color:#e5edf7;border:1px solid #334155;border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,.42);font-family:Tahoma,Arial,sans-serif;direction:rtl;overflow:hidden}.panel.hidden{display:none}.head{display:flex;align-items:center;gap:8px;padding:11px 12px;background:#172033;border-bottom:1px solid #334155}.title{font-size:13px;font-weight:800;flex:1}.icon-btn{border:0;background:#26344d;color:#dce8f8;border-radius:7px;width:27px;height:27px;cursor:pointer}.body{padding:12px}.status{font-size:11px;line-height:1.6;padding:8px 9px;border-radius:8px;background:#172033;color:#cbd5e1;margin-bottom:9px}.status.good{background:#0b3b2e;color:#a7f3d0}.status.warn{background:#49330c;color:#fde68a}.status.bad{background:#4c171b;color:#fecaca}.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}.select-btn,.main-btn{border:1px solid #3b4b66;background:#1d2a40;color:#e5edf7;border-radius:8px;padding:8px 7px;font-size:10px;font-weight:700;cursor:pointer}.select-btn.ready{border-color:#10b981;color:#a7f3d0}.main-btn{width:100%;background:#0d8f67;border-color:#10b981;font-size:12px}.main-btn.pause{background:#8a5b11;border-color:#f59e0b}.main-btn:disabled,.select-btn:disabled{opacity:.48;cursor:not-allowed}.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;color:#94a3b8;margin-bottom:9px}.meta b{display:block;color:#f1f5f9;margin-top:2px;font-size:11px}.warning{font-size:9px;line-height:1.55;color:#94a3b8;margin-top:8px}.bubble{position:fixed;z-index:2147483646;right:18px;bottom:18px;border:1px solid #10b981;background:#0f2f28;color:#a7f3d0;border-radius:999px;padding:9px 12px;font:700 11px Tahoma,Arial,sans-serif;cursor:pointer;direction:rtl}.bubble.hidden{display:none}`;
+            :host{all:initial}*{box-sizing:border-box}.panel{position:fixed;z-index:2147483646;right:18px;bottom:18px;width:330px;background:#101826;color:#e5edf7;border:1px solid #334155;border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,.42);font-family:Tahoma,Arial,sans-serif;direction:rtl;overflow:hidden}.panel.hidden{display:none}.head{display:flex;align-items:center;gap:8px;padding:11px 12px;background:#172033;border-bottom:1px solid #334155}.title{font-size:13px;font-weight:800;flex:1}.icon-btn{border:0;background:#26344d;color:#dce8f8;border-radius:7px;width:27px;height:27px;cursor:pointer}.body{padding:12px}.status{font-size:11px;line-height:1.6;padding:8px 9px;border-radius:8px;background:#172033;color:#cbd5e1;margin-bottom:9px}.status.good{background:#0b3b2e;color:#a7f3d0}.status.warn{background:#49330c;color:#fde68a}.status.bad{background:#4c171b;color:#fecaca}.main-btn{width:100%;background:#0d8f67;border:1px solid #10b981;color:#e5edf7;border-radius:8px;padding:9px 7px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:8px}.main-btn.pause{background:#8a5b11;border-color:#f59e0b}.main-btn:disabled{opacity:.48;cursor:not-allowed}.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;color:#94a3b8;margin-bottom:9px}.meta b{display:block;color:#f1f5f9;margin-top:2px;font-size:11px}.warning{font-size:9px;line-height:1.55;color:#94a3b8}.bubble{position:fixed;z-index:2147483646;right:18px;bottom:18px;border:1px solid #10b981;background:#0f2f28;color:#a7f3d0;border-radius:999px;padding:9px 12px;font:700 11px Tahoma,Arial,sans-serif;cursor:pointer;direction:rtl}.bubble.hidden{display:none}`;
         shadow.appendChild(style);
 
         const panel = createElement('section', { className: 'panel' });
@@ -248,13 +244,9 @@
         const ticketCell = createElement('div', {}, [createElement('span', { textContent: 'التكت' }), createElement('b', { textContent: '—' })]);
         const nextCell = createElement('div', {}, [createElement('span', { textContent: 'الإرسال القادم' }), createElement('b', { textContent: 'متوقف' })]);
         meta.append(ticketCell, nextCell);
-        const grid = createElement('div', { className: 'grid' });
-        const pickEditorButton = createElement('button', { className: 'select-btn', type: 'button', textContent: '1) حدد خانة النوتة' });
-        const pickSendButton = createElement('button', { className: 'select-btn', type: 'button', textContent: '2) حدد زر الإرسال' });
-        grid.append(pickEditorButton, pickSendButton);
         const mainButton = createElement('button', { className: 'main-btn', type: 'button', disabled: true, textContent: 'ابدأ — أول إرسال بعد دقيقتين' });
-        const warning = createElement('div', { className: 'warning', textContent: 'تعمل فقط مع textarea/input مستقل وزر يحمل تعريف Internal Note صريحًا. ترفض المحرر المشترك أو rich-text ولا تبدّل Reply/Note.' });
-        body.append(statusBox, meta, grid, mainButton, warning);
+        const warning = createElement('div', { className: 'warning', textContent: 'تعمل تلقائيًا مع خانة (Leave a note...) وزر الإرسال (chat-reply). محظور تمامًا الكتابة في خانة العميل (Just start typing..).' });
+        body.append(statusBox, meta, mainButton, warning);
         panel.append(header, body);
         const bubble = createElement('button', { className: 'bubble hidden', type: 'button', textContent: 'Checking: متوقف' });
         shadow.append(panel, bubble);
@@ -279,13 +271,21 @@
             if (state.destroyed) return;
             const ticketId = getCurrentTicketId();
             ticketValue.textContent = ticketId ? ticketId.slice(0, 18) : 'لا يوجد تكت';
+            const pair = validateDomPair();
+            if (!state.running) {
+                if (!ticketId) {
+                    state.message = 'افتح تكت أولًا للبدء.';
+                    state.tone = 'neutral';
+                } else if (!pair.safe) {
+                    state.message = 'بانتظار ظهور خانة النوتة (Leave a note...)...';
+                    state.tone = 'warn';
+                } else if (state.tone !== 'good' && state.tone !== 'bad') {
+                    state.message = 'جاهز — تم التعرف على خانة Internal Note تلقائيًا.';
+                    state.tone = 'good';
+                }
+            }
             statusBox.textContent = state.message;
             statusBox.className = `status${state.tone === 'good' ? ' good' : state.tone === 'warn' ? ' warn' : state.tone === 'bad' ? ' bad' : ''}`;
-            pickEditorButton.classList.toggle('ready', Boolean(state.editor));
-            pickSendButton.classList.toggle('ready', Boolean(state.button));
-            pickEditorButton.textContent = state.editor ? '✓ خانة النوتة محددة' : '1) حدد خانة النوتة';
-            pickSendButton.textContent = state.button ? '✓ زر الإرسال محدد' : '2) حدد زر الإرسال';
-            const pair = validateDomPair();
             mainButton.disabled = state.running ? false : !pair.safe || !ticketId;
             mainButton.classList.toggle('pause', state.running);
             mainButton.textContent = state.running ? 'إيقاف Checking' : 'ابدأ — أول إرسال بعد دقيقتين';
@@ -409,26 +409,97 @@
                         if (!isVisible(element)) return false;
                         const meaning = safety.analyzeSemanticText(ownSemanticText(element));
                         if (element === selectedButton) return true;
-                        return meaning.action && (selectedMeaning.action || selectedButton.type === 'submit');
+                        return (meaning.action || selectedButton.type === 'submit') && !meaning.customer;
                     });
             } catch (error) {
                 return [];
             }
         }
 
+        function isCustomerElement(element) {
+            if (!element) return false;
+            const text = ownSemanticText(element);
+            const analysis = safety.analyzeSemanticText(text);
+            return analysis.customer;
+        }
+
+        function isInternalNoteElement(element) {
+            if (!element) return false;
+            const text = ownSemanticText(element);
+            const analysis = safety.analyzeSemanticText(text);
+            return analysis.strongNote && !analysis.customer;
+        }
+
+        function findInternalNoteElements() {
+            const textareas = Array.from(document.querySelectorAll('textarea, input[type="text"]'));
+            let noteEditor = null;
+            for (const el of textareas) {
+                if (!isEditable(el) || !isVisible(el)) continue;
+                if (isCustomerElement(el)) continue;
+                if (isInternalNoteElement(el)) {
+                    noteEditor = el;
+                    break;
+                }
+            }
+
+            if (!noteEditor) return { editor: null, button: null };
+
+            let noteButton = null;
+            let parent = noteEditor.parentElement;
+            for (let depth = 0; depth < 6 && parent && parent !== document.body; depth += 1) {
+                const candidate = parent.querySelector('button[data-testid="chat-reply"], button[data-testid="internal-note-submit"], button[type="submit"], button.tui-button');
+                if (candidate && isVisible(candidate) && isActionButton(candidate) && (!isCustomerElement(candidate) || candidate.getAttribute('data-testid') === 'chat-reply')) {
+                    noteButton = candidate;
+                    break;
+                }
+                parent = parent.parentElement;
+            }
+
+            if (!noteButton) {
+                const candidates = Array.from(document.querySelectorAll('button[data-testid="chat-reply"], button[data-testid="internal-note-submit"]'))
+                    .filter(btn => isVisible(btn) && isActionButton(btn));
+                if (candidates.length === 1) {
+                    noteButton = candidates[0];
+                }
+            }
+
+            return { editor: noteEditor, button: noteButton };
+        }
+
+        function resolveEditor() {
+            if (state.editor && state.editor.isConnected && isVisible(state.editor) && isInternalNoteElement(state.editor) && !isCustomerElement(state.editor)) {
+                return state.editor;
+            }
+            const found = findInternalNoteElements();
+            state.editor = found.editor;
+            state.button = found.button;
+            return state.editor;
+        }
+
+        function resolveButton() {
+            if (state.button && state.button.isConnected && isVisible(state.button) && isActionButton(state.button)) {
+                return state.button;
+            }
+            const found = findInternalNoteElements();
+            state.editor = found.editor;
+            state.button = found.button;
+            return state.button;
+        }
+
         function validateDomPair() {
             const editor = resolveEditor();
             const button = resolveButton();
-            const root = findSharedContainer(editor, button);
-            if (!editor || !button || !root) {
+            if (!editor || !button) {
                 return safety.validateSemanticPair({
                     editorIsEditable: Boolean(editor && isEditable(editor)),
                     buttonIsAction: Boolean(button && isActionButton(button)),
                     sameContainer: false
                 });
             }
+            const root = findSharedContainer(editor, button) || editor.parentElement;
             const editors = visibleEditorsIn(root);
             const buttons = matchingActionButtons(root, button);
+            const isCrmReply = Boolean(button && (button.getAttribute('data-testid') === 'chat-reply' || button.getAttribute('data-testid') === 'internal-note-submit'));
             return safety.validateSemanticPair({
                 editorOwnText: ownSemanticText(editor),
                 buttonOwnText: ownSemanticText(button),
@@ -436,88 +507,16 @@
                 activeModeText: activeModeText(root),
                 editorIsEditable: isEditable(editor),
                 buttonIsAction: isActionButton(button),
-                buttonIsSubmit: String(button.type || '').toLowerCase() === 'submit',
-                sameContainer: root.contains(editor) && root.contains(button),
-                multipleVisibleEditors: editors.some(item => item !== editor),
+                buttonIsSubmit: String(button.type || '').toLowerCase() === 'submit' || isCrmReply,
+                isCrmReplyButton: isCrmReply,
+                sameContainer: Boolean(root && root.contains(editor) && root.contains(button)),
+                multipleVisibleEditors: editors.filter(item => item !== editor && isInternalNoteElement(item)).length > 0,
                 multipleMatchingButtons: buttons.filter(item => item !== button).length > 0
             });
         }
 
         function escapeAttribute(value) {
             return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-        }
-
-        function candidateSelectors(element) {
-            if (!element) return [];
-            const tag = String(element.tagName || '').toLowerCase();
-            const candidates = [];
-            const id = element.getAttribute && element.getAttribute('id');
-            if (id) candidates.push(`#${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id.replace(/[^a-zA-Z0-9_-]/g, '\\$&')}`);
-            ['data-testid', 'data-test-id', 'aria-label', 'name', 'placeholder'].forEach(attribute => {
-                const value = element.getAttribute && element.getAttribute(attribute);
-                if (value) candidates.push(`${tag}[${attribute}="${escapeAttribute(value)}"]`);
-            });
-            return candidates;
-        }
-
-        function makeUniqueLocator(element) {
-            for (const selector of candidateSelectors(element)) {
-                try {
-                    const matches = document.querySelectorAll(selector);
-                    if (matches.length === 1 && matches[0] === element) return selector;
-                } catch (error) { }
-            }
-            return null;
-        }
-
-        function resolveUnique(selector) {
-            if (!selector) return null;
-            try {
-                const matches = document.querySelectorAll(selector);
-                return matches.length === 1 ? matches[0] : null;
-            } catch (error) {
-                return null;
-            }
-        }
-
-        function resolveEditor() {
-            if (state.editor && state.editor.isConnected) return state.editor;
-            const resolved = resolveUnique(state.editorLocator);
-            state.editor = resolved && isEditable(resolved) ? resolved : null;
-            return state.editor;
-        }
-
-        function resolveButton() {
-            if (state.button && state.button.isConnected) return state.button;
-            const resolved = resolveUnique(state.buttonLocator);
-            state.button = resolved && isActionButton(resolved) ? resolved : null;
-            return state.button;
-        }
-
-        function saveConfiguration() {
-            if (!state.editorLocator || !state.buttonLocator) return;
-            safeJsonWrite(CONFIG_KEY, {
-                editorLocator: state.editorLocator,
-                buttonLocator: state.buttonLocator,
-                savedAt: Date.now()
-            });
-        }
-
-        function restoreConfiguration() {
-            const saved = safeJsonRead(CONFIG_KEY);
-            if (!saved || !saved.editorLocator || !saved.buttonLocator) return false;
-            state.editorLocator = saved.editorLocator;
-            state.buttonLocator = saved.buttonLocator;
-            state.editor = resolveUnique(saved.editorLocator);
-            state.button = resolveUnique(saved.buttonLocator);
-            const result = validateDomPair();
-            if (!result.safe) {
-                state.editor = null;
-                state.button = null;
-                return false;
-            }
-            setMessage('تم استعادة إعداد Internal Note. راجعه ثم ابدأ.', 'good');
-            return true;
         }
 
         function readEditorValue(editor) {
@@ -875,134 +874,6 @@
             setMessage(message || 'متوقف مؤقتًا.', tone || 'neutral');
         }
 
-        function clearPicker() {
-            if (!state.picker) return;
-            const picker = state.picker;
-            document.removeEventListener('pointermove', picker.onMove, true);
-            document.removeEventListener('pointerdown', picker.onPointerDown, true);
-            document.removeEventListener('click', picker.onClick, true);
-            document.removeEventListener('keydown', picker.onKey, true);
-            if (picker.overlay && picker.overlay.remove) picker.overlay.remove();
-            state.picker = null;
-        }
-
-        function pathCandidate(event, kind) {
-            const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
-            for (const element of path) {
-                if (!element || element.nodeType !== 1 || element === host || (typeof element.getRootNode === 'function' && element.getRootNode() === shadow) || (host.contains && host.contains(element))) continue;
-                if (kind === 'editor' && isEditable(element)) return element;
-                if (kind === 'button' && isActionButton(element)) return element;
-            }
-            let target = event.target;
-            if (target && typeof target.closest === 'function') {
-                target = kind === 'editor'
-                    ? target.closest('textarea,input,[contenteditable="true"],[role="textbox"]')
-                    : target.closest('button,input[type="submit"],input[type="button"],[role="button"]');
-            }
-            if (!target || target === host) return null;
-            return kind === 'editor' ? (isEditable(target) ? target : null) : (isActionButton(target) ? target : null);
-        }
-
-        function beginPicker(kind) {
-            pause('وضع التحديد: انقر العنصر؛ للزر المعطّل مرّر عليه واضغط Enter.', 'warn');
-            clearPicker();
-            const overlay = document.createElement('div');
-            overlay.setAttribute('aria-hidden', 'true');
-            overlay.style.position = 'fixed';
-            overlay.style.zIndex = '2147483645';
-            overlay.style.pointerEvents = 'none';
-            overlay.style.border = '3px solid #10b981';
-            overlay.style.borderRadius = '7px';
-            overlay.style.background = 'rgba(16,185,129,.10)';
-            overlay.style.display = 'none';
-            document.documentElement.appendChild(overlay);
-            const picker = { kind, overlay, current: null };
-            picker.onMove = event => {
-                const element = pathCandidate(event, kind);
-                picker.current = element;
-                if (!element) {
-                    overlay.style.display = 'none';
-                    return;
-                }
-                const rect = element.getBoundingClientRect();
-                overlay.style.display = 'block';
-                overlay.style.left = `${Math.max(0, rect.left - 3)}px`;
-                overlay.style.top = `${Math.max(0, rect.top - 3)}px`;
-                overlay.style.width = `${Math.max(0, rect.width + 6)}px`;
-                overlay.style.height = `${Math.max(0, rect.height + 6)}px`;
-            };
-            const finishSelection = element => {
-                clearPicker();
-                if (!element) {
-                    setMessage('لم يتم تحديد عنصر صالح.', 'bad');
-                    return;
-                }
-                if (kind === 'editor') {
-                    const meaning = safety.analyzeSemanticText(ownSemanticText(element));
-                    if (!meaning.strongNote || meaning.customer) {
-                        setMessage('رفضت الخانة: يجب أن يحمل العنصر نفسه تعريف Internal Note صريحًا.', 'bad');
-                        return;
-                    }
-                    state.editor = element;
-                    state.editorLocator = makeUniqueLocator(element);
-                    state.button = null;
-                    state.buttonLocator = null;
-                    setMessage('تم تحديد خانة النوتة. الآن حدد زر إرسالها.', 'good');
-                } else {
-                    state.button = element;
-                    state.buttonLocator = makeUniqueLocator(element);
-                    const pair = validateDomPair();
-                    if (!pair.safe) {
-                        state.button = null;
-                        state.buttonLocator = null;
-                        setMessage(`رفضت الربط للحماية: ${pair.reasons.join(', ')}`, 'bad');
-                        return;
-                    }
-                    saveConfiguration();
-                    setMessage(state.editorLocator && state.buttonLocator ? 'تمت المعايرة وحفظها. يمكنك البدء.' : 'تمت المعايرة لهذه الصفحة. يمكنك البدء.', 'good');
-                }
-                render();
-            };
-            const consumeEvent = event => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-            };
-            picker.onPointerDown = event => {
-                const element = pathCandidate(event, kind) || picker.current;
-                if (!element) return;
-                consumeEvent(event);
-                const suppressClick = clickEvent => {
-                    consumeEvent(clickEvent);
-                    document.removeEventListener('click', suppressClick, true);
-                };
-                document.addEventListener('click', suppressClick, true);
-                window.setTimeout(() => document.removeEventListener('click', suppressClick, true), 600);
-                finishSelection(element);
-            };
-            picker.onClick = event => {
-                consumeEvent(event);
-                finishSelection(pathCandidate(event, kind) || picker.current);
-            };
-            picker.onKey = event => {
-                if (event.key === 'Escape') {
-                    event.preventDefault();
-                    clearPicker();
-                    setMessage('أُلغي التحديد.', 'neutral');
-                    return;
-                }
-                if (event.key === 'Enter' && picker.current) {
-                    consumeEvent(event);
-                    finishSelection(picker.current);
-                }
-            };
-            state.picker = picker;
-            document.addEventListener('pointermove', picker.onMove, true);
-            document.addEventListener('pointerdown', picker.onPointerDown, true);
-            document.addEventListener('click', picker.onClick, true);
-            document.addEventListener('keydown', picker.onKey, true);
-        }
-
         function onUserActivity(event) {
             if (event && event.isTrusted === false) return;
             state.lastUserInputAt = Date.now();
@@ -1061,7 +932,6 @@
             if (state.destroyed) return;
             pause('تم الإيقاف.', 'neutral');
             state.destroyed = true;
-            clearPicker();
             window.clearInterval(intervalId);
             document.removeEventListener('keydown', onUserActivity, true);
             document.removeEventListener('pointerdown', onUserActivity, true);
@@ -1074,14 +944,6 @@
             delete window.__FAST_TOOLKIT_CRM_INTERNAL_NOTE_TIMER__;
         }
 
-        pickEditorButton.addEventListener('click', () => beginPicker('editor'));
-        pickSendButton.addEventListener('click', () => {
-            if (!resolveEditor()) {
-                setMessage('حدد خانة Internal Note أولًا.', 'warn');
-                return;
-            }
-            beginPicker('button');
-        });
         mainButton.addEventListener('click', () => state.running ? pause() : start());
         minimizeButton.addEventListener('click', minimize);
         bubble.addEventListener('click', show);
@@ -1106,8 +968,6 @@
             pause,
             start,
             close: destroy,
-            selectEditor: () => beginPicker('editor'),
-            selectButton: () => beginPicker('button'),
             getState: () => ({
                 running: state.running,
                 inFlight: state.inFlight,
@@ -1118,7 +978,6 @@
             })
         });
         window.__FAST_TOOLKIT_CRM_INTERNAL_NOTE_TIMER__ = api;
-        restoreConfiguration();
         render();
         return api;
     }
